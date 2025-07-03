@@ -23,13 +23,11 @@ from backend.utils.decorators import require_subscription_plan
 # Yardımcı fonksiyonları import et
 from backend.utils.helpers import add_audit_log
 from backend.utils.security import verify_iyzico_signature, check_iyzico_signature
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from backend import limiter
 
 payment_bp = Blueprint('payment', __name__)
 
-# Rate limiter (registered in create_app)
-limiter = current_app.extensions['limiter']
+# Limiter instance from application factory
 
 # Ödeme Başlatma Endpoint'i (Frontend'den çağrılır)
 @payment_bp.route('/initiate', methods=['POST'])
