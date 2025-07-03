@@ -1,0 +1,178 @@
+# File: backend/auth/routes.py
+
+from flask import request, jsonify, current_app, g, render_template
+from . import auth_bp  # Blueprint
+from backend.db.models import (
+    db,
+    User,
+    SubscriptionPlan,
+    PasswordResetToken,
+    UserSession,
+)
+from werkzeug.security import generate_password_hash, check_password_hash
+from .jwt_utils import generate_tokens, verify_jwt, verify_csrf
+from loguru import logger
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from datetime import datetime, timedelta
+import uuid
+
+# Rate limiter (register in create_app and inject via current_app.extensions)
+limiter = current_app.extensions['limiter']
+
+# Basit kayıt formu sayfası
+@auth_bp.route('/register', methods=['GET'], endpoint='register')
+def register_page():
+    """Render the registration page."""
+    return render_template('register.html')
+
+@auth_bp.route('/register', methods=['POST'])
+@limiter.limit("5/minute")
+def register_user():
+    data = request.get_json() or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+
+    if not username or not password:
+        return jsonify(error="Kullanıcı adı ve şifre gerekli."), 400
+
+    try:
+        if User.query.filter_by(username=username).first():
+            return jsonify(error="Kullanıcı adı zaten mevcut."), 409
+
+        from backend.db.models import Role
+        role = Role.query.filter_by(name='user').first()
+
+        new_user = User(
+            username=username,
+            subscription_level=SubscriptionPlan.FREE,
+            role_id=role.id if role else None
+        )
+        new_user.set_password(password)
+        new_api_key = new_user.generate_api_key()
+
+        db.session.add(new_user)
+        db.session.commit()
+
+        logger.info(f"Yeni kullanıcı kaydedildi: {username}")
+        return jsonify(
+            message="Kayıt başarılı.",
+            username=username,
+            api_key=new_api_key,
+            subscription_level=new_user.subscription_level.value
+        ), 201
+
+    except Exception as e:
+        logger.exception("Kayıt sırasında hata oluştu")
+        db.session.rollback()
+        return jsonify(error="Sunucu hatası. Lütfen daha sonra tekrar deneyin."), 500
+
+
+@auth_bp.route('/login', methods=['POST'])
+@limiter.limit("10/minute")
+def login_user():
+    data = request.get_json() or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+
+    if not username or not password:
+        return jsonify(error="Kullanıcı adı ve şifre gerekli."), 400
+
+    try:
+        user = User.query.filter_by(username=username).first()
+        if not user or not user.check_password(password):
+            return jsonify(error="Geçersiz kullanıcı adı veya şifre."), 401
+
+        access, refresh, csrf = generate_tokens(
+            user.id, user.username, user.role.value
+        )
+
+        session = UserSession(
+            user_id=user.id,
+            refresh_token=generate_password_hash(refresh),
+            expires_at=datetime.utcnow() + timedelta(days=current_app.config["REFRESH_TOKEN_EXP_DAYS"]),
+        )
+        db.session.add(session)
+        db.session.commit()
+
+        response = jsonify(
+            message="Giriş başarılı.",
+            username=username,
+            api_key=user.api_key,
+            subscription_level=user.subscription_level.value
+        )
+        secure = not current_app.debug
+        max_age_access = current_app.config["ACCESS_TOKEN_EXP_MINUTES"] * 60
+        max_age_refresh = current_app.config["REFRESH_TOKEN_EXP_DAYS"] * 86400
+
+        response.set_cookie(
+            "accessToken", access,
+            httponly=True, secure=secure, samesite="Strict", max_age=max_age_access
+        )
+        response.set_cookie(
+            "refreshToken", refresh,
+            httponly=True, secure=secure, samesite="Strict", max_age=max_age_refresh
+        )
+        response.set_cookie(
+            "csrf-token", csrf,
+            httponly=False, secure=secure, samesite="Strict", max_age=max_age_refresh
+        )
+
+        logger.info(f"Kullanıcı girişi başarılı: {username}")
+        return response
+
+    except Exception:
+        logger.exception("Giriş sırasında hata oluştu")
+        return jsonify(error="Sunucu hatası. Lütfen daha sonra tekrar deneyin."), 500
+
+
+@auth_bp.route('/check-username', methods=['GET'])
+@limiter.limit("30/minute")
+def check_username_availability():
+    username = request.args.get('username', '').strip()
+    if not username:
+        return jsonify(error="Kullanıcı adı gerekli."), 400
+    exists = bool(User.query.filter_by(username=username).first())
+    return jsonify(available=not exists), 200
+
+
+@auth_bp.route('/request_password_reset', methods=['POST'])
+@limiter.limit("5/hour")
+def request_password_reset():
+    data = request.get_json() or {}
+    identifier = data.get('identifier', '').strip()
+    if not identifier:
+        return jsonify(error="Kullanıcı adı veya e-posta gerekli."), 400
+
+    try:
+        user = User.query.filter_by(username=identifier).first()
+        if not user:
+            logger.warning(f"Şifre sıfırlama: kullanıcı bulunamadı: {identifier}")
+            return jsonify(message="Şifre sıfırlama talimatları e-posta adresinize gönderildi."), 200
+
+        existing = PasswordResetToken.query.filter_by(
+            user_id=user.id, is_used=False
+        ).filter(PasswordResetToken.expires_at > datetime.utcnow()).first()
+        if existing:
+            return jsonify(message="Zaten aktif bir şifre sıfırlama talimatı gönderildi."), 200
+
+        token = str(uuid.uuid4())
+        expires_at = datetime.utcnow() + timedelta(hours=1)
+        reset = PasswordResetToken(
+            user_id=user.id, reset_token=token,
+            expires_at=expires_at, is_used=False
+        )
+        db.session.add(reset)
+        db.session.commit()
+
+        # E-posta işini Celery'ye devret
+        current_app.extensions['celery'].send_task(
+            'backend.tasks.send_reset_email', args=[user.email, token]
+        )
+        logger.info(f"Şifre sıfırlama token oluşturuldu: ID={user.id}")
+        return jsonify(message="Şifre sıfırlama talimatları e-posta adresinize gönderildi."), 200
+
+    except Exception:
+        logger.exception("Şifre sıfırlama isteğinde hata oluştu")
+        return jsonify(error="Sunucu hatası. Lütfen daha sonra tekrar deneyin."), 500

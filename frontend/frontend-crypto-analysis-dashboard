@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YTDCrypto Analiz Paneli</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Chosen Palette: Slate & Teal (Koyu Tema Uyumlu) -->
+    <!-- Application Structure Plan: The application is designed as a single-page interactive dashboard. This structure allows stakeholders and users to quickly grasp a crypto asset's analysis status, AI-driven insights, and future forecasts at a glance, with interactive elements to customize the analysis. The layout is divided into a main control panel (left) and a detailed results display (right), with the results further segmented into overview, technical data, AI insights, and charts. This thematic grouping makes navigation intuitive and information consumption efficient, prioritizing user understanding and ease of access to comprehensive analysis. Content visibility will dynamically adjust based on user's subscription level (Basic, Advanced, Premium, Trial). -->
+    <!-- Visualization & Content Choices:
+        1. Report Info: Crypto Selection, Investor Profile -> Goal: Allow User Input & Customization -> Viz/Presentation: Dropdowns, Button -> Interaction: Select values, Click to trigger analysis. -> Justification: Standard, intuitive UI controls for input. -> Library/Method: Vanilla JS.
+        2. Report Info: Current Price, Signal, Confidence, Risk -> Goal: Inform -> Viz/Presentation: Key Metric Cards, Dynamic Text -> Interaction: Static display, text updates on analysis. -> Justification: Immediate, high-level overview for quick understanding. -> Library/Method: Vanilla JS.
+        3. Report Info: Technical Data (RSI, SMA, Volume) -> Goal: Inform -> Viz/Presentation: Detail Cards -> Interaction: Static display. -> Justification: Provides crucial quantitative context for the decision. -> Library/Method: Vanilla JS.
+        4. Report Info: Sentiment Analysis, News Summary, Chart Analysis -> Goal: Inform & Explain -> Viz/Presentation: Text Blocks -> Interaction: Dynamic text updates. -> Justification: Offers qualitative insights and human-readable analysis. -> Library/Method: Vanilla JS.
+        5. Report Info: AI Forecast -> Goal: Predict & Inform -> Viz/Presentation: Text Block -> Interaction: Dynamic text updates. -> Justification: Presents forward-looking AI predictions. -> Library/Method: Vanilla JS.
+        6. Report Info: LLM-Generated Explanation -> Goal: Explain -> Viz/Presentation: Rich Text Block -> Interaction: Dynamic text updates, potentially expandable. -> Justification: Provides in-depth, human-friendly rationale for the decision, enhancing trust and understanding. -> Library/Method: Vanilla JS.
+        7. Report Info: Historical Price Data -> Goal: Visualize Trend -> Viz/Presentation: Line Chart (Interactive) -> Interaction: Hover for tooltips, responsive resizing. -> Justification: Clearly shows price trends over time, allowing users to visually verify analysis. -> Library/Method: Chart.js (Canvas).
+        8. Report Info: Backend-Generated Price Chart -> Goal: Present Pre-rendered Visual -> Interaction: Static display. -> Justification: Demonstrates backend processing capabilities and provides an alternative visual if Chart.js fails or for static reports. -> Library/Method: HTML <img> tag with Base64 data.
+        9. New: Subscription Level Display & Feature Control -> Goal: Inform & Restrict Access -> Viz/Presentation: Dynamic text in header, conditional rendering/disabling of UI elements. -> Interaction: Informative, UI responds to subscription level. -> Justification: Essential for a tiered subscription model. -> Library/Method: Vanilla JS.
+    -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Sabit arka plan fotoğrafı */
+            background-image: url('https://www.coinkolik.com/wp-content/uploads/2023/12/gunun-one-cikan-kripto-paralari-30-aralik-2023.jpg'); /* Buraya kendi fotoğraf URL'nizi ekleyebilirsiniz */
+            background-size: cover; /* Resmi tüm alanı kaplayacak şekilde ayarla */
+            background-position: center center; /* Resmi ortala */
+            background-attachment: fixed; /* Resmi sabit tut, içerik hareket etsin */
+            background-color: #0d1117; /* Resim yüklenmezse veya saydamlıkta görülecek fallback renk */
+            color: #e2e8f0; /* Açık metin rengi */
+        }
+        .header-bg {
+            background-color: rgba(22, 27, 34, 0.9); /* Yarı saydam header */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            backdrop-filter: blur(5px); /* Hafif bulanıklık efekti */
+        }
+        /* Card stilleri (Genel kullanım) */
+        .card {
+            background-color: rgba(30, 41, 59, 0.85); /* slate-800'ün opak hali */
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid #334155; /* slate-700 */
+            backdrop-filter: blur(5px); /* Hafif bulanıklık efekti */
+            color: #e2e8f0; /* Kart içindeki metin rengi */
+        }
+        .card:hover {
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 8px 10px -6px rgb(0 0 0 / 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Yeni ortak header butonu stili */
+        .header-nav-btn-base {
+            padding: 0.75rem 1.5rem; /* py-3 px-6 */
+            font-size: 1rem; /* text-base */
+            font-weight: 600; /* font-semibold */
+            border: none;
+            border-radius: 9999px; /* rounded-full */
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 120px; /* Minimum genişlik ayarı */
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .header-nav-btn-base:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        .header-nav-btn-base::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s ease;
+        }
+        .header-nav-btn-base:hover::before {
+            left: 100%;
+        }
+
+        /* Abonelik butonu için özel stil (mavi/mor degrade) */
+        .btn-subscription-header {
+            background: linear-gradient(45deg, #6366f1, #a855f7); /* İndigo-Mor degrade */
+            color: white;
+        }
+        .btn-subscription-header:hover {
+            background: linear-gradient(45deg, #a855f7, #6366f1);
+        }
+        /* Çıkış Yap butonu için özel stil (kırmızı/turuncu degrade) */
+        .btn-logout-header {
+            background: linear-gradient(45deg, #ef4444, #f97316); /* Kırmızı-Turuncu degrade */
+            color: white;
+        }
+        .btn-logout-header:hover {
+            background: linear-gradient(45deg, #f97316, #ef4444);
+        }
+
+
+
+        /* Genel buton stilleri */
+        .btn-primary {
+            background-color: #a855f7; /* Mor */
+            color: white;
+            transition: all 0.3s ease;
+            @apply px-6 py-3 rounded-full font-semibold shadow-md hover:bg-violet-700;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(168, 85, 247, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background-color: #6366f1; /* İndigo */
+            color: white;
+            transition: all 0.3s ease;
+            @apply px-6 py-3 rounded-full font-semibold shadow-md hover:bg-indigo-700;
+        }
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+        }
+        .btn-secondary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Diğer öğeler için renk ve stil uyarlamaları */
+        .signal-buy { color: #10b981; } /* Emerald-500 */
+        .signal-sell { color: #ef4444; } /* Red-500 */
+        .signal-hold { color: #3b82f6; } /* Blue-500 */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 44px solid #a855f7; /* Mor */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Chart container styling for Chart.js canvas */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 640px) { /* sm */
+            .chart-container { height: 350px; }
+        }
+        @media (min-width: 768px) { /* md */
+            .chart-container { height: 400px; }
+        }
+        /* Image chart container styling for backend-generated image */
+        .image-chart-container {
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: auto;
+            max-height: 400px;
+            overflow: hidden;
+        }
+        .image-chart-container img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        .sticky-reminder {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(255, 237, 213, 0.9); /* amber-100 opacity */
+            color: #b45309; /* amber-800 */
+            padding: 0.75rem 1rem;
+            text-align: center;
+            font-weight: 500;
+            z-index: 50;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+            backdrop-filter: blur(5px);
+        }
+        /* Koyu tema için metin ve arka plan renkleri */
+        .text-slate-900 { color: #e2e8f0; } /* Başlıklar için daha açık ton */
+        .text-slate-600 { color: #94a3b8; } /* Alt metinler için daha açık ton */
+        .bg-slate-50 { background-color: #1e293b; /* Kart içeriği arka planı */ }
+        .text-teal-600 { color: #22d3ee; } /* Cyan tonu */
+
+        .input-field {
+            background-color: #1e293b; /* slate-800 */
+            color: #e2e8f0; /* slate-200 */
+            border-color: #475569; /* slate-600 */
+        }
+        .input-field:focus {
+            border-color: #818cf8; /* indigo-400 */
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25);
+        }
+        .input-field::placeholder {
+            color: #94a3b8; /* slate-400 */
+        }
+    </style>
+</head>
+<body class="selection:bg-violet-700 selection:text-white">
+
+    <!-- Header -->
+    <header class="header-bg py-4 sticky top-0 z-10">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+            <h1 class="text-xl sm:text-3xl font-bold text-white">YTDCrypto Analiz Paneli</h1>
+            <nav class="flex items-center space-x-4">
+                <span id="welcome-message" class="text-slate-400 text-sm hidden sm:block">Hoş geldiniz, Kullanıcı!</span>
+                <span id="user-subscription-display" class="text-xs text-indigo-400 bg-indigo-900 px-3 py-1 rounded-full hidden">PLAN</span>
+                <a href="abonelik.html" class="header-nav-btn-base btn-subscription-header">Abonelik</a>
+                <button id="logout-button" class="header-nav-btn-base btn-logout-header">
+                    Çıkış Yap
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Left Column: Analysis Input & Controls -->
+        <section class="lg:col-span-1 space-y-8">
+            <div class="card p-6">
+                <h2 class="text-xl font-bold mb-4 text-white">Analiz Ayarları</h2>
+                <p class="text-sm text-slate-400 mb-6">Analiz etmek istediğiniz kripto parayı ve yatırımcı profilinizi seçerek AI destekli raporu oluşturun.</p>
+
+                <div class="space-y-4">
+                    <div>
+                        <label for="crypto-select" class="block text-sm font-medium text-slate-300 mb-1">Kripto Para Seçin:</label>
+                        <select id="crypto-select" class="input-field pl-3 pr-10 py-2 text-base rounded-md">
+                            <option value="bitcoin">Bitcoin (BTC)</option>
+                            <option value="ethereum">Ethereum (ETH)</option>
+                            <option value="ripple">Ripple (XRP)</option>
+                            <option value="solana">Solana (SOL)</option>
+                            <option value="cardano">Cardano (ADA)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="profile-select" class="block text-sm font-medium text-slate-300 mb-1">Yatırımcı Profili:</label>
+                        <select id="profile-select" class="input-field pl-3 pr-10 py-2 text-base rounded-md">
+                            <option value="moderate">Orta (Moderate)</option>
+                            <option value="aggressive">Agresif (Agresif)</option>
+                            <option value="conservative">Temkinli (Conservative)</option>
+                        </select>
+                    </div>
+                    <button id="analyze-button" class="btn-primary w-full py-2 px-4 rounded-md flex items-center justify-center gap-2">
+                        <span id="button-text">Analiz Et</span>
+                        <div id="button-loader" class="loader hidden"></div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Real-time Status / WebSocket Notifications -->
+            <div class="card p-6">
+                <h2 class="text-xl font-bold mb-4 text-white">Gerçek Zamanlı Durum</h2>
+                <p id="websocket-status" class="text-sm text-slate-400 mb-3">WebSocket bağlantısı bekleniyor...</p>
+                <div id="analysis-notifications" class="space-y-2 text-sm text-slate-300 max-h-40 overflow-y-auto">
+                    <p class="text-slate-500">Analiz bildirimleri burada görünecek.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Columns: Analysis Results -->
+        <section class="lg:col-span-2 space-y-8">
+            <!-- Analysis Overview -->
+            <div class="card p-6">
+                <h2 class="text-2xl font-bold mb-4 text-white">Analiz Özeti: <span id="overview-coin" class="text-cyan-400">Henüz Analiz Yok</span></h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                        <p class="text-sm text-slate-400">Güncel Fiyat</p>
+                        <p id="current-price" class="text-lg font-semibold text-white">--</p>
+                    </div>
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                        <p class="text-sm text-slate-400">Öneri</p>
+                        <p id="recommendation" class="text-lg font-semibold text-white">--</p>
+                    </div>
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                        <p class="text-sm text-slate-400">Güven Oranı</p>
+                        <p id="confidence" class="text-lg font-semibold text-white">--</p>
+                    </div>
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                        <p class="text-sm text-slate-400">Risk Seviyesi</p>
+                        <p id="risk-level" class="text-lg font-semibold text-white">--</p>
+                    </div>
+                </div>
+                <p id="disclaimer" class="text-xs text-slate-500 italic mt-4">Bu analiz otomatik üretilmiştir. Yatırım tavsiyesi değildir.</p>
+            </div>
+
+            <!-- Detailed Analysis & Forecast -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold mb-3 text-white">Detaylı Analiz</h3>
+                    <div class="space-y-3 text-sm text-slate-300">
+                        <p><strong>RSI:</strong> <span id="detail-rsi">--</span></p>
+                        <p><strong>20 Günlük SMA:</strong> <span id="detail-sma">--</span></p>
+                        <p><strong>24s Hacim:</strong> <span id="detail-volume">--</span></p>
+                        <p><strong>Genel Duygu:</strong> <span id="detail-sentiment">--</span></p>
+                        <p><strong>Haber Özeti:</strong> <span id="detail-news-summary">--</span></p>
+                        <p><strong>Grafik Analizi:</strong> <span id="detail-chart-analysis">--</span></p>
+                    </div>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold mb-3 text-white">Yapay Zeka Tahmini</h3>
+                    <div class="space-y-3 text-sm text-slate-300">
+                        <p><strong>Tahmini Sonraki Gün Fiyatı:</strong> <span id="forecast-price">--</span></p>
+                        <p><strong>Tahmin Açıklaması:</strong> <span id="forecast-explanation">--</span></p>
+                    </div>
+                    <h3 class="text-xl font-bold mt-6 mb-3 text-white">Karar Açıklaması (LLM)</h3>
+                    <p id="llm-explanation" class="text-sm text-slate-300 leading-relaxed">
+                        LLM tarafından üretilen detaylı karar açıklaması burada görünecek.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold mb-3 text-white">Fiyat Grafiği (Etkileşimli)</h3>
+                    <div class="chart-container bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                    <p class="text-sm text-slate-400 mt-4 text-center">Bu grafik, geçmiş fiyat verilerini gösterir.</p>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold mb-3 text-white">Fiyat Grafiği (Backend Üretimi)</h3>
+                    <div class="image-chart-container flex items-center justify-center bg-slate-800 rounded-lg overflow-hidden border border-slate-700">
+                        <img id="backend-chart-image" src="https://placehold.co/700x300/1e293b/94a3b8?text=Backend+Grafiği" alt="Backend Üretimi Fiyat Grafiği" class="w-full h-auto object-contain" onerror="this.onerror=null;this.src='https://placehold.co/700x300/1e293b/94a3b8?text=Grafik+Yüklenemedi';" style="max-height: 300px;">
+                    </div>
+                    <p class="text-sm text-slate-400 mt-4 text-center">Bu grafik, doğrudan backend sunucusunda oluşturulmuştur.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="header-bg text-white py-6 mt-8">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center text-slate-400 text-sm">
+            &copy; 2024 YTDCrypto. Tüm Hakları Saklıdır.
+        </div>
+    </footer>
+
+    <!-- Sticky Reminder Bar -->
+    <div id="sticky-reminder" class="sticky-reminder hidden">
+        <!-- Hatırlatma mesajı buraya gelecek -->
+    </div>
+
+    <script>
+        // Backend API'sinin ana URL'si. Ortam bağımsızlığı için http://localhost:5000 açıkça belirtildi.
+        const BACKEND_BASE_URL = 'http://localhost:5000';
+        const BACKEND_ANALYZE_API_URL = `${BACKEND_BASE_URL}/api/analyze_coin/`; 
+
+        // SessionStorage'dan API anahtarını çekin. Yoksa kullanıcıyı giriş sayfasına yönlendirin.
+        const USER_API_KEY = sessionStorage.getItem('ytdcrypto_api_key'); 
+        const USER_USERNAME = sessionStorage.getItem('ytdcrypto_username');
+        const USER_SUBSCRIPTION_LEVEL = sessionStorage.getItem('ytdcrypto_subscription_level'); 
+        const USER_TRIAL_REMAINING_DAYS = sessionStorage.getItem('ytdcrypto_trial_remaining_days'); 
+
+        // DOM Elementleri
+        const cryptoSelect = document.getElementById('crypto-select');
+        const profileSelect = document.getElementById('profile-select');
+        const analyzeButton = document.getElementById('analyze-button');
+        const buttonText = document.getElementById('button-text');
+        const buttonLoader = document.getElementById('button-loader');
+        const logoutButton = document.getElementById('logout-button');
+        const welcomeMessage = document.getElementById('welcome-message');
+        const userSubscriptionDisplay = document.getElementById('user-subscription-display');
+
+        const overviewCoin = document.getElementById('overview-coin');
+        const currentPrice = document.getElementById('current-price');
+        const recommendation = document.getElementById('recommendation');
+        const confidence = document.getElementById('confidence');
+        const riskLevel = document.getElementById('risk-level');
+        const disclaimer = document.getElementById('disclaimer');
+
+        const detailRSI = document.getElementById('detail-rsi');
+        const detailSMA = document.getElementById('detail-sma');
+        const detailVolume = document.getElementById('detail-volume');
+        const detailSentiment = document.getElementById('detail-sentiment');
+        const detailNewsSummary = document.getElementById('detail-news-summary');
+        const detailChartAnalysis = document.getElementById('detail-chart-analysis');
+
+        const forecastPrice = document.getElementById('forecast-price');
+        const forecastExplanation = document.getElementById('forecast-explanation');
+        const llmExplanation = document.getElementById('llm-explanation');
+
+        const priceChartCanvas = document.getElementById('priceChart');
+        let priceChartInstance;
+
+        const backendChartImage = document.getElementById('backend-chart-image');
+
+        const websocketStatus = document.getElementById('websocket-status');
+        const analysisNotifications = document.getElementById('analysis-notifications');
+        const stickyReminder = document.getElementById('sticky-reminder');
+
+
+        // --- Sayfa Yüklenince Yetkilendirme Kontrolü ---
+        if (!USER_API_KEY) {
+            alert("Lütfen analiz paneline erişmek için giriş yapın veya üye olun.");
+            window.location.href = window.location.origin + '/giris.html';
+            // Execution stops here if redirected
+        }
+
+        // --- Çıkış Yap Butonu İşlevi ---
+        logoutButton.addEventListener('click', () => {
+            sessionStorage.removeItem('ytdcrypto_username');
+            sessionStorage.removeItem('ytdcrypto_api_key');
+            sessionStorage.removeItem('ytdcrypto_subscription_level');
+            sessionStorage.removeItem('ytdcrypto_trial_remaining_days');
+            alert("Başarıyla çıkış yaptınız.");
+            window.location.href = window.location.origin + '/giris.html';
+        });
+
+
+        // --- Chart.js Yardımcı Fonksiyonu ---
+        function updatePriceChart(historicalData) {
+            const labels = historicalData.map(item => {
+                const date = new Date(item.date);
+                const options = { month: 'short', day: 'numeric' };
+                if (window.innerWidth >= 768) {
+                    options.year = 'numeric';
+                }
+                return date.toLocaleDateString('tr-TR', options);
+            });
+            const prices = historicalData.map(item => item.price);
+
+            if (priceChartInstance) {
+                priceChartInstance.destroy();
+            }
+
+            priceChartInstance = new Chart(priceChartCanvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Fiyat (USD)',
+                        data: prices,
+                        borderColor: '#14b8a6',
+                        backgroundColor: 'rgba(20, 184, 166, 0.1)',
+                        tension: 0.1,
+                        fill: true,
+                        pointRadius: 2,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                color: '#475569',
+                                maxRotation: 45,
+                                minRotation: 0,
+                                callback: function(value, index, values) {
+                                    const maxLabels = 7;
+                                    if (this.getLabelForValue(value).length > 16) {
+                                        return this.getLabelForValue(value).split(' ');
+                                    }
+                                    if (values.length > maxLabels && index % Math.ceil(values.length / maxLabels) !== 0) {
+                                        return '';
+                                    }
+                                    return this.getLabelForValue(value);
+                                }
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            grid: { color: '#e2e8f0' },
+                            ticks: {
+                                color: '#475569',
+                                callback: function(value, index, values) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                            titleColor: '#e2e8f0',
+                            bodyColor: '#cbd5e1',
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `Fiyat: $${context.parsed.y.toLocaleString()}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Analiz Sonuçlarını Güncelleme Fonksiyonu ---
+        function updateAnalysisResults(data) {
+            overviewCoin.textContent = data.coin;
+            currentPrice.textContent = `$${data.technical_data.current_price.toLocaleString()}`;
+            
+            recommendation.textContent = data.decision.recommendation;
+            recommendation.classList.remove('signal-buy', 'signal-sell', 'signal-hold');
+            if (data.decision.recommendation === 'AL') {
+                recommendation.classList.add('signal-buy');
+            } else if (data.decision.recommendation === 'SAT') {
+                recommendation.classList.add('signal-sell');
+            } else {
+                recommendation.classList.add('signal-hold');
+            }
+
+            confidence.textContent = data.decision.confidence;
+            riskLevel.textContent = data.decision.risk_level;
+            disclaimer.textContent = data.disclaimer;
+
+            detailRSI.textContent = data.technical_data.rsi;
+            detailSMA.textContent = `$${data.technical_data.sma_20.toLocaleString()}`; 
+            detailVolume.textContent = `$${(data.technical_data.volume / 1000000000).toFixed(2)} Milyar`; 
+            detailSentiment.textContent = data.sentiment_analysis.overall_sentiment;
+            detailNewsSummary.textContent = data.sentiment_analysis.news_summary;
+            detailChartAnalysis.textContent = data.chart_analysis;
+
+            forecastPrice.textContent = data.forecast_data.next_day_price ? `$${data.forecast_data.next_day_price.toLocaleString()}` : '--';
+            forecastExplanation.textContent = data.forecast_data.explanation || '--';
+            llmExplanation.innerHTML = data.decision.explanation; 
+
+            if (data.historical_prices_for_graph && data.historical_prices_for_graph.length > 0) {
+                updatePriceChart(data.historical_prices_for_graph);
+            } else {
+                console.warn("Grafik için tarihsel veri bulunamadı.");
+                if (priceChartInstance) {
+                    priceChartInstance.destroy();
+                    priceChartInstance = null;
+                }
+            }
+
+            if (data.price_chart_base64) {
+                backendChartImage.src = `data:image/png;base64,${data.price_chart_base64}`;
+            } else {
+                backendChartImage.src = "https://placehold.co/700x300/1e293b/94a3b8?text=Grafik+Yüklenemedi";
+            }
+        }
+
+        // --- API Çağrısı ve Hata Yönetimi ---
+        async function fetchAnalysis() {
+            analyzeButton.disabled = true;
+            buttonText.textContent = 'Analiz Ediliyor...';
+            buttonLoader.classList.remove('hidden');
+            backendChartImage.src = "https://placehold.co/700x300/1e293b/94a3b8?text=Grafik+Yükleniyor..."; 
+            analysisNotifications.innerHTML = '<p class="text-blue-600">Yeni analiz başlatılıyor...</p>';
+
+            const selectedCrypto = cryptoSelect.value;
+            const selectedProfile = profileSelect.value;
+            const apiUrl = `${BACKEND_ANALYZE_API_URL}${selectedCrypto}?profile=${selectedProfile}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'X-API-KEY': USER_API_KEY, 
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({error: 'Yanıt JSON değil.'}));
+                    throw new Error(errorData.error || `HTTP Hata: ${response.status}`);
+                }
+                
+                const data = await response.json();
+
+                if (data.status === "Analiz arka planda başlatıldı.") {
+                    analysisNotifications.innerHTML = `<p class="text-blue-600">"${selectedCrypto.toUpperCase()}" için analiz arka planda başlatıldı. Sonuçlar hazır olduğunda bildirilecektir (Task ID: ${data.task_id}).</p>` + analysisNotifications.innerHTML;
+                } else {
+                    updateAnalysisResults(data);
+                    analysisNotifications.innerHTML = `<p class="text-green-600">"${selectedCrypto.toUpperCase()}" için analiz tamamlandı!</p>` + analysisNotifications.innerHTML;
+                }
+            } catch (error) {
+                console.error("Analiz çağrısı sırasında hata:", error);
+                analysisNotifications.innerHTML = `<p class="text-red-600">Hata: ${error.message || 'Analiz alınırken bir sorun oluştu.'} Lütfen backend sunucusunun çalıştığından emin olun ve konsolu kontrol edin.</p>` + analysisNotifications.innerHTML;
+                // Hata durumunda UI'ı temizle
+                overviewCoin.textContent = 'Hata!';
+                currentPrice.textContent = '--';
+                recommendation.textContent = '--';
+                confidence.textContent = '--';
+                riskLevel.textContent = '--';
+                detailRSI.textContent = '--';
+                detailSMA.textContent = '--';
+                detailVolume.textContent = '--';
+                detailSentiment.textContent = '--';
+                detailNewsSummary.textContent = '--';
+                detailChartAnalysis.textContent = '--';
+                forecastPrice.textContent = '--';
+                forecastExplanation.textContent = '--';
+                llmExplanation.textContent = 'Analiz sırasında bir hata oluştu.';
+                if (priceChartInstance) {
+                    priceChartInstance.destroy();
+                    priceChartInstance = null;
+                }
+                backendChartImage.src = "https://placehold.co/700x300/ef4444/ffffff?text=HATA";
+            } finally {
+                analyzeButton.disabled = false;
+                buttonText.textContent = 'Analiz Et';
+                buttonLoader.classList.add('hidden');
+            }
+        }
+
+        // --- WebSocket Bağlantısı ve Dinleyiciler ---
+        const socket = io(BACKEND_BASE_URL, { transports: ['websocket', 'polling'] }); 
+
+        socket.on('connect', () => {
+            websocketStatus.textContent = 'WebSocket bağlantısı başarılı. Gerçek zamanlı bildirimler alınıyor.';
+            websocketStatus.classList.add('text-green-600');
+            websocketStatus.classList.remove('text-slate-600', 'text-red-600');
+            console.log('WebSocket Bağlandı!');
+        });
+
+        socket.on('disconnect', () => {
+            websocketStatus.textContent = 'WebSocket bağlantısı kesildi. Gerçek zamanlı bildirimler kapalı.';
+            websocketStatus.classList.add('text-red-600');
+            websocketStatus.classList.remove('text-green-600', 'text-slate-600');
+            console.log('WebSocket Bağlantısı Kesildi!');
+        });
+
+        socket.on('analysis_completed', (msg) => {
+            console.log('Analiz tamamlandı bildirimi alındı:', msg);
+            // Sadece ilgili coin için bildirimi göster
+            if (cryptoSelect.value === msg.coin) {
+                updateAnalysisResults(msg.result);
+                analysisNotifications.innerHTML = `<p class="text-green-600">"${msg.coin.toUpperCase()}" için analiz tamamlandı!</p>` + analysisNotifications.innerHTML;
+                // Eğer analiz butonu hala disabled ise, enable et
+                if (analyzeButton.disabled) {
+                    analyzeButton.disabled = false;
+                    buttonText.textContent = 'Analiz Et';
+                    buttonLoader.classList.add('hidden');
+                }
+            } else {
+                // Diğer coinler için de bildirim gösterebilirsiniz
+                analysisNotifications.innerHTML = `<p class="text-blue-600">"${msg.coin.toUpperCase()}" için yeni bir analiz tamamlandı (Otomatik).</p>` + analysisNotifications.innerHTML;
+            }
+        });
+
+        // Sayfa yüklendiğinde varsayılan bir analiz başlat (API anahtarı varsa)
+        document.addEventListener('DOMContentLoaded', () => {
+            if (USER_API_KEY) {
+                welcomeMessage.classList.remove('hidden'); // Hoş geldiniz mesajını göster
+                welcomeMessage.textContent = `Hoş geldiniz, ${USER_USERNAME || 'Kullanıcı'}!`; // Kullanıcı adını göster
+                
+                userSubscriptionDisplay.classList.remove('hidden'); // Abonelik seviyesini göster
+                userSubscriptionDisplay.textContent = USER_SUBSCRIPTION_LEVEL ? USER_SUBSCRIPTION_LEVEL.toUpperCase() : 'Bilinmiyor';
+
+                analysisNotifications.innerHTML = `<p class="text-blue-600">Hoş geldiniz ${USER_USERNAME || 'Kullanıcı'}! Analiz yapmak için bir kripto seçin.</p>`;
+                
+                // Abonelik seviyesine göre kripto seçimini kısıtla
+                if (USER_SUBSCRIPTION_LEVEL === 'basic' || USER_SUBSCRIPTION_LEVEL === 'trial') {
+                    const cryptoOptions = cryptoSelect.options;
+                    for (let i = cryptoOptions.length - 1; i >= 0; i--) {
+                        if (cryptoOptions[i].value !== 'bitcoin' && cryptoOptions[i].value !== 'ethereum') {
+                            cryptoOptions[i].disabled = true;
+                            cryptoOptions[i].textContent += ' (Sadece Gelişmiş/Premium)';
+                        }
+                    }
+                    // Eğer seçili olan coin kısıtlı ise, varsayılanı Bitcoin yap
+                    if (cryptoSelect.value !== 'bitcoin' && cryptoSelect.value !== 'ethereum') {
+                        cryptoSelect.value = 'bitcoin';
+                    }
+                }
+
+                // Sticky reminder bar'ı kontrol et ve göster
+                const remainingDays = sessionStorage.getItem('ytdcrypto_trial_remaining_days');
+                if (USER_SUBSCRIPTION_LEVEL === 'trial' && remainingDays !== null && parseInt(remainingDays) <= 2 && parseInt(remainingDays) >= 0) {
+                    stickyReminder.innerHTML = `⚠️ Deneme süreniz yakında bitiyor! Kalan gün: ${remainingDays}. <a href="${window.location.origin}/abonelik.html" class="underline font-semibold">Planınızı yükseltin →</a>`;
+                    stickyReminder.classList.remove('hidden');
+                } else if (USER_SUBSCRIPTION_LEVEL === 'trial' && remainingDays !== null && parseInt(remainingDays) < 0) {
+                    stickyReminder.innerHTML = `⚠️ Deneme süreniz sona erdi! <a href="${window.location.origin}/abonelik.html" class="underline font-semibold">Aboneliği Yenile →</a>`;
+                    stickyReminder.classList.remove('hidden');
+                } else {
+                    stickyReminder.classList.add('hidden'); // Diğer durumlarda gizle
+                }
+            }
+        });
+    </script>
+</body>
+</html>

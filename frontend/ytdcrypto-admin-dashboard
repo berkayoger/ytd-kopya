@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YTDCrypto Yönetim Paneli</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Dark Tech (Slate, Indigo, Cyan, Violet) -->
+    <!-- Application Structure Plan: The application is designed as a classic admin dashboard with a fixed sidebar for navigation and a main content area that dynamically displays the selected section. This structure is ideal for managing complex information by separating different management areas (users, content, system monitoring) into distinct, easily accessible views. The user flow is straightforward: an admin selects a category from the sidebar (e.g., 'Kullanıcı Yönetimi'), and the main content area updates to show relevant data, tables, and charts for that category. This design was chosen for its scalability and user-friendliness in a data-rich administrative context. -->
+    <!-- Visualization & Content Choices:
+        - Report Info: Genel Bakış (Abone Sayısı, Gelir) -> Goal: Inform (High-Level KPIs) -> Viz/Presentation: Stat Cards with Icons -> Interaction: Static display. -> Justification: Provides a quick, scannable summary of key business metrics. -> Library/Method: HTML/CSS/Icons.
+        - Report Info: Abone Büyüme Grafiği -> Goal: Show Trend -> Viz/Presentation: Bar Chart -> Interaction: Hover tooltips. -> Justification: Effectively visualizes user growth over time. -> Library/Method: Chart.js (Canvas).
+        - Report Info: Abone Dağılımı -> Goal: Show Proportion -> Viz/Presentation: Donut Chart -> Interaction: Hover tooltips. -> Justification: Clearly shows the distribution of subscription plans. -> Library/Method: Chart.js (Canvas).
+        - Report Info: Kullanıcı Listesi -> Goal: Organize & Manage -> Viz/Presentation: Interactive Table -> Interaction: Search, filter, buttons for actions. -> Justification: A standard and effective way to manage lists of users. -> Library/Method: Vanilla JS for interaction.
+        - Report Info: İçerik Yönetimi (Coins, Plans) -> Goal: Organize & Manage -> Viz/Presentation: Cards with action buttons -> Interaction: Clickable buttons (simulated modals). -> Justification: Provides clear entry points for managing different content types. -> Library/Method: Vanilla JS.
+        - Report Info: Sistem İzleme (API, Celery) -> Goal: Monitor Health -> Viz/Presentation: Line Chart (API), Donut Chart (Celery), Status Indicators -> Interaction: Hover tooltips. -> Justification: Visualizes system performance and health for quick diagnostics. -> Library/Method: Chart.js (Canvas).
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* slate-900 */
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4f46e5; /* indigo-600 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6366f1; /* indigo-500 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 350px;
+            max-height: 400px;
+        }
+        .input-field {
+            @apply bg-slate-900 border border-slate-700 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none;
+        }
+        /* Notification/Snackbar styles */
+        #notification-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            width: 100%;
+            max-width: 300px;
+        }
+        .notification-item {
+            background-color: #1e293b; /* slate-800 */
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+        .notification-item.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .notification-item.hide {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        .notification-item.success {
+            background-color: #10b981; /* emerald-500 */
+            border-color: #059669; /* emerald-600 */
+        }
+        .notification-item.error {
+            background-color: #ef4444; /* red-500 */
+            border-color: #dc2626; /* red-600 */
+        }
+        .notification-item button {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-left: 0.5rem;
+            opacity: 0.7;
+        }
+        .notification-item button:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="text-slate-200">
+
+    <div class="flex h-screen bg-slate-900">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-slate-950 flex-shrink-0 p-4 border-r border-slate-800 lg:block hidden">
+            <div class="flex items-center mb-8">
+                <h1 class="text-2xl font-bold text-white">YTDCrypto <span class="text-indigo-400">Admin</span></h1>
+            </div>
+            <nav class="space-y-2">
+                <a href="#" class="nav-link active flex items-center p-3 rounded-lg text-white bg-indigo-600" data-section="genel-bakis">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5 mr-3"></i>
+                    Genel Bakış
+                </a>
+                <a href="#" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" data-section="kullanici-yonetimi">
+                    <i data-lucide="users" class="w-5 h-5 mr-3"></i>
+                    Kullanıcı Yönetimi
+                </a>
+                <a href="#" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" data-section="icerik-yonetimi">
+                    <i data-lucide="file-cog" class="w-5 h-5 mr-3"></i>
+                    İçerik Yönetimi
+                </a>
+                <a href="#" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" data-section="sistem-izleme">
+                    <i data-lucide="activity" class="w-5 h-5 mr-3"></i>
+                    Sistem İzleme
+                </a>
+                <a href="#" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" data-section="olay-gecmisi">
+                    <i data-lucide="list-checks" class="w-5 h-5 mr-3"></i>
+                    Olay Geçmişi
+                </a>
+                <a href="#" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" data-section="raporlama">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5 mr-3"></i>
+                    Raporlama
+                </a>
+                <a href="#" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" data-section="duyuru-yonetimi">
+                    <i data-lucide="megaphone" class="w-5 h-5 mr-3"></i>
+                    Duyuru Yönetimi
+                </a>
+                <a href="#" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" data-section="bildirimler">
+                    <i data-lucide="bell-ring" class="w-5 h-5 mr-3"></i>
+                    Bildirim Mekanizması
+                </a>
+                 <a href="#" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" data-section="guvenlik-yonetimi">
+                    <i data-lucide="shield" class="w-5 h-5 mr-3"></i>
+                    Güvenlik Yönetimi
+                </a>
+                <a href="#" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" data-section="yonetici-rolleri">
+                    <i data-lucide="user-check" class="w-5 h-5 mr-3"></i>
+                    Yetkilendirme ve Rol Yönetimi
+                </a>
+                <a href="#" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" data-section="yedekleme">
+                    <i data-lucide="cloud-download" class="w-5 h-5 mr-3"></i>
+                    Yedekleme & Geri Yükleme
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="bg-slate-950 p-4 border-b border-slate-800 flex justify-between items-center">
+                 <button id="menu-toggle" class="lg:hidden text-white">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <div class="text-lg font-semibold text-white">Yönetim Paneli</div>
+                <div class="flex items-center space-x-4">
+                    <i data-lucide="bell" class="w-5 h-5 text-slate-400"></i>
+                    <span class="text-sm">Admin User</span>
+                    <img src="https://placehold.co/40x40/6366f1/FFFFFF?text=A" alt="Admin Avatar" class="w-8 h-8 rounded-full">
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-900 p-6">
+                <!-- Section: Genel Bakış -->
+                <section id="genel-bakis" class="content-section">
+                    <h2 class="text-2xl font-bold mb-6 text-white">Genel Bakış</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                            <h3 class="text-slate-400 text-sm font-medium">Toplam Abone</h3>
+                            <p class="text-3xl font-bold text-white mt-2">1,257</p>
+                            <p class="text-sm text-green-400 mt-1">+12% geçen aydan</p>
+                        </div>
+                        <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                            <h3 class="text-slate-400 text-sm font-medium">Aylık Gelir (Tahmini)</h3>
+                            <p class="text-3xl font-bold text-white mt-2">$15,842</p>
+                             <p class="text-sm text-green-400 mt-1">+8% geçen aydan</p>
+                        </div>
+                         <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                            <h3 class="text-slate-400 text-sm font-medium">Aktif API Çağrıları (24s)</h3>
+                            <p class="text-3xl font-bold text-white mt-2">1,34M</p>
+                             <p class="text-sm text-red-400 mt-1">-5% geçen günden</p>
+                        </div>
+                         <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                            <h3 class="text-slate-400 text-sm font-medium">Sunucu Sağlığı</h3>
+                            <p class="text-3xl font-bold text-green-400 mt-2">Stabil</p>
+                            <p class="text-sm text-slate-400 mt-1">99.98% uptime</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                         <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                            <h3 class="font-semibold text-white">Abone Büyüme Grafiği (Son 6 Ay)</h3>
+                            <div class="chart-container mt-4"><canvas id="aboneBuyumeChart"></canvas></div>
+                        </div>
+                         <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                            <h3 class="font-semibold text-white">Abonelik Dağılımı</h3>
+                            <div class="chart-container mt-4"><canvas id="abonelikDagilimChart"></canvas></div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Section: Kullanıcı Yönetimi -->
+                <section id="kullanici-yonetimi" class="content-section hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-white">Kullanıcı Yönetimi</h2>
+                    <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 space-y-2 sm:space-y-0">
+                            <div class="flex items-center space-x-2 w-full sm:w-auto">
+                                <input type="text" placeholder="Kullanıcı ara..." class="input-field w-full sm:w-auto">
+                                <select class="input-field w-full sm:w-auto">
+                                    <option>Tüm Planlar</option>
+                                    <option>BASIC</option>
+                                    <option>ADVANCED</option>
+                                    <option>PREMIUM</option>
+                                    <option>TRIAL</option>
+                                </select>
+                            </div>
+                            <!-- Abonelik Kodu Üret Formu -->
+                            <div class="w-full sm:w-auto flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                                <select id="promo-plan-select" class="input-field">
+                                    <option value="BASIC">BASIC</option>
+                                    <option value="ADVANCED">ADVANCED</option>
+                                    <option value="PREMIUM">PREMIUM</option>
+                                    <option value="TRIAL">TRIAL</option>
+                                </select>
+                                <input type="number" id="promo-duration-input" placeholder="Süre (gün)" class="input-field w-24" value="30">
+                                <input type="number" id="promo-uses-input" placeholder="Kullanım" class="input-field w-24" value="1">
+                                <button id="generate-promo-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md">Kod Üret</button>
+                            </div>
+                        </div>
+                        <div id="promo-code-message" class="text-sm text-center my-2 hidden"></div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="border-b border-slate-700">
+                                    <tr>
+                                        <th class="p-3">Kullanıcı Adı</th>
+                                        <th class="p-3">E-posta</th>
+                                        <th class="p-3">Plan</th>
+                                        <th class="p-3">Kayıt Tarihi</th>
+                                        <th class="p-3">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="user-table-body">
+                                    <!-- Kullanıcılar buraya dinamik yüklenecek -->
+                                    <tr class="border-b border-slate-800 hover:bg-slate-700"><td class="p-3" colspan="5">Kullanıcı bulunamadı.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <button id="load-more-users" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-4 rounded-md mt-4">Daha Fazla Yükle</button>
+                    </div>
+                </section>
+
+                 <!-- Section: İçerik Yönetimi -->
+                <section id="icerik-yonetimi" class="content-section hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-white">İçerik ve Konfigürasyon Yönetimi</h2>
+                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                            <i data-lucide="coins" class="w-8 h-8 text-indigo-400 mb-4"></i>
+                            <h3 class="font-bold text-lg text-white">Kripto Para Listesi</h3>
+                            <p class="text-sm text-slate-400 mt-2">Yeni coin ekleyin veya mevcut coinlerin durumunu (aktif/pasif) yönetin.</p>
+                            <button id="manage-coins-btn" class="mt-4 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-4 rounded-md w-full">Yönet</button>
+                        </div>
+                         <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                            <i data-lucide="gem" class="w-8 h-8 text-indigo-400 mb-4"></i>
+                            <h3 class="font-bold text-lg text-white">Abonelik Planları</h3>
+                            <p class="text-sm text-slate-400 mt-2">Planların fiyatlarını ve özelliklerini dinamik olarak güncelleyin.</p>
+                             <button id="manage-plans-btn" class="mt-4 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-4 rounded-md w-full">Yönet</button>
+                        </div>
+                         <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                           <i data-lucide="image" class="w-8 h-8 text-indigo-400 mb-4"></i>
+                            <h3 class="font-bold text-lg text-white">Web Sitesi Arka Planı</h3>
+                            <p class="text-sm text-slate-400 mt-2">Ana sayfanın arka plan görselini veya temasını değiştirin.</p>
+                             <button id="manage-background-btn" class="mt-4 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-4 rounded-md w-full">Yönet</button>
+                        </div>
+                    </div>
+
+                    <!-- Kripto Para Yönetim Alanı (Simüle) -->
+                    <div id="crypto-management-area" class="bg-slate-800 p-6 rounded-lg border border-slate-700 mt-6 hidden">
+                        <h3 class="text-xl font-bold mb-3 text-white">Kripto Para Ekle/Yönet</h3>
+                        <input type="text" id="new-coin-id" placeholder="Coin ID (örn: bitcoin)" class="input-field mb-2">
+                        <input type="text" id="new-coin-name" placeholder="Coin Adı (örn: Bitcoin)" class="input-field mb-2">
+                        <input type="text" id="new-coin-symbol" placeholder="Coin Sembolü (örn: BTC)" class="input-field mb-4">
+                        <button id="add-new-coin-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md">Yeni Coin Ekle</button>
+                        <p class="text-sm text-slate-400 mt-4">Mevcut Coin Listesi (Simüle): BTC (Aktif), ETH (Aktif), XRP (Aktif)</p>
+                    </div>
+
+                    <!-- Abonelik Plan Yönetim Alanı (Simüle) -->
+                    <div id="subscription-plan-management-area" class="bg-slate-800 p-6 rounded-lg border border-slate-700 mt-6 hidden">
+                        <h3 class="text-xl font-bold mb-3 text-white">Abonelik Planlarını Düzenle</h3>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-1">Plan Seç:</label>
+                                    <select id="edit-plan-select" class="input-field w-full">
+                                        <option value="basic">BASIC</option>
+                                        <option value="advanced">ADVANCED</option>
+                                        <option value="premium">PREMIUM</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-1">Fiyat (USD/Ay):</label>
+                                    <input type="number" id="edit-plan-price" class="input-field w-full" step="0.01" value="9.99">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-1">Özellikler (Her satır bir özellik):</label>
+                                <textarea id="edit-plan-features" class="input-field w-full" rows="4">Özellik 1
+Özellik 2</textarea>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-white mb-2">API Limitleri:</h4>
+                                <label class="block text-sm font-medium text-slate-300 mb-1">Analiz Çağrısı (Günlük):</label>
+                                <input type="number" id="edit-plan-analyze-limit" class="input-field w-full" value="10">
+                                <label class="block text-sm font-medium text-slate-300 mb-1 mt-2">LLM Sorguları (Günlük):</label>
+                                <input type="number" id="edit-plan-llm-limit" class="input-field w-full" value="2">
+                            </div>
+                            <button id="save-plan-changes-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md w-full">Değişiklikleri Kaydet</button>
+                        </div>
+                    </div>
+
+                    <!-- Web Sitesi Arka Plan Yönetim Alanı (Simüle) -->
+                    <div id="background-management-area" class="bg-slate-800 p-6 rounded-lg border border-slate-700 mt-6 hidden">
+                        <h3 class="text-xl font-bold mb-3 text-white">Arka Plan Görselini Değiştir</h3>
+                        <input type="text" id="background-url-input" placeholder="Yeni arka plan GIF/resim URL'si" class="input-field mb-2">
+                        <button id="update-background-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md">Arka Planı Güncelle</button>
+                        <p class="text-sm text-slate-400 mt-4">Mevcut Arka Plan: <span id="current-background-url">Yükleniyor...</span></p>
+                    </div>
+
+                </section>
+                
+                 <!-- Section: Sistem İzleme -->
+                <section id="sistem-izleme" class="content-section hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-white">Sistem İzleme</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                           <h3 class="font-semibold text-white">API Çağrıları (Son 7 Gün)</h3>
+                           <div class="chart-container mt-4"><canvas id="apiCagrilariChart"></canvas></div>
+                       </div>
+                        <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                           <h3 class="font-semibold text-white">Celery Görev Durumu</h3>
+                           <div class="chart-container mt-4"><canvas id="celeryGorevChart"></canvas></div>
+                       </div>
+                    </div>
+                </section>
+                
+                <!-- Section: Olay Geçmişi -->
+                <section id="olay-gecmisi" class="content-section hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-white">Olay Geçmişi</h2>
+                    <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                        <p class="text-slate-400 mb-4">Sistemdeki önemli olayların ve kullanıcı aktivitelerinin kaydı.</p>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="border-b border-slate-700">
+                                    <tr>
+                                        <th class="p-3">Zaman Damgası</th>
+                                        <th class="p-3">Olay Tipi</th>
+                                        <th class="p-3">Açıklama</th>
+                                        <th class="p-3">Kullanıcı/Kaynak</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="event-history-table-body">
+                                    <!-- Olaylar buraya dinamik yüklenecek -->
+                                    <tr class="border-b border-slate-800 hover:bg-slate-700"><td class="p-3" colspan="4">Olay kaydı bulunamadı.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                         <button id="load-more-events" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-4 rounded-md mt-4">Daha Fazla Yükle</button>
+                    </div>
+                </section>
+
+                 <!-- Section: Raporlama -->
+                <section id="raporlama" class="content-section hidden">
+                     <h2 class="text-2xl font-bold mb-6 text-white">Raporlama ve Analitik</h2>
+                     <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                        <p class="text-slate-400">Detaylı abone büyüme, kullanım ve gelir raporları burada yer alacak.</p>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                            <div class="bg-slate-900 p-6 rounded-lg border border-slate-700">
+                                <h3 class="font-semibold text-white">Abone Sayısı</h3>
+                                <p class="text-4xl font-bold text-indigo-400 mt-2">1,257</p>
+                                <p class="text-sm text-slate-400 mt-1">Toplam aktif kullanıcı sayısı</p>
+                            </div>
+                            <div class="bg-slate-900 p-6 rounded-lg border border-slate-700">
+                                <h3 class="font-semibold text-white">Haftalık Yeni Abone</h3>
+                                <p class="text-4xl font-bold text-green-400 mt-2">+35</p>
+                                <p class="text-sm text-slate-400 mt-1">Son 7 günde kayıt olan kullanıcı sayısı</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                            <div class="bg-slate-900 p-6 rounded-lg border border-slate-700">
+                                <h3 class="font-semibold text-white">Aylık Yeni Abone Grafiği</h3>
+                                <div class="chart-container mt-4"><canvas id="raporAylikAboneChart"></canvas></div>
+                            </div>
+                            <div class="bg-slate-900 p-6 rounded-lg border border-slate-700">
+                                <h3 class="font-semibold text-white">Abonelik Plan Dağılımı</h3>
+                                <div class="chart-container mt-4"><canvas id="raporPlanDagilimiChart"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section id="duyuru-yonetimi" class="content-section hidden">
+                     <h2 class="text-2xl font-bold mb-6 text-white">Duyuru Yönetimi</h2>
+                      <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                          <p class="text-slate-400 mb-4">Web sitesinde duyurular yayınlayın veya kullanıcılara bildirimler gönderin.</p>
+                          <h3 class="font-bold text-lg text-white mb-3">Yeni Duyuru Oluştur</h3>
+                          <textarea placeholder="Duyuru metni..." class="input-field w-full mb-3"></textarea>
+                          <button class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md">Duyuru Yayınla</button>
+                      </div>
+                </section>
+                <section id="bildirimler" class="content-section hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-white">Bildirim Mekanizması</h2>
+                    <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                        <p class="text-slate-400 mb-4">Sistem uyarıları ve görev durumları için bildirim ayarlarını yönetin.</p>
+                        <h3 class="font-bold text-lg text-white mb-3">E-posta Bildirim Ayarları</h3>
+                        <div class="flex items-center space-x-3 mb-3">
+                            <input type="checkbox" id="critical-alerts" class="rounded text-indigo-600 focus:ring-indigo-500">
+                            <label for="critical-alerts" class="text-slate-300">Kritik Hatalarda E-posta Gönder</label>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <input type="checkbox" id="task-failures" class="rounded text-indigo-600 focus:ring-indigo-500">
+                            <label for="task-failures" class="text-slate-300">Celery Görev Başarısızlıklarında Bildir</label>
+                        </div>
+                        <button class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md">Ayarları Kaydet</button>
+                    </div>
+                </section>
+                <section id="guvenlik-yonetimi" class="content-section hidden">
+                     <h2 class="text-2xl font-bold mb-6 text-white">Güvenlik Yönetimi</h2>
+                      <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                          <p class="text-slate-400 mb-4">API anahtarı yönetimi, IP engelleme ve yönetici rolleri burada yer alacak.</p>
+                          <h3 class="font-bold text-lg text-white mb-3">Güvenlik Alarm Geçmişi</h3>
+                           <div class="overflow-x-auto mt-4">
+                            <table class="w-full text-left">
+                                <thead class="border-b border-slate-700">
+                                    <tr>
+                                        <th class="p-3">Zaman</th>
+                                        <th class="p-3">Tip</th>
+                                        <th class="p-3">Kullanıcı</th>
+                                        <th class="p-3">IP</th>
+                                        <th class="p-3">Şiddet</th>
+                                        <th class="p-3">Detaylar</th>
+                                        <th class="p-3">Durum</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="security-alarms-table-body">
+                                    <!-- Alarmlar buraya dinamik yüklenecek -->
+                                    <tr class="border-b border-slate-800 hover:bg-slate-700"><td class="p-3" colspan="7">Alarm kaydı bulunamadı.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="flex justify-between items-center mt-4 text-sm">
+                            <button id="load-more-alarms" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-4 rounded-md">Daha Fazla Yükle</button>
+                            <label class="flex items-center space-x-2">
+                                <input type="checkbox" id="show-unseen-alarms" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-slate-300">Sadece Okunmamışları Göster</span>
+                            </label>
+                        </div>
+                      </div>
+                </section>
+                <section id="yonetici-rolleri" class="content-section hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-white">Yetkilendirme ve Rol Yönetimi</h2>
+                    <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                        <p class="text-slate-400 mb-4">Sistemdeki yönetici kullanıcıları ve rollerini yönetin.</p>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="border-b border-slate-700">
+                                    <tr>
+                                        <th class="p-3">Yönetici Adı</th>
+                                        <th class="p-3">Rol</th>
+                                        <th class="p-3">Durum</th>
+                                        <th class="p-3">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-roles-table-body">
+                                    <!-- Yöneticiler buraya dinamik yüklenecek -->
+                                    <tr class="border-b border-slate-800 hover:bg-slate-700"><td class="p-3" colspan="4">Yönetici bulunamadı.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <button id="add-new-admin-btn" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md">Yeni Yönetici Ekle</button>
+                    </div>
+                </section>
+                <section id="yedekleme" class="content-section hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-white">Yedekleme ve Geri Yükleme</h2>
+                    <div class="bg-slate-800 p-6 rounded-lg border border-slate-700 text-center">
+                        <p class="text-slate-400 mb-4">Veritabanı ve sistem ayarlarının yedeklerini alın veya geri yükleyin.</p>
+                        <button class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md mr-4">Yedekleme Başlat</button>
+                        <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md">Yedekleri Listele</button>
+                        <button class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md mt-4 md:mt-0">Geri Yükle</button>
+                        <p class="text-sm text-slate-500 mt-4">Son Yedekleme: 2025-06-25 03:00:00 (Başarılı)</p>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            lucide.createIcons(); // Lucide ikonlarını başlat
+
+            const navLinks = document.querySelectorAll('.nav-link');
+            const contentSections = document.querySelectorAll('.content-section');
+            const menuToggle = document.getElementById('menu-toggle');
+            const sidebar = document.getElementById('sidebar');
+
+            // Alarm Geçmişi için DOM elemanları
+            const securityAlarmsTableBody = document.getElementById('security-alarms-table-body');
+            const loadMoreAlarmsButton = document.getElementById('load-more-alarms');
+            const showUnseenAlarmsCheckbox = document.getElementById('show-unseen-alarms');
+            let alarmOffset = 0; // Pagination için offset
+            const alarmLimit = 10; // Her yüklemede gösterilecek alarm sayısı
+
+            // Admin API Anahtarı (Bu sadece demo amaçlıdır. Üretimde güvenli bir şekilde yönetilmelidir.)
+            const ADMIN_API_KEY = "your_admin_secret_key"; // .env'deki ADMIN_ACCESS_KEY ile aynı olmalı
+            const BACKEND_BASE_URL = 'http://localhost:5000';
+            const SECURITY_ALARMS_API_URL = `${BACKEND_BASE_URL}/api/admin/security_alarms`;
+
+            // Sidebar navigation logic
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const sectionId = link.getAttribute('data-section');
+
+                    navLinks.forEach(l => l.classList.remove('active', 'bg-indigo-600'));
+                    link.classList.add('active', 'bg-indigo-600');
+
+                    contentSections.forEach(section => {
+                        if (section.id === sectionId) {
+                            section.classList.remove('hidden');
+                        } else {
+                            section.classList.add('hidden');
+                        }
+                    });
+
+                    // Mobil cihazda sidebar'ı kapat
+                    if(window.innerWidth < 1024) {
+                        sidebar.classList.add('hidden');
+                    }
+
+                    // Güvenlik Alarmları sekmesine tıklandığında alarmları yükle
+                    if (sectionId === 'guvenlik-yonetimi') {
+                        alarmOffset = 0; // Her sekme değişiminde sıfırla
+                        securityAlarmsTableBody.innerHTML = ''; // Tabloyu temizle
+                        fetchSecurityAlarms();
+                    }
+                     // Kullanıcı Yönetimi sekmesine tıklandığında kullanıcıları yükle
+                    if (sectionId === 'kullanici-yonetimi') {
+                        userOffset = 0; // Her sekme değişiminde sıfırla
+                        userTableBody.innerHTML = ''; // Tabloyu temizle
+                        fetchUsers();
+                    }
+                     // İçerik Yönetimi sekmesine tıklandığında ilgili alanları göster/gizle
+                    if (sectionId === 'icerik-yonetimi') {
+                        hideAllContentManagementAreas();
+                    }
+                });
+            });
+            
+            // Mobile menu toggle
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('hidden');
+            });
+
+            // --- Chart.js ---
+            const chartConfig = {
+                plugins: { legend: { labels: { color: '#94a3b8' } } },
+                scales: {
+                    x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(71, 85, 105, 0.5)' } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(71, 85, 105, 0.5)' } }
+                }
+            };
+            
+            new Chart(document.getElementById('aboneBuyumeChart').getContext('2d'), {
+                type: 'bar', data: { labels: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran'], datasets: [{ label: 'Yeni Aboneler', data: [65, 59, 80, 81, 56, 120], backgroundColor: '#4f46e5', borderColor: '#6366f1', borderWidth: 1 }] }, options: chartConfig
+            });
+            new Chart(document.getElementById('abonelikDagilimChart').getContext('2d'), {
+                type: 'doughnut', data: { labels: ['BASIC', 'ADVANCED', 'PREMIUM', 'TRIAL'], datasets: [{ label: 'Abone Dağılımı', data: [300, 550, 250, 157], backgroundColor: ['#3b82f6', '#8b5cf6', '#a855f7', '#f59e0b'], borderColor: '#1e293b', borderWidth: 2 }] }, options: { plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } }
+            });
+            new Chart(document.getElementById('apiCagrilariChart').getContext('2d'), {
+                type: 'line', data: { labels: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'], datasets: [{ label: 'API Çağrıları (Milyon)', data: [1.2, 1.9, 1.3, 1.5, 2.3, 1.8, 1.34], fill: true, backgroundColor: 'rgba(79, 70, 229, 0.2)', borderColor: '#4f46e5', tension: 0.3 }] }, options: chartConfig
+            });
+            new Chart(document.getElementById('celeryGorevChart').getContext('2d'), {
+                type: 'doughnut', data: { labels: ['Başarılı', 'Başarısız', 'Beklemede'], datasets: [{ label: 'Görev Durumu', data: [15200, 45, 120], backgroundColor: ['#10b981', '#ef4444', '#f59e0b'], borderColor: '#1e293b', borderWidth: 2 }] }, options: { plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } }
+            });
+            new Chart(document.getElementById('raporAylikAboneChart').getContext('2d'), {
+                type: 'line', data: { labels: ['Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'], datasets: [{ label: 'Aylık Yeni Aboneler', data: [70, 85, 60, 95, 75, 150], borderColor: '#22d3ee', backgroundColor: 'rgba(34, 211, 238, 0.2)', fill: true, tension: 0.4 }] }, options: chartConfig
+            });
+            new Chart(document.getElementById('raporPlanDagilimiChart').getContext('2d'), {
+                type: 'pie', data: { labels: ['BASIC', 'ADVANCED', 'PREMIUM', 'TRIAL'], datasets: [{ label: 'Plan Dağılımı', data: [25, 45, 20, 10], backgroundColor: ['#60a5fa', '#a78bfa', '#f87171', '#fbbf24'], borderColor: '#1e293b', borderWidth: 2 }] }, options: { plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } }
+            });
+
+            // --- Güvenlik Alarmları İşlevselliği ---
+            // Alarm severity'ye göre renk sınıfı döndürür
+            function getSeverityClass(severity) {
+                switch (severity.toLowerCase()) {
+                    case 'info': return 'text-blue-400';
+                    case 'warning': return 'text-yellow-400';
+                    case 'critical': return 'text-orange-400';
+                    case 'fatal': return 'text-red-400';
+                    default: return 'text-slate-400';
+                }
+            }
+
+            // Güvenlik alarmlarını backend'den çek ve tabloya ekle
+            async function fetchSecurityAlarms() {
+                let url = `${SECURITY_ALARMS_API_URL}?limit=${alarmLimit}&offset=${alarmOffset}`;
+                if (showUnseenAlarmsCheckbox.checked) {
+                    url += '&unseen=1';
+                }
+
+                try {
+                    const response = await fetch(url, {
+                        headers: { 'X-ADMIN-API-KEY': ADMIN_API_KEY }
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({error: 'Yanıt JSON değil.'}));
+                        throw new Error(errorData.error || `HTTP Error: ${response.status}`);
+                    }
+                    const alarms = await response.json();
+
+                    if (alarms.length === 0 && alarmOffset === 0) {
+                        securityAlarmsTableBody.innerHTML = '<tr class="border-b border-slate-800"><td class="p-3 text-slate-500" colspan="7">Hiç alarm bulunamadı.</td></tr>';
+                        loadMoreAlarmsButton.disabled = true;
+                    } else if (alarms.length === 0) {
+                        loadMoreAlarmsButton.disabled = true;
+                    } else {
+                        alarms.forEach(alarm => {
+                            const row = document.createElement('tr');
+                            row.className = 'border-b border-slate-800 hover:bg-slate-700';
+                            const detailText = alarm.details ? alarm.details.substring(0, 50) + (alarm.details.length > 50 ? '...' : '') : 'N/A';
+                            row.innerHTML = `
+                                <td class="p-3">${new Date(alarm.created_at).toLocaleString('tr-TR')}</td>
+                                <td class="p-3">${alarm.alert_type}</td>
+                                <td class="p-3">${alarm.username || 'N/A'}</td>
+                                <td class="p-3">${alarm.ip_address || 'N/A'}</td>
+                                <td class="p-3 ${getSeverityClass(alarm.severity)}">${alarm.severity.toUpperCase()}</td>
+                                <td class="p-3" title="${alarm.details}">${detailText}</td>
+                                <td class="p-3">
+                                    <button class="text-indigo-400 update-alarm-btn" data-alarm-id="${alarm.id}" data-action="seen" title="Okundu Olarak İşaretle">
+                                        <i data-lucide="check" class="w-4 h-4"></i>
+                                    </button>
+                                    <button class="text-emerald-400 update-alarm-btn" data-alarm-id="${alarm.id}" data-action="resolve" title="Çözüldü Olarak İşaretle">
+                                        <i data-lucide="check-check" class="w-4 h-4"></i>
+                                    </button>
+                                    <span class="ml-2 text-xs ${alarm.seen_by_admin ? 'text-green-400' : 'text-red-400'}">
+                                        ${alarm.seen_by_admin ? 'Okundu' : 'Yeni'}
+                                    </span>
+                                </td>
+                            `;
+                            securityAlarmsTableBody.appendChild(row);
+                        });
+                        alarmOffset += alarms.length; // Offset'i güncelle
+                        loadMoreAlarmsButton.disabled = alarms.length < alarmLimit; // Eğer yüklenen alarm sayısı limitten az ise butonu devre dışı bırak
+                        lucide.createIcons(); // Yeni ikonları render et
+                    }
+                } catch (error) {
+                    console.error("Güvenlik alarmları çekilirken hata:", error);
+                    showNotification(`Güvenlik alarmları yüklenemedi: ${error.message}`, 'error');
+                    securityAlarmsTableBody.innerHTML = `<tr class="border-b border-slate-800"><td class="p-3 text-red-400" colspan="7">Alarmlar yüklenemedi: ${error.message}</td></tr>`;
+                    loadMoreAlarmsButton.disabled = true;
+                }
+            }
+
+            // "Daha Fazla Yükle" butonuna tıklama işlevi
+            loadMoreAlarmsButton.addEventListener('click', fetchSecurityAlarms);
+
+            // "Sadece Okunmamışları Göster" checkbox'ına değişim işlevi
+            showUnseenAlarmsCheckbox.addEventListener('change', () => {
+                alarmOffset = 0; // Filtre değişince sıfırla
+                securityAlarmsTableBody.innerHTML = ''; // Tabloyu temizle
+                fetchSecurityAlarms();
+            });
+
+            // Alarm durumu güncelleme (Okundu/Çözüldü)
+            securityAlarmsTableBody.addEventListener('click', async (e) => {
+                const targetButton = e.target.closest('.update-alarm-btn');
+                if (!targetButton) return;
+
+                const alarmId = targetButton.dataset.alarmId;
+                const action = targetButton.dataset.action;
+                let payload = {};
+
+                if (action === 'seen') {
+                    payload = { seen_by_admin: true };
+                } else if (action === 'resolve') {
+                    payload = { resolved: true };
+                }
+
+                try {
+                    const response = await fetch(`${SECURITY_ALARMS_API_URL}/${alarmId}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'X-ADMIN-API-KEY': ADMIN_API_KEY, // Bu, artık JWT ile değişmeli
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({error: 'Yanıt JSON değil.'}));
+                        throw new Error(errorData.error || `HTTP Error: ${response.status}`);
+                    }
+                    
+                    showNotification('Alarm durumu güncellendi!', 'success');
+                    alarmOffset = 0; securityAlarmsTableBody.innerHTML = ''; fetchSecurityAlarms(); // Yeniden yükle
+                } catch (error) { console.error('Alarm durumu güncellenirken hata:', error); showNotification(`Alarm durumu güncellenemedi: ${error.message}`, 'error'); }
+            });
+
+            // --- Kullanıcı Yönetimi İşlevselliği ---
+            const userTableBody = document.getElementById('user-table-body');
+            const loadMoreUsersButton = document.getElementById('load-more-users');
+            const generatePromoButton = document.getElementById('generate-promo-btn');
+            const promoPlanSelect = document.getElementById('promo-plan-select');
+            const promoDurationInput = document.getElementById('promo-duration-input');
+            const promoUsesInput = document.getElementById('promo-uses-input');
+            const promoCodeMessage = document.getElementById('promo-code-message');
+
+            let userOffset = 0; // Pagination için offset
+            const userLimit = 10; // Her yüklemede gösterilecek kullanıcı sayısı
+            const USERS_API_URL = `${BACKEND_BASE_URL}/api/admin/users`;
+            const PROMO_CODES_API_URL = `${BACKEND_BASE_URL}/api/admin/promo_codes`;
+
+            async function fetchUsers() {
+                try {
+                    const response = await fetch(`${USERS_API_URL}?limit=${userLimit}&offset=${userOffset}`, {
+                        headers: { 'X-ADMIN-API-KEY': ADMIN_API_KEY } // Bu, artık JWT ile değişmeli
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({error: 'Yanıt JSON değil.'}));
+                        throw new Error(errorData.error || `HTTP Error: ${response.status}`);
+                    }
+                    const users = await response.json();
+
+                    if (users.length === 0 && userOffset === 0) {
+                        userTableBody.innerHTML = '<tr class="border-b border-slate-800"><td class="p-3 text-slate-500" colspan="5">Hiç kullanıcı bulunamadı.</td></tr>';
+                        loadMoreUsersButton.disabled = true;
+                    } else if (users.length === 0) {
+                        loadMoreUsersButton.disabled = true;
+                    } else {
+                        users.forEach(user => {
+                            const row = document.createElement('tr');
+                            row.className = 'border-b border-slate-800 hover:bg-slate-700';
+                            const planClass = user.subscription_level === 'PREMIUM' ? 'bg-green-500' :
+                                              user.subscription_level === 'ADVANCED' ? 'bg-blue-500' :
+                                              user.subscription_level === 'BASIC' ? 'bg-indigo-500' :
+                                              'bg-yellow-500'; // TRIAL için
+                            row.innerHTML = `
+                                <td class="p-3">${user.username}</td>
+                                <td class="p-3">${user.email || 'N/A'}</td>
+                                <td class="p-3"><span class="${planClass} text-white text-xs px-2 py-1 rounded-full">${user.subscription_level.toUpperCase()}</span></td>
+                                <td class="p-3">${new Date(user.created_at).toLocaleDateString('tr-TR')}</td>
+                                <td class="p-3 flex space-x-2">
+                                    <button class="text-indigo-400 edit-user-btn" data-user-id="${user.id}" title="Kullanıcıyı Düzenle">
+                                        <i data-lucide="edit" class="w-4 h-4"></i>
+                                    </button>
+                                    <button class="text-red-400 suspend-user-btn" data-user-id="${user.id}" title="Hesabı Askıya Al/Aktifleştir">
+                                        <i data-lucide="lock" class="w-4 h-4"></i>
+                                    </button>
+                                </td>
+                            `;
+                            userTableBody.appendChild(row);
+                        });
+                        userOffset += users.length;
+                        loadMoreUsersButton.disabled = false;
+                        lucide.createIcons();
+                    }
+                } catch (error) {
+                    console.error("Kullanıcılar yüklenemedi:", error);
+                    showNotification(`Kullanıcılar yüklenemedi: ${error.message}`, 'error');
+                    userTableBody.innerHTML = `<tr class="border-b border-slate-800"><td class="p-3 text-red-400" colspan="5">Kullanıcılar yüklenemedi: ${error.message}</td></tr>`;
+                    loadMoreUsersButton.disabled = true;
+                }
+            }
+
+            loadMoreUsersButton.addEventListener('click', fetchUsers);
+
+            // Abonelik Kodu Üretme İşlevi
+            generatePromoButton.addEventListener('click', async () => {
+                const plan = promoPlanSelect.value;
+                const duration = promoDurationInput.value;
+                const uses = promoUsesInput.value;
+
+                if (!plan || !duration || !uses) {
+                    showNotification('Lütfen tüm promosyon kodu alanlarını doldurun.', 'error');
+                    return;
+                }
+                try {
+                    const response = await fetch(PROMO_CODES_API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'X-ADMIN-API-KEY': ADMIN_API_KEY, // Bu, artık JWT ile değişmeli
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ plan: plan, duration_days: parseInt(duration), max_uses: parseInt(uses) })
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        showNotification(`Kod başarıyla üretildi: ${data.code} (Plan: ${data.plan}, Süre: ${data.duration_days} gün, Kullanım: ${data.max_uses})`, 'success');
+                        promoCodeMessage.textContent = `Kod başarıyla üretildi: ${data.code} (Plan: ${data.plan}, Süre: ${data.duration_days} gün, Kullanım: ${data.max_uses})`;
+                        promoCodeMessage.classList.add('text-green-400', 'block');
+                    } else {
+                         const errorData = await response.json().catch(() => ({error: 'Yanıt JSON değil.'}));
+                         showNotification(`Promosyon kodu üretilirken hata: ${errorData.error || response.statusText}`, 'error');
+                         promoCodeMessage.textContent = `Hata: Promosyon kodu üretilemedi: ${errorData.error || response.statusText}`;
+                         promoCodeMessage.classList.add('text-red-400', 'block');
+                    }
+                } catch (error) {
+                    console.error('Promosyon kodu üretilirken ağ hatası:', error);
+                    showNotification(`Promosyon kodu üretilirken bir ağ hatası oluştu.`, 'error');
+                    promoCodeMessage.textContent = `Hata: Ağ hatası oluştu.`;
+                    promoCodeMessage.classList.add('text-red-400', 'block');
+                }
+            });
+
+
+            // --- İçerik Yönetimi Alt Bölüm Görünürlüğü ---
+            const manageCoinsBtn = document.getElementById('manage-coins-btn');
+            const managePlansBtn = document.getElementById('manage-plans-btn');
+            const manageBackgroundBtn = document.getElementById('manage-background-btn');
+            const cryptoManagementArea = document.getElementById('crypto-management-area');
+            const subscriptionPlanManagementArea = document.getElementById('subscription-plan-management-area');
+            const backgroundManagementArea = document.getElementById('background-management-area');
+
+            function hideAllContentManagementAreas() {
+                cryptoManagementArea.classList.add('hidden');
+                subscriptionPlanManagementArea.classList.add('hidden');
+                backgroundManagementArea.classList.add('hidden');
+            }
+
+            manageCoinsBtn.addEventListener('click', () => {
+                hideAllContentManagementAreas();
+                cryptoManagementArea.classList.remove('hidden');
+            });
+            managePlansBtn.addEventListener('click', () => {
+                hideAllContentManagementAreas();
+                subscriptionPlanManagementArea.classList.remove('hidden');
+                loadPlanSettings(); 
+            });
+            manageBackgroundBtn.addEventListener('click', () => {
+                hideAllContentManagementAreas();
+                backgroundManagementArea.classList.remove('hidden');
+                loadBackgroundSetting(); 
+            });
+
+            // --- Kripto Yönetimi ---
+            const newCoinIdInput = document.getElementById('new-coin-id');
+            const newCoinNameInput = document.getElementById('new-coin-name');
+            const newCoinSymbolInput = document.getElementById('new-coin-symbol');
+            const addNewCoinBtn = document.getElementById('add-new-coin-btn');
+            const COINS_API_URL = `${BACKEND_BASE_URL}/api/admin/coins`;
+
+            addNewCoinBtn.addEventListener('click', async () => {
+                const coinId = newCoinIdInput.value;
+                const coinName = newCoinNameInput.value;
+                const coinSymbol = newCoinSymbolInput.value;
+
+                if (!coinId || !coinName || !coinSymbol) {
+                    showNotification('Lütfen tüm coin bilgilerini doldurun.', 'error');
+                    return;
+                }
+                try {
+                    const response = await fetch(COINS_API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'X-ADMIN-API-KEY': ADMIN_API_KEY, // Bu, artık JWT ile değişmeli
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ id: coinId, name: coinName, symbol: coinSymbol })
+                    });
+                    if (response.ok) {
+                        showNotification('Yeni coin başarıyla eklendi: ' + coinName, 'success');
+                        newCoinIdInput.value = '';
+                        newCoinNameInput.value = '';
+                        newCoinSymbolInput.value = '';
+                    } else {
+                         const errorData = await response.json().catch(() => ({error: 'Yanıt JSON değil.'}));
+                         showNotification(`Coin eklenirken hata: ${errorData.error || response.statusText}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Coin ekleme hatası:', error);
+                    showNotification('Coin eklenirken bir ağ hatası oluştu.', 'error');
+                }
+            });
+
+            // --- Abonelik Plan Yönetimi ---
+            const editPlanSelect = document.getElementById('edit-plan-select');
+            const editPlanPriceInput = document.getElementById('edit-plan-price');
+            const editPlanFeaturesTextarea = document.getElementById('edit-plan-features');
+            const editPlanAnalyzeLimitInput = document.getElementById('edit-plan-analyze-limit');
+            const editPlanLlmLimitInput = document.getElementById('edit-plan-llm-limit');
+            const savePlanChangesBtn = document.getElementById('save-plan-changes-btn');
+            const SUBSCRIPTION_PLANS_API_URL = `${BACKEND_BASE_URL}/api/admin/subscription_plans`;
+
+            let currentPlanSettings = {}; // Backend'den çekilen tüm plan ayarlarını tutar
+
+            async function loadPlanSettings() {
+                try {
+                    const response = await fetch(SUBSCRIPTION_PLANS_API_URL, {
+                        headers: { 'X-ADMIN-API-KEY': ADMIN_API_KEY } // Bu, artık JWT ile değişmeli
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({error: 'Yanıt JSON değil.'}));
+                        throw new Error(`HTTP Error: ${response.status} - ${errorData.error || response.statusText}`);
+                    }
+                    currentPlanSettings = await response.json(); // Tüm plan ayarlarını kaydet
+                    updatePlanEditForm(editPlanSelect.value); // Seçili planı forma yükle
+                } catch (error) {
+                    console.error('Plan ayarları yüklenirken hata:', error);
+                    showNotification(`Plan ayarları yüklenemedi: ${error.message}`, 'error');
+                }
+            }
+
+            function updatePlanEditForm(selectedPlanId) {
+                const planData = currentPlanSettings[selectedPlanId];
+                if (planData) {
+                    editPlanPriceInput.value = planData.price;
+                    editPlanFeaturesTextarea.value = planData.features.join('\n');
+                    editPlanAnalyzeLimitInput.value = planData.limits.analyze_calls_per_day;
+                    editPlanLlmLimitInput.value = planData.limits.llm_queries_per_day;
+                }
+            }
+
+            editPlanSelect.addEventListener('change', () => {
+                updatePlanEditForm(editPlanSelect.value);
+            });
+
+            savePlanChangesBtn.addEventListener('click', async () => {
+                const planId = editPlanSelect.value;
+                const price = parseFloat(editPlanPriceInput.value);
+                const features = editPlanFeaturesTextarea.value.split('\n').map(f => f.trim()).filter(f => f.length > 0);
+                const analyzeLimit = parseInt(editPlanAnalyzeLimitInput.value);
+                const llmLimit = parseInt(editPlanLlmLimitInput.value);
+
+                if (isNaN(price) || isNaN(analyzeLimit) || isNaN(llmLimit)) {
+                    showNotification('Lütfen fiyat ve limit alanlarına geçerli sayılar girin.', 'error');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(SUBSCRIPTION_PLANS_API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'X-ADMIN-API-KEY': ADMIN_API_KEY, // Bu, artık JWT ile değişmeli
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            plan_id: planId,
+                            price: price,
+                            features: features,
+                            limits: {
+                                analyze_calls_per_day: analyzeLimit,
+                                llm_queries_per_day: llmLimit
+                            }
+                        })
+                    });
+                    if (response.ok) {
+                        showNotification(`Plan ${planId.toUpperCase()} başarıyla güncellendi!`, 'success');
+                        loadPlanSettings(); // Ayarları yeniden yükle
+                    } else {
+                        const errorData = await response.json().catch(() => ({error: 'Yanıt JSON değil.'}));
+                        showNotification(`Plan güncellenirken hata: ${errorData.error || response.statusText}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Plan kaydetme hatası:', error);
+                    showNotification('Plan kaydedilirken bir ağ hatası oluştu.', 'error');
+                }
+            });
+
+            // --- Web Sitesi Arka Plan Yönetimi ---
+            const backgroundUrlInput = document.getElementById('background-url-input');
+            const updateBackgroundBtn = document.getElementById('update-background-btn');
+            const currentBackgroundUrlSpan = document.getElementById('current-background-url');
+            const WEBSITE_BACKGROUND_API_URL = `${BACKEND_BASE_URL}/api/admin/website_settings/background`;
+
+            async function loadBackgroundSetting() {
+                try {
+                    const response = await fetch(WEBSITE_BACKGROUND_API_URL, {
+                        headers: { 'X-ADMIN-API-KEY': ADMIN_API_KEY } // Bu, artık JWT ile değişmeli
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({error: 'Yanıt JSON değil.'}));
+                        throw new Error(`HTTP Error: ${response.status} - ${errorData.error || response.statusText}`);
+                    }
+                    const data = await response.json();
+                    currentBackgroundUrlSpan.textContent = data.homepage_background_url;
+                    backgroundUrlInput.value = data.homepage_background_url;
+                    // Anasayfa arka planını da güncelle
+                    // Bu kısım production'da ana sayfa frontend'i tarafından yönetilmelidir.
+                    // document.body.style.backgroundImage = `url('${data.homepage_background_url}')`;
+                } catch (error) {
+                    console.error('Arka plan ayarları yüklenirken hata:', error);
+                    showNotification(`Arka plan ayarları yüklenemedi: ${error.message}`, 'error');
+                    currentBackgroundUrlSpan.textContent = 'Yüklenemedi.';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
