@@ -9,4 +9,3 @@ auth_bp = Blueprint('auth', __name__)
 
 # Blueprint'e bağlı route'ları (örneğin auth/routes.py dosyasındaki) import ediyoruz.
 # Bu satır, auth klasöründeki route tanımlamalarını blueprint'e tanıtır.
-from backend.auth import routes

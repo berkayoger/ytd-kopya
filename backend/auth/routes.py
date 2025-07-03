@@ -12,14 +12,12 @@ from backend.db.models import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from .jwt_utils import generate_tokens, verify_jwt, verify_csrf
 from loguru import logger
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from backend import limiter
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 import uuid
 
-# Rate limiter (register in create_app and inject via current_app.extensions)
-limiter = current_app.extensions['limiter']
+# Limiter instance from application factory
 
 # Basit kayıt formu sayfası
 @auth_bp.route('/register', methods=['GET'], endpoint='register')
