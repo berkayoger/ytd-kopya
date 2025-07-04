@@ -10,8 +10,9 @@ from flask_limiter.util import get_remote_address
 from celery import Celery
 from flask_socketio import SocketIO, emit
 from backend.db.models import User, SubscriptionPlan
+from backend.utils.usage_limits import check_usage_limit
 from loguru import logger
-import redis
+from redis import Redis
 from sqlalchemy import text # Veritabanı sorgusu için text fonksiyonu
 import sys # sys.exit için
 
@@ -19,18 +20,8 @@ import sys # sys.exit için
 from dotenv import load_dotenv
 load_dotenv()
 
-# Redis bağlantısı (create_app dışında, Flask uygulamasının context'i dışında da erişilebilir olması için)
-# Bu bağlantı uygulama başlatılmadan önce yapılır, eğer Redis yoksa uygulama HATA VERİR ve ÇIKAR.
-# Bu, Redis'in kritik bir bağımlılık olduğu ve onsuz sağlıklı çalışılmayacağı anlamına gelir (Fail-Fast).
+# Redis bağlantı ayarı
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-r_client = None # Varsayılan olarak None
-try:
-    r_client = redis.from_url(REDIS_URL, decode_responses=True)
-    r_client.ping() # Bağlantıyı test et
-    logger.info(f"Redis'e başarıyla bağlandı: {REDIS_URL}")
-except Exception as e: # Genel Exception yakalama (DNS, konfigürasyon vb. hatalar için)
-    logger.critical(f"🚨 KRİTİK HATA: Redis bağlantı hatası veya başlatma sorunu: {e}. Uygulama Redis olmadan başlatılamıyor.")
-    sys.exit(1) # Kritik bir bağımlılık down ise uygulamayı başlatma
 
 # Uygulama konfigürasyonlarını içeren sınıf
 class Config:
@@ -43,8 +34,9 @@ class Config:
         "pool_recycle": 1800
     }
     # Celery Broker ve Backend URL'leri Redis bağlantısının durumuna göre ayarlanır
-    CELERY_BROKER_URL = REDIS_URL # r_client yukarıda kontrol edildiği için direkt kullan
-    CELERY_RESULT_BACKEND = REDIS_URL # r_client yukarıda kontrol edildiği için direkt kullan
+    REDIS_URL = REDIS_URL
+    CELERY_BROKER_URL = REDIS_URL
+    CELERY_RESULT_BACKEND = REDIS_URL
     CELERY_TIMEZONE = 'Europe/Istanbul'
     
     # JWT Gizli Anahtarı (Ortam değişkeninden al, yoksa varsayılan güvenli olmayan bir değer kullan)
@@ -142,7 +134,7 @@ def create_app():
     app.extensions['limiter'] = limiter
     app.extensions['celery'] = celery_app
     app.extensions['socketio'] = socketio
-    app.extensions['redis_client'] = r_client # Redis client'ı da ekle (None olmayacak çünkü başlangıçta çıkılıyor)
+    app.extensions['redis_client'] = Redis.from_url(app.config.get('REDIS_URL'))
 
     # YTDCryptoSystem'ın tekil instance'ını burada oluştur ve app'e ata
     from backend.core.services import YTDCryptoSystem
@@ -237,6 +229,7 @@ def create_app():
         emit('my response', {'data': 'Connected'})
 
     @socketio.on('connect', namespace='/alerts')
+    @check_usage_limit("realtime_alert")
     def handle_alerts_connect(auth):
         api_key = auth.get('api_key') if auth else None
         user = User.query.filter_by(api_key=api_key).first()

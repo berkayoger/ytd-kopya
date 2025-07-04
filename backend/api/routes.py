@@ -186,6 +186,7 @@ def llm_analyze():
 @api_bp.route('/forecast/<string:coin_id>', methods=['GET'])
 @current_app.limit("60/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
 @require_subscription_plan(SubscriptionPlan.PREMIUM)
+@check_usage_limit("forecast")
 def forecast_coin(coin_id):
     """Return Prophet based forecast data for the requested coin."""
     user = g.user  # get user from decorator
