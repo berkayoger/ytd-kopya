@@ -233,12 +233,21 @@ class AIInterpreter:
         prices: List[float],
         times: List[str],
         days: int = 1,
-    ) -> Tuple[Optional[float | List[float]], str, Dict[str, Optional[float] | List[float]]]:
+        coin_name: Optional[str] = None,
+    ) -> Tuple[
+        Optional[float | List[float]],
+        str,
+        Dict[str, Optional[float] | List[float]],
+        List[str],
+        float,
+        str,
+    ]:
         """Return Prophet based forecast for ``days`` days.
 
-        When ``days`` is ``1`` the return type mirrors the previous
-        implementation for backward compatibility.  If ``days`` is
-        greater than ``1`` a list of predictions is returned.
+        The first three return values maintain backwards compatibility
+        (prediction(s), method name and bounds).  Additional values
+        provide the prediction dates, a confidence score calculated from
+        the prediction band width and a short explanation string.
         """
         if Prophet and len(prices) >= 30:
             df = pd.DataFrame({"ds": pd.to_datetime(times), "y": prices})
@@ -247,22 +256,53 @@ class AIInterpreter:
                 model.fit(df)
                 future = model.make_future_dataframe(periods=days, include_history=False)
                 forecast = model.predict(future)
+
                 yhat = forecast["yhat"].astype(float).tolist()
                 uppers = forecast.get("yhat_upper", forecast["yhat"]).astype(float).tolist()
                 lowers = forecast.get("yhat_lower", forecast["yhat"]).astype(float).tolist()
+                dates = forecast["ds"].dt.strftime("%Y-%m-%d").tolist()
+
+                # Confidence based on prediction band width
+                mean_y = float(np.mean(yhat)) if yhat else 0.0
+                band_width = float(np.mean(np.array(uppers) - np.array(lowers))) if yhat else 0.0
+                confidence = 0.0
+                if mean_y:
+                    confidence = 1 - band_width / mean_y
+                    confidence = max(0.0, min(confidence, 1.0))
+
+                explanation = self._summarize_forecast(yhat, coin_name or "")
 
                 if days == 1:
                     return (
                         yhat[0],
                         "prophet",
                         {"upper": uppers[0], "lower": lowers[0]},
+                        [dates[0]],
+                        confidence,
+                        explanation,
                     )
-                return yhat, "prophet", {"upper": uppers, "lower": lowers}
-            except Exception as e:
+                return (
+                    yhat,
+                    "prophet",
+                    {"upper": uppers, "lower": lowers},
+                    dates,
+                    confidence,
+                    explanation,
+                )
+            except Exception as e:  # pragma: no cover - logging
                 logger.error(f"Prophet forecast error: {e}")
-                return None, "error", {"upper": None, "lower": None}
+                return None, "error", {"upper": None, "lower": None}, [], 0.0, ""
 
-        return None, "disabled", {"upper": None, "lower": None}
+        return None, "disabled", {"upper": None, "lower": None}, [], 0.0, ""
+
+    def _summarize_forecast(self, preds: List[float], coin_name: str) -> str:
+        if not preds:
+            return ""
+        trend = "artış" if preds[-1] >= preds[0] else "düşüş"
+        return (
+            f"Son {len(preds)} gündeki trend göz önüne alındığında "
+            f"{coin_name} fiyatında {trend} bekleniyor."
+        )
 
 
 class DecisionEngine:
