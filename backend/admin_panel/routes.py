@@ -2,7 +2,18 @@
 
 from flask import jsonify, request, current_app
 from . import admin_bp
-from backend.db.models import db, User, ABHData, DBHData, AdminSettings, PromoCode, SubscriptionPlan, UserRole
+from backend.db.models import (
+    db,
+    User,
+    ABHData,
+    DBHData,
+    AdminSettings,
+    PromoCode,
+    SubscriptionPlan,
+    UserRole,
+    SubscriptionPlanModel,
+)
+from sqlalchemy import func
 from loguru import logger
 import os
 import uuid
@@ -301,4 +312,96 @@ def apply_promo_code():
         db.session.commit()
         logger.info(f"Promosyon kodu '{promo_code}' kullanıcı {user.username} için uygulandı. Yeni plan: {user.subscription_level.value}.")
         return jsonify({"message": f"Promosyon kodu başarıyla uygulandı. Yeni planınız: {user.subscription_level.value.upper()}.", "new_plan": user.subscription_level.value}), 200
+
+
+# ── Abonelik Planları CRUD ─────────────────────────────────────────────
+
+@admin_bp.route('/plans', methods=['GET', 'POST'])
+@admin_required
+def plans():
+    with current_app.app_context():
+        if request.method == 'GET':
+            plans = SubscriptionPlanModel.query.all()
+            return jsonify([
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "duration": p.duration_days,
+                    "price": p.price,
+                    "description": p.description,
+                    "active": p.is_active,
+                }
+                for p in plans
+            ]), 200
+
+        data = request.get_json() or {}
+        name = data.get("name")
+        duration = data.get("duration")
+        price = data.get("price")
+        description = data.get("description", "")
+        is_active = bool(data.get("active", True))
+        if not all([name, duration, price]):
+            return jsonify({"error": "Plan adı, süre ve fiyat gerekli."}), 400
+        if SubscriptionPlanModel.query.filter_by(name=name).first():
+            return jsonify({"error": "Bu isimde bir plan zaten var."}), 400
+        plan = SubscriptionPlanModel(
+            name=name,
+            duration_days=int(duration),
+            price=float(price),
+            description=description,
+            is_active=is_active,
+        )
+        db.session.add(plan)
+        db.session.commit()
+        return jsonify({"id": plan.id}), 201
+
+
+@admin_bp.route('/plans/<int:plan_id>', methods=['PATCH', 'DELETE'])
+@admin_required
+def plan_detail(plan_id):
+    with current_app.app_context():
+        plan = SubscriptionPlanModel.query.get_or_404(plan_id)
+        if request.method == 'PATCH':
+            data = request.get_json() or {}
+            if "name" in data:
+                if plan.name != data["name"] and SubscriptionPlanModel.query.filter_by(name=data["name"]).first():
+                    return jsonify({"error": "Bu isimde bir plan zaten var."}), 400
+                if plan.name.upper() in ["TRIAL", "BASIC", "PREMIUM"]:
+                    return jsonify({"error": "Bu plan değiştirilemez."}), 403
+                plan.name = data["name"]
+            if "duration" in data:
+                plan.duration_days = int(data["duration"])
+            if "price" in data:
+                plan.price = float(data["price"])
+            if "description" in data:
+                plan.description = data["description"]
+            if "is_active" in data or "active" in data:
+                plan.is_active = bool(data.get("is_active", data.get("active")))
+            db.session.commit()
+            return jsonify({"message": "Plan güncellendi."}), 200
+
+        # DELETE
+        if plan.name.upper() in ["TRIAL", "BASIC", "PREMIUM"]:
+            return jsonify({"error": "Bu plan silinemez."}), 403
+        db.session.delete(plan)
+        db.session.commit()
+        return jsonify({"message": "Plan silindi."}), 200
+
+
+@admin_bp.route('/plans/usage', methods=['GET'])
+@admin_required
+def plan_usage():
+    with current_app.app_context():
+        counts = (
+            db.session.query(User.subscription_level, func.count(User.id))
+            .group_by(User.subscription_level)
+            .all()
+        )
+        return (
+            jsonify([
+                {"plan": plan.name, "user_count": count} for plan, count in counts
+            ]),
+            200,
+        )
+
 

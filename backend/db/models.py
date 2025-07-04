@@ -320,3 +320,14 @@ class PaymentTransactionLog(db.Model):
     status = Column(String(20), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     user = db.relationship('User', backref='payment_logs', lazy=True)
+
+
+class SubscriptionPlanModel(db.Model):
+    """Dinamik abonelik planlarını saklar."""
+    __tablename__ = 'subscription_plans'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), unique=True, nullable=False)
+    duration_days = Column(Integer, nullable=False)
+    price = Column(Float, nullable=False)
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
