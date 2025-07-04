@@ -197,8 +197,18 @@ def forecast_coin(coin_id):
 
     system = current_app.ytd_system_instance
     price_data = system.collector.collect_price_data(coin_id)
-    preds, method, bounds = system.ai.forecast(
-        price_data["prices"], price_data["times"], days=days
+    (
+        preds,
+        method,
+        bounds,
+        dates,
+        confidence,
+        explanation,
+    ) = system.ai.forecast(
+        price_data["prices"],
+        price_data["times"],
+        days=days,
+        coin_name=coin_id,
     )
 
     if preds is None:
@@ -206,21 +216,33 @@ def forecast_coin(coin_id):
 
     if days == 1:
         predictions = [preds]
-        upper = [bounds.get("upper")]
-        lower = [bounds.get("lower")]
+        uppers = [bounds.get("upper")]
+        lowers = [bounds.get("lower")]
+        dates = dates[:1]
     else:
         predictions = preds
-        upper = bounds.get("upper")
-        lower = bounds.get("lower")
+        uppers = bounds.get("upper")
+        lowers = bounds.get("lower")
+
+    forecast_data = []
+    for i in range(len(predictions)):
+        forecast_data.append(
+            {
+                "date": dates[i],
+                "price": predictions[i],
+                "upper": uppers[i],
+                "lower": lowers[i],
+            }
+        )
 
     return (
         jsonify(
             {
                 "coin": coin_id,
                 "days": days,
-                "forecast": predictions,
-                "upper": upper,
-                "lower": lower,
+                "forecast": forecast_data,
+                "confidence": confidence,
+                "explanation": explanation,
                 "method": method,
             }
         ),
