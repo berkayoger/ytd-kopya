@@ -2,13 +2,14 @@
 
 import os
 from datetime import timedelta, datetime
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, g
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from celery import Celery
 from flask_socketio import SocketIO, emit
+from backend.db.models import User, SubscriptionPlan
 from loguru import logger
 import redis
 from sqlalchemy import text # Veritabanı sorgusu için text fonksiyonu
@@ -233,8 +234,22 @@ def create_app():
         logger.info('Client connected to WebSocket.')
         emit('my response', {'data': 'Connected'})
 
+    @socketio.on('connect', namespace='/alerts')
+    def handle_alerts_connect(auth):
+        api_key = auth.get('api_key') if auth else None
+        user = User.query.filter_by(api_key=api_key).first()
+        if not user or user.subscription_level.value < SubscriptionPlan.PREMIUM.value:
+            logger.warning('Unauthorized alert WebSocket connection attempt.')
+            return False
+        g.user = user
+        logger.info(f"Alerts WebSocket connected: {user.username}")
+
     @socketio.on('disconnect', namespace='/')
     def handle_disconnect():
         logger.info('Client disconnected from WebSocket.')
+
+    @socketio.on('disconnect', namespace='/alerts')
+    def handle_alerts_disconnect():
+        logger.info('Client disconnected from alerts WebSocket.')
 
     return app
