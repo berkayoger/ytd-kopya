@@ -331,3 +331,28 @@ class SubscriptionPlanModel(db.Model):
     price = Column(Float, nullable=False)
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+
+
+class UsageLimitModel(db.Model):
+    __tablename__ = 'usage_limits'
+
+    id = Column(Integer, primary_key=True)
+    plan_name = Column(String(50), nullable=False)  # e.g., 'BASIC', 'PREMIUM'
+    feature = Column(String(100), nullable=False)   # e.g., 'LLM', 'forecast', 'alerts'
+    daily_limit = Column(Integer, nullable=True)     # null ise sınırsız
+    monthly_limit = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('plan_name', 'feature', name='_plan_feature_uc'),
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "plan_name": self.plan_name,
+            "feature": self.feature,
+            "daily_limit": self.daily_limit,
+            "monthly_limit": self.monthly_limit,
+            "created_at": self.created_at.isoformat(),
+        }
