@@ -4,12 +4,31 @@
   <meta charset="UTF-8">
   <title>Promosyon Kodları | Admin Panel</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-100 text-gray-900 p-6">
-  <div class="max-w-5xl mx-auto">
+  <div class="max-w-6xl mx-auto">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold">Promosyon Kodları</h1>
       <button onclick="openModal()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">+ Yeni Kod</button>
+    </div>
+
+    <div class="mb-4">
+      <label class="mr-2">Plan:</label>
+      <select id="filter-plan" onchange="loadPromos()" class="border px-2 py-1 rounded">
+        <option value="">Tümü</option>
+        <option value="BASIC">BASIC</option>
+        <option value="ADVANCED">ADVANCED</option>
+        <option value="PREMIUM">PREMIUM</option>
+      </select>
+
+      <label class="ml-4 mr-2">Durum:</label>
+      <select id="filter-status" onchange="loadPromos()" class="border px-2 py-1 rounded">
+        <option value="">Tümü</option>
+        <option value="active">Aktif</option>
+        <option value="expired">Süresi Dolmuş</option>
+        <option value="inactive">Pasif</option>
+      </select>
     </div>
 
     <table class="w-full table-auto border-collapse border border-gray-300">
@@ -20,12 +39,17 @@
           <th class="border px-4 py-2">Süre</th>
           <th class="border px-4 py-2">Max Kullanım</th>
           <th class="border px-4 py-2">Mevcut Kullanım</th>
+          <th class="border px-4 py-2">Son Tarih</th>
           <th class="border px-4 py-2">Aktif?</th>
           <th class="border px-4 py-2">İşlemler</th>
         </tr>
       </thead>
       <tbody id="promo-table"></tbody>
     </table>
+
+    <div class="mt-6">
+      <canvas id="promoChart" height="100"></canvas>
+    </div>
   </div>
 
   <!-- Modal -->
@@ -42,6 +66,7 @@
         </select>
         <input id="duration" type="number" placeholder="Süre (gün)" class="w-full border px-3 py-2 rounded">
         <input id="max-uses" type="number" placeholder="Max Kullanım" class="w-full border px-3 py-2 rounded">
+        <input id="expires-at" type="date" class="w-full border px-3 py-2 rounded">
       </div>
       <div class="mt-4 flex justify-end space-x-2">
         <button onclick="closeModal()" class="bg-gray-500 text-white px-4 py-2 rounded">İptal</button>
@@ -59,16 +84,31 @@
         headers: { 'Authorization': 'Bearer ' + JWT }
       });
       const promos = await res.json();
+      const planFilter = document.getElementById("filter-plan").value;
+      const statusFilter = document.getElementById("filter-status").value;
       const table = document.getElementById("promo-table");
       table.innerHTML = '';
+      const stats = {};
+
       for (let p of promos) {
+        const expired = p.expires_at && new Date(p.expires_at) < new Date();
+        const inactive = !p.is_active;
+        const status = expired ? 'expired' : (inactive ? 'inactive' : 'active');
+
+        if (planFilter && p.plan !== planFilter) continue;
+        if (statusFilter && status !== statusFilter) continue;
+
+        stats[p.plan] = (stats[p.plan] || 0) + 1;
+
         const row = document.createElement('tr');
+        row.className = expired || inactive ? 'bg-red-100 text-red-700' : '';
         row.innerHTML = `
           <td class="border px-4 py-2">${p.code}</td>
           <td class="border px-4 py-2">${p.plan}</td>
           <td class="border px-4 py-2">${p.duration_days}</td>
           <td class="border px-4 py-2">${p.max_uses}</td>
           <td class="border px-4 py-2">${p.current_uses}</td>
+          <td class="border px-4 py-2">${p.expires_at ? p.expires_at.split('T')[0] : '-'}</td>
           <td class="border px-4 py-2">${p.is_active ? '✅' : '❌'}</td>
           <td class="border px-4 py-2">
             <button onclick='editPromo(${JSON.stringify(p)})' class="text-blue-600 font-bold">✏️</button>
@@ -76,6 +116,21 @@
           </td>`;
         table.appendChild(row);
       }
+
+      const chart = document.getElementById("promoChart");
+      if (window.promoChartInstance) window.promoChartInstance.destroy();
+      window.promoChartInstance = new Chart(chart, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(stats),
+          datasets: [{
+            label: 'Kod Sayısı',
+            data: Object.values(stats),
+            backgroundColor: '#6366f1'
+          }]
+        },
+        options: { scales: { y: { beginAtZero: true } } }
+      });
     }
 
     function openModal() {
@@ -89,6 +144,7 @@
       document.getElementById("plan").value = 'BASIC';
       document.getElementById("duration").value = '';
       document.getElementById("max-uses").value = '';
+      document.getElementById("expires-at").value = '';
     }
 
     function editPromo(p) {
@@ -97,6 +153,7 @@
       document.getElementById("plan").value = p.plan;
       document.getElementById("duration").value = p.duration_days;
       document.getElementById("max-uses").value = p.max_uses;
+      document.getElementById("expires-at").value = p.expires_at ? p.expires_at.split('T')[0] : '';
       openModal();
     }
 
@@ -106,7 +163,8 @@
         code: document.getElementById("code").value,
         plan: document.getElementById("plan").value,
         duration_days: parseInt(document.getElementById("duration").value),
-        max_uses: parseInt(document.getElementById("max-uses").value)
+        max_uses: parseInt(document.getElementById("max-uses").value),
+        expires_at: document.getElementById("expires-at").value || null
       };
       const method = id ? 'PATCH' : 'POST';
       const url = id ? `${API}/${id}` : `${API}/`;
@@ -121,8 +179,9 @@
       if (res.ok) {
         loadPromos();
         closeModal();
+        alert("✅ Promosyon kodu başarıyla kaydedildi.");
       } else {
-        alert("İşlem başarısız");
+        alert("❌ İşlem başarısız");
       }
     }
 
