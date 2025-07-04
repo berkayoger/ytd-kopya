@@ -228,26 +228,41 @@ class AIInterpreter:
             return 'negative', min(0.9, 0.5 + 0.1 * neg)
         return 'neutral', 0.5
 
-    def forecast(self, prices: List[float], times: List[str]) -> Tuple[Optional[float], str, Dict[str, Optional[float]]]:
+    def forecast(
+        self,
+        prices: List[float],
+        times: List[str],
+        days: int = 1,
+    ) -> Tuple[Optional[float | List[float]], str, Dict[str, Optional[float] | List[float]]]:
+        """Return Prophet based forecast for ``days`` days.
+
+        When ``days`` is ``1`` the return type mirrors the previous
+        implementation for backward compatibility.  If ``days`` is
+        greater than ``1`` a list of predictions is returned.
+        """
         if Prophet and len(prices) >= 30:
-            df = pd.DataFrame({'ds': pd.to_datetime(times), 'y': prices})
+            df = pd.DataFrame({"ds": pd.to_datetime(times), "y": prices})
             try:
                 model = Prophet(yearly_seasonality=True, weekly_seasonality=True)
                 model.fit(df)
-                future = model.make_future_dataframe(periods=1, include_history=False)
+                future = model.make_future_dataframe(periods=days, include_history=False)
                 forecast = model.predict(future)
-                return (
-                    float(forecast['yhat'].iloc[0]),
-                    'prophet',
-                    {
-                        'upper': float(forecast.get('yhat_upper', [forecast['yhat'].iloc[0]])[0]) if 'yhat_upper' in forecast else float(forecast['yhat'].iloc[0]),
-                        'lower': float(forecast.get('yhat_lower', [forecast['yhat'].iloc[0]])[0]) if 'yhat_lower' in forecast else float(forecast['yhat'].iloc[0]),
-                    }
-                )
+                yhat = forecast["yhat"].astype(float).tolist()
+                uppers = forecast.get("yhat_upper", forecast["yhat"]).astype(float).tolist()
+                lowers = forecast.get("yhat_lower", forecast["yhat"]).astype(float).tolist()
+
+                if days == 1:
+                    return (
+                        yhat[0],
+                        "prophet",
+                        {"upper": uppers[0], "lower": lowers[0]},
+                    )
+                return yhat, "prophet", {"upper": uppers, "lower": lowers}
             except Exception as e:
                 logger.error(f"Prophet forecast error: {e}")
-                return None, 'error', {'upper': None, 'lower': None}
-        return None, 'disabled', {'upper': None, 'lower': None}
+                return None, "error", {"upper": None, "lower": None}
+
+        return None, "disabled", {"upper": None, "lower": None}
 
 
 class DecisionEngine:
