@@ -301,7 +301,10 @@
                     </div>
                     <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
                         <p class="text-sm text-slate-400">Güven Oranı</p>
-                        <p id="confidence" class="text-lg font-semibold text-white">--</p>
+                        <div class="w-full bg-slate-700 rounded-full h-2.5 mt-2">
+                            <div id="confidence-bar" class="bg-green-500 h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                        <p id="confidence" class="text-sm text-slate-300 mt-2">--</p>
                     </div>
                     <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
                         <p class="text-sm text-slate-400">Risk Seviyesi</p>
@@ -330,7 +333,7 @@
                         <p><strong>Tahmini Sonraki Gün Fiyatı:</strong> <span id="forecast-price">--</span></p>
                         <p><strong>Tahmin Açıklaması:</strong> <span id="forecast-explanation">--</span></p>
                     </div>
-                    <h3 class="text-xl font-bold mt-6 mb-3 text-white">Karar Açıklaması (LLM)</h3>
+                    <h3 class="text-xl font-bold mt-6 mb-3 text-white">AI Açıklaması</h3>
                     <p id="llm-explanation" class="text-sm text-slate-300 leading-relaxed">
                         LLM tarafından üretilen detaylı karar açıklaması burada görünecek.
                     </p>
@@ -338,7 +341,7 @@
             </div>
 
             <!-- Charts -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div class="card p-6">
                     <h3 class="text-xl font-bold mb-3 text-white">Fiyat Grafiği (Etkileşimli)</h3>
                     <div class="chart-container bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
@@ -352,6 +355,13 @@
                         <img id="backend-chart-image" src="https://placehold.co/700x300/1e293b/94a3b8?text=Backend+Grafiği" alt="Backend Üretimi Fiyat Grafiği" class="w-full h-auto object-contain" onerror="this.onerror=null;this.src='https://placehold.co/700x300/1e293b/94a3b8?text=Grafik+Yüklenemedi';" style="max-height: 300px;">
                     </div>
                     <p class="text-sm text-slate-400 mt-4 text-center">Bu grafik, doğrudan backend sunucusunda oluşturulmuştur.</p>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold mb-3 text-white">7 Günlük Tahmin</h3>
+                    <div class="chart-container bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+                        <canvas id="forecastChart"></canvas>
+                    </div>
+                    <p class="text-sm text-slate-400 mt-4 text-center">Yapay zeka tahmini fiyat eğilimi.</p>
                 </div>
             </div>
         </section>
@@ -372,7 +382,8 @@
     <script>
         // Backend API'sinin ana URL'si. Ortam bağımsızlığı için http://localhost:5000 açıkça belirtildi.
         const BACKEND_BASE_URL = 'http://localhost:5000';
-        const BACKEND_ANALYZE_API_URL = `${BACKEND_BASE_URL}/api/analyze_coin/`; 
+        const BACKEND_ANALYZE_API_URL = `${BACKEND_BASE_URL}/api/analyze_coin/`;
+        const BACKEND_FORECAST_API_URL = `${BACKEND_BASE_URL}/api/forecast/`;
 
         // SessionStorage'dan API anahtarını çekin. Yoksa kullanıcıyı giriş sayfasına yönlendirin.
         const USER_API_KEY = sessionStorage.getItem('ytdcrypto_api_key'); 
@@ -392,8 +403,9 @@
 
         const overviewCoin = document.getElementById('overview-coin');
         const currentPrice = document.getElementById('current-price');
-        const recommendation = document.getElementById('recommendation');
+       const recommendation = document.getElementById('recommendation');
         const confidence = document.getElementById('confidence');
+        const confidenceBar = document.getElementById('confidence-bar');
         const riskLevel = document.getElementById('risk-level');
         const disclaimer = document.getElementById('disclaimer');
 
@@ -410,6 +422,8 @@
 
         const priceChartCanvas = document.getElementById('priceChart');
         let priceChartInstance;
+        const forecastChartCanvas = document.getElementById('forecastChart');
+        let forecastChartInstance;
 
         const backendChartImage = document.getElementById('backend-chart-image');
 
@@ -525,6 +539,56 @@
             });
         }
 
+        function updateForecastChart(forecastData) {
+            const labels = forecastData.map(item => {
+                const date = new Date(item.date);
+                const options = { month: 'short', day: 'numeric' };
+                if (window.innerWidth >= 768) {
+                    options.year = 'numeric';
+                }
+                return date.toLocaleDateString('tr-TR', options);
+            });
+            const prices = forecastData.map(item => item.price);
+
+            if (forecastChartInstance) {
+                forecastChartInstance.destroy();
+            }
+
+            forecastChartInstance = new Chart(forecastChartCanvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Tahmin (USD)',
+                        data: prices,
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        tension: 0.1,
+                        fill: true,
+                        pointRadius: 2,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#475569' } },
+                        y: {
+                            beginAtZero: false,
+                            grid: { color: '#e2e8f0' },
+                            ticks: {
+                                color: '#475569',
+                                callback: function(value) { return '$' + value.toLocaleString(); }
+                            }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
         // --- Analiz Sonuçlarını Güncelleme Fonksiyonu ---
         function updateAnalysisResults(data) {
             overviewCoin.textContent = data.coin;
@@ -540,7 +604,17 @@
                 recommendation.classList.add('signal-hold');
             }
 
-            confidence.textContent = data.decision.confidence;
+            const confPct = Math.round(data.decision.confidence * 100);
+            confidence.textContent = confPct + '%';
+            confidenceBar.style.width = confPct + '%';
+            confidenceBar.classList.remove('bg-red-500', 'bg-yellow-500', 'bg-green-500');
+            if (confPct >= 66) {
+                confidenceBar.classList.add('bg-green-500');
+            } else if (confPct >= 33) {
+                confidenceBar.classList.add('bg-yellow-500');
+            } else {
+                confidenceBar.classList.add('bg-red-500');
+            }
             riskLevel.textContent = data.decision.risk_level;
             disclaimer.textContent = data.disclaimer;
 
@@ -569,6 +643,21 @@
                 backendChartImage.src = `data:image/png;base64,${data.price_chart_base64}`;
             } else {
                 backendChartImage.src = "https://placehold.co/700x300/1e293b/94a3b8?text=Grafik+Yüklenemedi";
+            }
+        }
+
+        async function fetchForecast(coin) {
+            try {
+                const resp = await fetch(`${BACKEND_FORECAST_API_URL}${coin}?days=7`, {
+                    headers: { 'X-API-KEY': USER_API_KEY }
+                });
+                if (!resp.ok) return;
+                const data = await resp.json();
+                if (data.forecast && data.forecast.length > 0) {
+                    updateForecastChart(data.forecast);
+                }
+            } catch (e) {
+                console.error('Forecast fetch error:', e);
             }
         }
 
@@ -604,6 +693,7 @@
                     analysisNotifications.innerHTML = `<p class="text-blue-600">"${selectedCrypto.toUpperCase()}" için analiz arka planda başlatıldı. Sonuçlar hazır olduğunda bildirilecektir (Task ID: ${data.task_id}).</p>` + analysisNotifications.innerHTML;
                 } else {
                     updateAnalysisResults(data);
+                    fetchForecast(selectedCrypto);
                     analysisNotifications.innerHTML = `<p class="text-green-600">"${selectedCrypto.toUpperCase()}" için analiz tamamlandı!</p>` + analysisNotifications.innerHTML;
                 }
             } catch (error) {
@@ -627,6 +717,10 @@
                 if (priceChartInstance) {
                     priceChartInstance.destroy();
                     priceChartInstance = null;
+                }
+                if (forecastChartInstance) {
+                    forecastChartInstance.destroy();
+                    forecastChartInstance = null;
                 }
                 backendChartImage.src = "https://placehold.co/700x300/ef4444/ffffff?text=HATA";
             } finally {
@@ -658,6 +752,7 @@
             // Sadece ilgili coin için bildirimi göster
             if (cryptoSelect.value === msg.coin) {
                 updateAnalysisResults(msg.result);
+                fetchForecast(msg.coin);
                 analysisNotifications.innerHTML = `<p class="text-green-600">"${msg.coin.toUpperCase()}" için analiz tamamlandı!</p>` + analysisNotifications.innerHTML;
                 // Eğer analiz butonu hala disabled ise, enable et
                 if (analyzeButton.disabled) {
