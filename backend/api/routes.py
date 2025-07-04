@@ -16,7 +16,8 @@ from backend.db.models import db, User, SubscriptionPlan, DailyUsage, PromoCode,
 from backend.constants import SUBSCRIPTION_EXTENSION_DAYS
 
 # Güvenlik dekoratörlerini import et
-from backend.utils.decorators import require_subscription_plan, check_daily_quota
+from backend.utils.decorators import require_subscription_plan
+from backend.utils.usage_limits import check_usage_limit
 
 # Yardımcı fonksiyonları import et
 from backend.utils.helpers import serialize_user_for_api, add_audit_log
@@ -45,7 +46,7 @@ BACKEND_PLAN_PRICES = {
 # Backend Guard: Minimum BASIC aboneliği gereklidir.
 @require_subscription_plan(SubscriptionPlan.BASIC)
 # Backend Guard: Günlük analiz çağrısı kotasını kontrol et.
-@check_daily_quota("analyze_calls")
+@check_usage_limit("coin_analysis")
 def analyze_coin_api(coin_id):
     user = g.user # Dekorator'den gelen kullanıcı objesi
 
@@ -135,10 +136,10 @@ def analyze_coin_api(coin_id):
         return jsonify({"error": f"Analiz sırasında beklenmeyen bir hata oluştu. Destek ile iletişime geçin."}), 500
 
 # LLM Destekli Analiz Endpoint'i (Sadece Premium Kullanıcılar İçin)
-@api_bp.route('/llm-analyze', methods=['POST'])
+@api_bp.route('/llm/analyze', methods=['POST'])
 @current_app.limit("10/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
 @require_subscription_plan(SubscriptionPlan.PREMIUM) # LLM için Premium plan
-@check_daily_quota("llm_queries") # LLM sorgu kotası kontrolü
+@check_usage_limit("llm_analyze")
 def llm_analyze():
     user = g.user # Dekorator'den gelen kullanıcı objesi
     prompt = request.json.get("prompt")
