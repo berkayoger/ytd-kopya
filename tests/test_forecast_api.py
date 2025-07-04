@@ -14,7 +14,7 @@ def setup_user(app):
             role = Role(name="user")
             db.session.add(role)
             db.session.commit()
-        user = User(username="forecast", api_key="fkey", role_id=role.id, subscription_level=SubscriptionPlan.BASIC)
+        user = User(username="forecast", api_key="fkey", role_id=role.id, subscription_level=SubscriptionPlan.PREMIUM)
         user.set_password("pass")
         db.session.add(user)
         db.session.commit()
