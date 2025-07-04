@@ -358,7 +358,7 @@
                 </div>
                 <div class="card p-6">
                     <h3 class="text-xl font-bold mb-3 text-white">7 Günlük Tahmin</h3>
-                    <div class="chart-container bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+                    <div id="forecastChartContainer" class="chart-container bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
                         <canvas id="forecastChart"></canvas>
                     </div>
                     <p class="text-sm text-slate-400 mt-4 text-center">Yapay zeka tahmini fiyat eğilimi.</p>
@@ -423,6 +423,7 @@
         const priceChartCanvas = document.getElementById('priceChart');
         let priceChartInstance;
         const forecastChartCanvas = document.getElementById('forecastChart');
+        const forecastChartContainer = document.getElementById('forecastChartContainer');
         let forecastChartInstance;
 
         const backendChartImage = document.getElementById('backend-chart-image');
@@ -647,6 +648,7 @@
         }
 
         async function fetchForecast(coin) {
+            if (USER_SUBSCRIPTION_LEVEL !== 'premium') return;
             try {
                 const resp = await fetch(`${BACKEND_FORECAST_API_URL}${coin}?days=7`, {
                     headers: { 'X-API-KEY': USER_API_KEY }
@@ -790,6 +792,11 @@
                     if (cryptoSelect.value !== 'bitcoin' && cryptoSelect.value !== 'ethereum') {
                         cryptoSelect.value = 'bitcoin';
                     }
+                }
+
+                // PRO olmayanlar için 7 günlük tahmin grafiğini kilitle
+                if (USER_SUBSCRIPTION_LEVEL !== 'premium') {
+                    forecastChartContainer.innerHTML = "<div class='text-center text-slate-400 italic'>Bu özellik yalnızca PRO kullanıcılar için aktiftir.<br><a href='abonelik.html' class='underline font-semibold'>Aboneliği Yükselt</a></div>";
                 }
 
                 // Sticky reminder bar'ı kontrol et ve göster
