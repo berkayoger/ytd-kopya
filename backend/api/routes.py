@@ -180,6 +180,53 @@ def llm_analyze():
 
     return jsonify({"result": simulated_result}), 200
 
+# Basit çok günlü fiyat tahmini endpoint'i
+@api_bp.route('/forecast/<string:coin_id>', methods=['GET'])
+@current_app.limit("60/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
+@require_subscription_plan(SubscriptionPlan.BASIC)
+def forecast_coin(coin_id):
+    """Return Prophet based forecast data for the requested coin."""
+    user = g.user  # get user from decorator
+    days_param = request.args.get('days', '1')
+    try:
+        days = int(days_param)
+    except ValueError:
+        return jsonify({"error": "days must be an integer"}), 400
+
+    days = max(1, min(days, 30))
+
+    system = current_app.ytd_system_instance
+    price_data = system.collector.collect_price_data(coin_id)
+    preds, method, bounds = system.ai.forecast(
+        price_data["prices"], price_data["times"], days=days
+    )
+
+    if preds is None:
+        return jsonify({"error": "forecast unavailable"}), 503
+
+    if days == 1:
+        predictions = [preds]
+        upper = [bounds.get("upper")]
+        lower = [bounds.get("lower")]
+    else:
+        predictions = preds
+        upper = bounds.get("upper")
+        lower = bounds.get("lower")
+
+    return (
+        jsonify(
+            {
+                "coin": coin_id,
+                "days": days,
+                "forecast": predictions,
+                "upper": upper,
+                "lower": lower,
+                "method": method,
+            }
+        ),
+        200,
+    )
+
 # Abonelik planını güncelleme endpoint'i
 @api_bp.route('/update_subscription', methods=['POST'])
 @current_app.limit("5/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
