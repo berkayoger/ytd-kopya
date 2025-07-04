@@ -258,6 +258,21 @@ class PromoCode(db.Model):
     is_single_use_per_user = Column(Boolean, default=False, nullable=False)
     assigned_user = db.relationship('User', backref='assigned_promo_codes', foreign_keys=[assigned_user_id], lazy=True)
 
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "code": self.code,
+            "plan": self.plan.name if self.plan else None,
+            "duration_days": self.duration_days,
+            "max_uses": self.max_uses,
+            "current_uses": self.current_uses,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "assigned_user_id": self.assigned_user_id,
+            "is_single_use_per_user": self.is_single_use_per_user,
+        }
+
 class PromoCodeUsage(db.Model):
     __tablename__ = 'promo_code_usages'
     id = Column(Integer, primary_key=True)
