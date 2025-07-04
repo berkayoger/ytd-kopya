@@ -46,8 +46,17 @@ def run_full_analysis(self, coin_id: str, investor_profile: str = "moderate", us
             )
 
             _, news_score = system.ai.analyze_sentiment(all_news_text)
-            forecast, forecast_exp, forecast_bounds = system.ai.forecast(
-                price_data["prices"], price_data["times"]
+            (
+                forecast,
+                _method,
+                forecast_bounds,
+                _dates,
+                _confidence,
+                forecast_exp,
+            ) = system.ai.forecast(
+                price_data["prices"],
+                price_data["times"],
+                coin_name=coin_id,
             )
 
             volatility = float(np.std(price_data["prices"]) / np.mean(price_data["prices"]))
