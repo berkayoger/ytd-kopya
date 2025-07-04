@@ -648,7 +648,10 @@
         }
 
         async function fetchForecast(coin) {
-            if (USER_SUBSCRIPTION_LEVEL !== 'premium') return;
+            if (USER_SUBSCRIPTION_LEVEL !== 'premium') {
+                alert("Bu özellik yalnızca Premium abonelikte kullanılabilir. Lütfen aboneliğinizi yükseltin.");
+                return;
+            }
             try {
                 const resp = await fetch(`${BACKEND_FORECAST_API_URL}${coin}?days=7`, {
                     headers: { 'X-API-KEY': USER_API_KEY }

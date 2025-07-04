@@ -149,7 +149,12 @@ def check_and_downgrade_subscriptions():
         db.session.commit()
 
 
+from backend.utils.alarms import send_alarm, AlarmSeverityEnum
+
 @celery_app.task
-def send_security_alert_task(message: str):
+def send_security_alert_task(alert_type: str, details: str = "", severity: str = "INFO"):
     """Send a security alert to external channels."""
-    logger.warning(f"Security alert: {message}")
+    logger.warning(f"Security alert: {alert_type} - {details}")
+    with app.app_context():
+        sev = AlarmSeverityEnum[severity] if isinstance(severity, str) else severity
+        send_alarm(alert_type, sev, details)

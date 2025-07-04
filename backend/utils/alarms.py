@@ -59,7 +59,8 @@ def send_alarm(
     webhook = current_app.config.get('SLACK_ALARM_WEBHOOK_URL')
     if not webhook:
         logger.warning("SLACK_ALARM_WEBHOOK_URL tanımlı değil, Slack bildirimi atlanıyor.")
-        return
+    
+    socketio = current_app.extensions.get('socketio')
 
     # Slack'e gönderilecek payload oluşturuluyor.
     payload = {
@@ -89,3 +90,17 @@ def send_alarm(
         logger.error(f"Slack bildirimi gönderilemedi (RequestException): {e}")
     except Exception as e:
         logger.error(f"Slack bildirimi gönderilirken beklenmedik bir hata oluştu: {e}")
+
+    if socketio:
+        try:
+            socketio.emit(
+                'alert',
+                {
+                    'type': alert_type,
+                    'severity': severity.value,
+                    'details': details
+                },
+                namespace='/alerts'
+            )
+        except Exception as e:
+            logger.error(f"WebSocket alert emit failed: {e}")
