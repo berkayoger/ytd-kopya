@@ -13,6 +13,7 @@ import time # For time.time()
 
 # Modelleri import et
 from backend.db.models import db, User, SubscriptionPlan, DailyUsage, PromoCode, PromoCodeUsage
+from backend.constants import SUBSCRIPTION_EXTENSION_DAYS
 
 # Güvenlik dekoratörlerini import et
 from backend.utils.decorators import require_subscription_plan, check_daily_quota
@@ -249,6 +250,23 @@ def forecast_coin(coin_id):
         200,
     )
 
+# Gelişmiş teknik göstergeler endpoint'i
+@api_bp.route('/technical_indicators/<string:coin_id>', methods=['GET'])
+@current_app.limit("60/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
+@require_subscription_plan(SubscriptionPlan.ADVANCED)
+def technical_indicators(coin_id):
+    """Return RSI, MACD and other indicators for the requested coin."""
+    system = current_app.ytd_system_instance
+    price_data = system.collector.collect_price_data(coin_id)
+    return jsonify({
+        "coin": coin_id,
+        "rsi": price_data.get("rsi"),
+        "macd": price_data.get("macd"),
+        "bb_upper": price_data.get("bb_upper"),
+        "bb_lower": price_data.get("bb_lower"),
+        "stochastic": price_data.get("stochastic")
+    }), 200
+
 # Abonelik planını güncelleme endpoint'i
 @api_bp.route('/update_subscription', methods=['POST'])
 @current_app.limit("5/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
@@ -447,16 +465,50 @@ def get_subscription_status():
     user_data = serialize_user_for_api(user, scope='self')
 
     return jsonify({
-        "subscription_level": user_data['subscription_level'], 
+        "subscription_level": user_data['subscription_level'],
         "is_active": user_data['is_active'],
         "subscription_end": user_data['subscription_end'],
         "subscription_start": user_data['subscription_start'],
         "username": user_data['username'],
-        "email": user_data['email'], 
-        "api_key": user_data['api_key'], 
+        "email": user_data['email'],
+        "api_key": user_data['api_key'],
         "is_locked": user_data['is_locked'],
         "locked_until": user_data['locked_until']
     }), 200
+
+# Kullanıcının kendi aboneliğini yükseltmesi için PATCH endpoint'i
+@api_bp.route('/users/<int:user_id>/upgrade_plan', methods=['PATCH'])
+@current_app.limit("3/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
+@require_subscription_plan(SubscriptionPlan.TRIAL)
+def upgrade_plan(user_id):
+    user = g.user
+    if user.id != user_id:
+        return jsonify({"error": "Sadece kendi aboneliğinizi güncelleyebilirsiniz."}), 403
+    data = request.get_json() or {}
+    plan_str = data.get('plan')
+    if not plan_str:
+        return jsonify({"error": "Plan bilgisi eksik."}), 400
+    try:
+        new_plan = SubscriptionPlan[plan_str.upper()]
+    except KeyError:
+        return jsonify({"error": "Geçersiz abonelik planı."}), 400
+    if user.subscription_level.value >= new_plan.value:
+        return jsonify({"error": "Mevcut planınız seçilen plandan daha yüksek veya eşit."}), 400
+    user.subscription_level = new_plan
+    user.subscription_start = datetime.utcnow()
+    user.subscription_end = datetime.utcnow() + timedelta(days=SUBSCRIPTION_EXTENSION_DAYS)
+    db.session.commit()
+    add_audit_log(
+        action_type="PLAN_UPGRADED",
+        actor_id=user.id,
+        actor_username=user.username,
+        target_id=user.id,
+        target_username=user.username,
+        details={"new_plan": new_plan.name},
+        ip_address=request.remote_addr,
+        commit=True
+    )
+    return jsonify({"subscription_level": new_plan.name, "status": "upgraded"}), 200
 
 # Blueprint'e özel hata yakalama (limiter'ın hata fırlatması durumunda)
 @api_bp.errorhandler(429) 
