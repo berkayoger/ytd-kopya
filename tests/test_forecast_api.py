@@ -7,14 +7,20 @@ from backend import create_app, db
 from backend.db.models import User, Role, SubscriptionPlan
 
 
-def setup_user(app):
+def setup_user(app, plan=SubscriptionPlan.PREMIUM, username="forecast", api_key="fkey"):
+    """Create and return a user with the given subscription plan."""
     with app.app_context():
         role = Role.query.filter_by(name="user").first()
         if not role:
             role = Role(name="user")
             db.session.add(role)
             db.session.commit()
-        user = User(username="forecast", api_key="fkey", role_id=role.id, subscription_level=SubscriptionPlan.PREMIUM)
+        user = User(
+            username=username,
+            api_key=api_key,
+            role_id=role.id,
+            subscription_level=plan,
+        )
         user.set_password("pass")
         db.session.add(user)
         db.session.commit()
@@ -73,3 +79,29 @@ def test_forecast_unavailable(monkeypatch):
 
     resp = client.get("/api/forecast/bitcoin?days=3", headers={"X-API-KEY": user.api_key})
     assert resp.status_code == 503
+
+
+def test_forecast_access_denied_basic_user(monkeypatch):
+    """Users with BASIC plan should not access the forecast endpoint."""
+    monkeypatch.setenv("FLASK_ENV", "testing")
+    app = create_app()
+    client = app.test_client()
+    setup_user(app, plan=SubscriptionPlan.BASIC, username="basicuser", api_key="basic123")
+
+    resp = client.get("/api/forecast/bitcoin?days=3", headers={"X-API-KEY": "basic123"})
+    assert resp.status_code == 403
+    data = resp.get_json()
+    assert "Premium" in data["error"]
+
+
+def test_forecast_access_denied_trial_user(monkeypatch):
+    """Trial users must upgrade before using forecast endpoint."""
+    monkeypatch.setenv("FLASK_ENV", "testing")
+    app = create_app()
+    client = app.test_client()
+    setup_user(app, plan=SubscriptionPlan.TRIAL, username="trialuser", api_key="trial123")
+
+    resp = client.get("/api/forecast/bitcoin?days=3", headers={"X-API-KEY": "trial123"})
+    assert resp.status_code == 403
+    data = resp.get_json()
+    assert "Premium" in data["error"]
