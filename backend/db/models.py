@@ -280,10 +280,13 @@ class PromoCodeUsage(db.Model):
     id = Column(Integer, primary_key=True)
     promo_code_id = Column(Integer, ForeignKey('promo_codes.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    used_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    used_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     promo_code = db.relationship('PromoCode', backref='usages', lazy=True)
     user = db.relationship('User', backref='promo_code_usages', lazy=True)
-    __table_args__ = (db.UniqueConstraint('promo_code_id', 'user_id', name='_promo_user_uc'),)
+    __table_args__ = (
+        db.UniqueConstraint('promo_code_id', 'user_id', name='_promo_user_uc'),
+        db.Index('idx_promo_code_id', 'promo_code_id'),
+    )
 
 class PendingAction(db.Model):
     __tablename__ = 'pending_actions'
