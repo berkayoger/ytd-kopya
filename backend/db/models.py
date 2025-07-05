@@ -255,6 +255,7 @@ class PromoCode(db.Model):
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=True)
     assigned_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    user_email = Column(String(120), nullable=True)
     is_single_use_per_user = Column(Boolean, default=False, nullable=False)
     assigned_user = db.relationship('User', backref='assigned_promo_codes', foreign_keys=[assigned_user_id], lazy=True)
 
@@ -270,6 +271,7 @@ class PromoCode(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
             "assigned_user_id": self.assigned_user_id,
+            "user_email": self.user_email,
             "is_single_use_per_user": self.is_single_use_per_user,
         }
 

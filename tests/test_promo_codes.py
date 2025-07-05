@@ -87,3 +87,41 @@ def test_patch_and_delete_promo_code(monkeypatch):
 
     resp = client.delete(f"/api/admin/promo-codes/{pid}", headers=headers)
     assert resp.status_code == 200
+
+
+def test_user_email_handling(monkeypatch):
+    monkeypatch.setenv("FLASK_ENV", "testing")
+    monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
+    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    app = create_app()
+    client = app.test_client()
+    setup_admin_user(app)
+
+    headers = {"Authorization": "Bearer adminkey123"}
+
+    resp = client.post(
+        "/api/admin/promo-codes/",
+        data=json.dumps({
+            "code": "EMAILTEST",
+            "plan": "BASIC",
+            "duration_days": 5,
+            "max_uses": 1,
+            "user_email": "target@test.com"
+        }),
+        content_type='application/json',
+        headers=headers
+    )
+    assert resp.status_code == 201
+    data = resp.get_json()
+    assert data["user_email"] == "target@test.com"
+    promo_id = data["id"]
+
+    resp = client.patch(
+        f"/api/admin/promo-codes/{promo_id}",
+        data=json.dumps({"user_email": None}),
+        content_type='application/json',
+        headers=headers
+    )
+    assert resp.status_code == 200
+    updated = resp.get_json()
+    assert updated["user_email"] is None
