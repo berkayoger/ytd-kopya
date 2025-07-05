@@ -37,4 +37,5 @@ def autodiscover_tasks():
     import backend.tasks.celery_tasks  # noqa
 
 
-autodiscover_tasks()
+if os.getenv("FLASK_ENV") != "testing":
+    autodiscover_tasks()

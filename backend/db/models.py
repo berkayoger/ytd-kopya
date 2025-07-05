@@ -1,7 +1,9 @@
-# backend/db/models.py
-
 from datetime import datetime, timedelta
-from backend.db.__init__ import db
+# SQLAlchemy instance uygulama genelinde 'backend.db' paketinde tanımlıdır.
+# Bazı ortamlarda 'backend.db.__init__' şeklinde içe aktarmak yeni bir modül
+# oluşturabildiğinden, tekil nesnenin kullanılması için doğrudan paket
+# üzerinden içe aktarma yapılır.
+from backend.db import db
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 from enum import Enum
@@ -359,7 +361,7 @@ class UsageLimitModel(db.Model):
     id = Column(Integer, primary_key=True)
     plan_name = Column(String(50), nullable=False)  # e.g., 'BASIC', 'PREMIUM'
     feature = Column(String(100), nullable=False)   # e.g., 'LLM', 'forecast', 'alerts'
-    daily_limit = Column(Integer, nullable=True)     # null ise sınırsız
+    daily_limit = Column(Integer, nullable=True)      # null ise sınırsız
     monthly_limit = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -380,18 +382,17 @@ class UsageLimitModel(db.Model):
 
 class PredictionOpportunity(db.Model):
     """Yüksek potansiyelli trade fırsatlarını saklar."""
-
     __tablename__ = "prediction_opportunities"
 
     id = Column(Integer, primary_key=True)
     symbol = Column(String(20), nullable=False, index=True)
     current_price = Column(Float, nullable=False)
     target_price = Column(Float, nullable=False)
-    forecast_horizon = Column(String(20), nullable=True)
+    forecast_horizon = Column(String(50), nullable=True)
     expected_gain_pct = Column(Float, nullable=False)
-    confidence_score = Column(Float, nullable=True)
-    trend_type = Column(String(50), nullable=True)
-    source_model = Column(String(100), nullable=True)
+    confidence_score = Column(Float, nullable=True, default=0.0)
+    trend_type = Column(String(50), nullable=False, default='short_term')
+    source_model = Column(String(100), nullable=False, default='AIModel')
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

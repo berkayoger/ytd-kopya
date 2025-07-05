@@ -21,3 +21,8 @@ Flask-Mail
 
 # Web Sunucusu (Opsiyonel ama önerilir)
 gunicorn
+Flask-Cors
+Flask-Limiter
+flask_socketio
+loguru
+requests

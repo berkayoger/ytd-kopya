@@ -3,7 +3,13 @@
 import logging
 from functools import wraps
 from flask import jsonify
-from flask_jwt_extended import fresh_jwt_required, get_jwt, get_jwt_identity
+# Flask-JWT-Extended 4.x sürümlerinde `fresh_jwt_required` fonksiyonu
+# mevcut olmayabilir. Geriye dönük uyumluluk için yoksa `jwt_required`
+# fonksiyonunu kullanıyoruz.
+try:
+    from flask_jwt_extended import fresh_jwt_required, get_jwt, get_jwt_identity
+except ImportError:  # pragma: no cover - sadece eski sürümler için
+    from flask_jwt_extended import jwt_required as fresh_jwt_required, get_jwt, get_jwt_identity
 from backend.db.models import User  # Kullanıcı modelini DB'den çekmek için
 from sqlalchemy.exc import SQLAlchemyError
 
