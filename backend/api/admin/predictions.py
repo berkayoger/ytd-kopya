@@ -4,9 +4,12 @@ from backend.auth.middlewares import admin_required
 from backend.db import db
 from backend.db.models import PredictionOpportunity
 from datetime import datetime
+from backend.utils.helpers import add_audit_log
+import logging
 
 # Admin paneli tahmin yönetimi için Blueprint tanımı
 predictions_bp = Blueprint("predictions", __name__, url_prefix="/api/admin/predictions")
+logger = logging.getLogger(__name__)
 
 
 @predictions_bp.route("/", methods=["GET"])
@@ -45,12 +48,18 @@ def create_prediction():
         )
         db.session.add(pred)
         db.session.commit()
+        add_audit_log(
+            action_type="prediction_created",
+            details={"symbol": pred.symbol},
+            commit=True,
+        )
         return jsonify(pred.to_dict()), 201
     except ValueError as ve:
         # Sayısal alanlara yanlış tipte veri girilirse hata yakala
         return jsonify({"error": f"Tip uyuşmazlığı: Lütfen sayısal alanlara geçerli bir değer girin. Detay: {str(ve)}"}), 400
     except Exception as e:
         db.session.rollback()
+        logger.exception("Tahmin oluşturma hatası")
         return jsonify({"error": str(e)}), 400
 
 
@@ -82,12 +91,19 @@ def update_prediction(prediction_id):
                     setattr(pred, field, value)
 
         db.session.commit()
+        add_audit_log(
+            action_type="prediction_updated",
+            target_id=prediction_id,
+            details=data,
+            commit=True,
+        )
         return jsonify(pred.to_dict()), 200
     except ValueError as ve:
         # Sayısal alanlara yanlış tipte veri girilirse hata yakala
         return jsonify({"error": f"Tip uyuşmazlığı: Lütfen sayısal alanlara geçerli bir değer girin. Detay: {str(ve)}"}), 400
     except Exception as e:
         db.session.rollback()
+        logger.exception("Tahmin güncelleme hatası")
         return jsonify({"error": str(e)}), 400
 
 
@@ -99,6 +115,12 @@ def delete_prediction(prediction_id):
     pred = PredictionOpportunity.query.get_or_404(prediction_id)
     db.session.delete(pred)
     db.session.commit()
+    add_audit_log(
+        action_type="prediction_deleted",
+        target_id=prediction_id,
+        details={"symbol": pred.symbol},
+        commit=True,
+    )
     return jsonify({"message": "Tahmin fırsatı başarıyla silindi."}), 200
 
 
