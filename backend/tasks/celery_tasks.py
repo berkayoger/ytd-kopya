@@ -1,13 +1,22 @@
 """Celery task definitions."""
 
 from datetime import datetime
+import os
 import json
 import traceback
 from dataclasses import asdict
-import numpy as np
+try:
+    import numpy as np  # Ağır bağımlılık, test ortamında mevcut olmayabilir
+except Exception:  # pragma: no cover
+    np = None
 
 from backend import celery_app, socketio, logger, create_app
-from backend.core.services import YTDCryptoSystem, AnalysisResult
+from flask import current_app
+# Test ortamında 'backend.core.services' bağımlılığını yüklemek gereksizdir.
+try:
+    from backend.core.services import YTDCryptoSystem, AnalysisResult
+except Exception:  # pragma: no cover
+    YTDCryptoSystem = AnalysisResult = None
 from backend.db.models import (
     User,
     SubscriptionPlan,
@@ -16,7 +25,6 @@ from backend.db.models import (
 )
 from backend import db
 
-app = create_app()
 
 
 @celery_app.task(name="backend.tasks.celery_tasks.run_full_analysis", bind=True)
@@ -138,7 +146,9 @@ def analyze_coin_task(coin_id: str, investor_profile: str = "moderate", user_id:
 def check_and_downgrade_subscriptions():
     """Downgrade expired or trial subscriptions to BASIC."""
     logger.info("Celery: abonelikleri kontrol ediyor.")
-    with app.app_context():
+    # Mevcut bir Flask uygulama bağlamı yoksa yeni bir uygulama oluştururuz.
+    ctx_app = current_app._get_current_object() if current_app else create_app()
+    with ctx_app.app_context():
         now = datetime.utcnow()
         users = User.query.all()
         for user in users:
@@ -147,6 +157,9 @@ def check_and_downgrade_subscriptions():
                 user.subscription_end = None
                 logger.info(f"Kullanici {user.username} aboneligi sona erdi, BASIC plana dusuruldu.")
         db.session.commit()
+        if os.getenv("FLASK_ENV") == "testing":
+            # Testlerde degisikliklerin hemen gorunmesi icin oturumu yenile
+            db.session.expire_all()
 
 
 from backend.utils.alarms import send_alarm, AlarmSeverityEnum
