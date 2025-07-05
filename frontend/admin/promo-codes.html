@@ -40,6 +40,7 @@
           <th class="border px-4 py-2">Max Kullanım</th>
           <th class="border px-4 py-2">Mevcut Kullanım</th>
           <th class="border px-4 py-2">Son Tarih</th>
+          <th class="border px-4 py-2">Kullanıcıya Özel</th>
           <th class="border px-4 py-2">Aktif?</th>
           <th class="border px-4 py-2">İşlemler</th>
         </tr>
@@ -67,6 +68,7 @@
         <input id="duration" type="number" placeholder="Süre (gün)" class="w-full border px-3 py-2 rounded">
         <input id="max-uses" type="number" placeholder="Max Kullanım" class="w-full border px-3 py-2 rounded">
         <input id="expires-at" type="date" class="w-full border px-3 py-2 rounded">
+        <input id="target-user" type="text" placeholder="(Opsiyonel) Kullanıcı E-postası" class="w-full border px-3 py-2 rounded">
       </div>
       <div class="mt-4 flex justify-end space-x-2">
         <button onclick="closeModal()" class="bg-gray-500 text-white px-4 py-2 rounded">İptal</button>
@@ -109,6 +111,7 @@
           <td class="border px-4 py-2">${p.max_uses}</td>
           <td class="border px-4 py-2">${p.current_uses}</td>
           <td class="border px-4 py-2">${p.expires_at ? p.expires_at.split('T')[0] : '-'}</td>
+          <td class="border px-4 py-2">${p.user_email || '-'}</td>
           <td class="border px-4 py-2">${p.is_active ? '✅' : '❌'}</td>
           <td class="border px-4 py-2">
             <button onclick='editPromo(${JSON.stringify(p)})' class="text-blue-600 font-bold">✏️</button>
@@ -145,6 +148,7 @@
       document.getElementById("duration").value = '';
       document.getElementById("max-uses").value = '';
       document.getElementById("expires-at").value = '';
+      document.getElementById("target-user").value = '';
     }
 
     function editPromo(p) {
@@ -154,6 +158,7 @@
       document.getElementById("duration").value = p.duration_days;
       document.getElementById("max-uses").value = p.max_uses;
       document.getElementById("expires-at").value = p.expires_at ? p.expires_at.split('T')[0] : '';
+      document.getElementById("target-user").value = p.user_email || '';
       openModal();
     }
 
@@ -166,7 +171,8 @@
         plan: document.getElementById("plan").value,
         duration_days: parseInt(document.getElementById("duration").value),
         max_uses: parseInt(document.getElementById("max-uses").value),
-        expires_at: expiresAt
+        expires_at: expiresAt,
+        user_email: document.getElementById("target-user").value || null
       };
       const method = id ? 'PATCH' : 'POST';
       const url = id ? `${API}/${id}` : `${API}/`;
