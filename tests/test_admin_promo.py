@@ -93,9 +93,17 @@ def test_promo_usage_stats(monkeypatch):
         usage3 = PromoCodeUsage(promo_code_id=promo2.id, user_id=user1.id)
         db.session.add_all([usage1, usage2, usage3])
         db.session.commit()
+        promo2.is_active = False
+        db.session.commit()
 
     resp = client.get("/api/admin/promo-codes/stats")
     assert resp.status_code == 200
     data = resp.get_json()
     assert any(d["code"] == "CODE1" and d["count"] == 2 for d in data)
     assert any(d["code"] == "CODE2" and d["count"] == 1 for d in data)
+
+    resp = client.get("/api/admin/promo-codes/stats?include_inactive=false")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert any(d["code"] == "CODE1" and d["count"] == 2 for d in data)
+    assert not any(d["code"] == "CODE2" for d in data)
