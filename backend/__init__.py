@@ -150,6 +150,7 @@ def create_app():
     from backend.api.admin.usage_limits import admin_usage_bp
     from backend.api.admin.promo_codes import admin_promo_bp
     from backend.api.admin.promo_stats import stats_bp
+    from backend.api.admin.predictions import predictions_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(api_bp, url_prefix='/api')
@@ -158,6 +159,7 @@ def create_app():
     app.register_blueprint(admin_usage_bp)
     app.register_blueprint(admin_promo_bp)
     app.register_blueprint(stats_bp)
+    app.register_blueprint(predictions_bp)
 
     # Sağlık Kontrol Endpoint'i
     @app.route('/health', methods=['GET'])
