@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required
 from backend.auth.middlewares import admin_required
 from backend.db.models import PromoCodeUsage, PromoCode, User
@@ -13,8 +13,10 @@ stats_bp = Blueprint("promo_stats", __name__)
 def promo_usage_stats():
     start = request.args.get("start_date")
     end = request.args.get("end_date")
-    include_inactive_param = request.args.get("include_inactive", "true").lower()
-    include_inactive = include_inactive_param != "false"
+    include_inactive_param = request.args.get("include_inactive")
+    include_inactive = True
+    if include_inactive_param is not None:
+        include_inactive = include_inactive_param.lower() in ("true", "1", "yes")
     try:
         page = int(request.args.get("page", 1))
         per_page = int(request.args.get("per_page", 20))
@@ -25,7 +27,8 @@ def promo_usage_stats():
     try:
         start_date = datetime.fromisoformat(start) if start else None
         end_date = datetime.fromisoformat(end) if end else None
-    except Exception:
+    except Exception as e:
+        current_app.logger.exception("Invalid date format", exc_info=e)
         return jsonify({"error": "Tarih formatı geçersiz (YYYY-MM-DD)"}), 400
 
     q = PromoCodeUsage.query.join(PromoCode, PromoCode.id == PromoCodeUsage.promo_code_id)
