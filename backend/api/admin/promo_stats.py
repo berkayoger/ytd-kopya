@@ -16,6 +16,13 @@ def promo_usage_stats():
     include_inactive_param = request.args.get("include_inactive", "true").lower()
     include_inactive = include_inactive_param != "false"
     try:
+        page = int(request.args.get("page", 1))
+        per_page = int(request.args.get("per_page", 20))
+        if page < 1 or per_page < 1:
+            raise ValueError
+    except ValueError:
+        return jsonify({"error": "page and per_page must be positive integers"}), 400
+    try:
         start_date = datetime.fromisoformat(start) if start else None
         end_date = datetime.fromisoformat(end) if end else None
     except Exception:
@@ -29,15 +36,17 @@ def promo_usage_stats():
     if not include_inactive:
         q = q.filter(PromoCode.is_active.is_(True))
 
-    stats = (
-        q.with_entities(PromoCode.code, func.count(PromoCodeUsage.id))
+    stats_query = (
+        q.with_entities(PromoCode.code, func.count(PromoCodeUsage.id).label("count"))
         .group_by(PromoCode.code)
         .order_by(func.count(PromoCodeUsage.id).desc())
-        .all()
     )
+
+    total = stats_query.count()
+    stats = stats_query.offset((page - 1) * per_page).limit(per_page).all()
 
     result = [
         {"code": code, "count": count}
         for code, count in stats
     ]
-    return jsonify(result)
+    return jsonify({"total": total, "page": page, "per_page": per_page, "items": result})
