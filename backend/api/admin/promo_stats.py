@@ -13,21 +13,24 @@ stats_bp = Blueprint("promo_stats", __name__)
 def promo_usage_stats():
     start = request.args.get("start_date")
     end = request.args.get("end_date")
+    include_inactive_param = request.args.get("include_inactive", "true").lower()
+    include_inactive = include_inactive_param != "false"
     try:
         start_date = datetime.fromisoformat(start) if start else None
         end_date = datetime.fromisoformat(end) if end else None
     except Exception:
         return jsonify({"error": "Tarih formatı geçersiz (YYYY-MM-DD)"}), 400
 
-    q = PromoCodeUsage.query
+    q = PromoCodeUsage.query.join(PromoCode, PromoCode.id == PromoCodeUsage.promo_code_id)
     if start_date:
         q = q.filter(PromoCodeUsage.used_at >= start_date)
     if end_date:
         q = q.filter(PromoCodeUsage.used_at <= end_date)
+    if not include_inactive:
+        q = q.filter(PromoCode.is_active.is_(True))
 
     stats = (
-        q.join(PromoCode, PromoCode.id == PromoCodeUsage.promo_code_id)
-        .with_entities(PromoCode.code, func.count(PromoCodeUsage.id))
+        q.with_entities(PromoCode.code, func.count(PromoCodeUsage.id))
         .group_by(PromoCode.code)
         .order_by(func.count(PromoCodeUsage.id).desc())
         .all()
