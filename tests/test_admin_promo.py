@@ -127,3 +127,45 @@ def test_promo_usage_stats(monkeypatch):
     items = data["items"]
     assert any(d["code"] == "CODE1" and d["count"] == 2 for d in items)
     assert not any(d["code"] == "CODE2" for d in items)
+
+
+def test_promo_code_usage_details(monkeypatch):
+    monkeypatch.setenv("FLASK_ENV", "testing")
+    monkeypatch.setattr("backend.Config.SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
+    monkeypatch.setattr("backend.Config.SQLALCHEMY_ENGINE_OPTIONS", {}, raising=False)
+
+    import types, sys
+    sys.modules.setdefault("backend.core.routes", types.ModuleType("routes"))
+    sys.modules.setdefault("pandas_ta", types.ModuleType("pandas_ta"))
+    services_stub = types.ModuleType("services")
+    services_stub.YTDCryptoSystem = object
+    sys.modules["backend.core.services"] = services_stub
+
+    import flask_jwt_extended
+    monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
+    monkeypatch.setattr(flask_jwt_extended, "fresh_jwt_required", lambda *a, **k: (lambda f: f), raising=False)
+    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+
+    app = create_app()
+    client = app.test_client()
+    setup_admin(app)
+
+    with app.app_context():
+        role = Role.query.filter_by(name="user").first()
+        user1 = User(username="u1", api_key="k1", role_id=role.id)
+        user1.set_password("p")
+        user2 = User(username="u2", api_key="k2", role_id=role.id)
+        user2.set_password("p")
+        promo = PromoCode(code="CODEX", plan=SubscriptionPlan.BASIC, duration_days=1, max_uses=5)
+        db.session.add_all([user1, user2, promo])
+        db.session.commit()
+        usage1 = PromoCodeUsage(promo_code_id=promo.id, user_id=user1.id)
+        usage2 = PromoCodeUsage(promo_code_id=promo.id, user_id=user2.id)
+        db.session.add_all([usage1, usage2])
+        db.session.commit()
+
+    resp = client.get("/api/admin/promo-codes/stats/CODEX/usages")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert any(item["username"] == "u1" for item in data)
+    assert any(item["username"] == "u2" for item in data)
