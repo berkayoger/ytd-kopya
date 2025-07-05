@@ -127,3 +127,124 @@ DATA_SOURCES = [
 # - fetch_social_signals()  -> LunarCrush gibi kaynaklardan sosyal etki sinyalleri çeker
 # - fetch_event_calendar()  -> CoinMarketCal'den yaklaşan etkinlikleri alır
 # - fetch_sentiment_news()  -> Messari gibi kaynaklardan yorumlu haberleri çeker
+
+
+def fetch_price_data(symbol: str, vs_currency: str = "usd") -> dict:
+    """CoinGecko API üzerinden fiyat verilerini döndürür."""
+    import requests
+
+    try:
+        resp = requests.get(
+            "https://api.coingecko.com/api/v3/simple/price",
+            params={"ids": symbol, "vs_currencies": vs_currency},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json().get(symbol, {})
+    except Exception:  # pragma: no cover - dış servis hatası
+        return {}
+
+
+def fetch_technical_data(prices: list[float]) -> dict:
+    """Basit teknik analiz indikatörlerini hesaplar (pandas-ta)."""
+    try:  # pragma: no cover - isteğe bağlı kütüphane
+        import pandas as pd
+        import pandas_ta as ta
+    except Exception:
+        return {}
+
+    if not prices:
+        return {}
+
+    df = pd.DataFrame(prices, columns=["close"])
+    indicators = {
+        "rsi": ta.rsi(df["close"]).iloc[-1],
+        "macd": ta.macd(df["close"])["MACD_12_26_9"].iloc[-1],
+    }
+    return {k: float(v) for k, v in indicators.items() if v is not None}
+
+
+def fetch_news_rss(urls: list[str]) -> list[dict]:
+    """RSS kaynaklarından haber başlıklarını döndürür."""
+    try:  # pragma: no cover - isteğe bağlı kütüphane
+        import feedparser
+    except Exception:
+        return []
+
+    articles: list[dict] = []
+    for url in urls:
+        feed = feedparser.parse(url)
+        for entry in feed.entries:
+            articles.append({
+                "title": entry.get("title"),
+                "link": entry.get("link"),
+            })
+    return articles
+
+
+def fetch_news_api(api_key: str, query: str, page_size: int = 10) -> list[dict]:
+    """NewsAPI üzerinden haberleri alır."""
+    import requests
+
+    try:
+        resp = requests.get(
+            "https://newsapi.org/v2/everything",
+            params={"q": query, "apiKey": api_key, "pageSize": page_size},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json().get("articles", [])
+    except Exception:  # pragma: no cover - dış servis hatası
+        return []
+
+
+def fetch_social_signals(symbol: str, api_key: str | None = None) -> dict:
+    """LunarCrush API üzerinden sosyal sinyal verisi toplar."""
+    import requests
+
+    params = {"data": "assets", "symbol": symbol}
+    if api_key:
+        params["key"] = api_key
+    try:
+        resp = requests.get("https://api.lunarcrush.com/v2", params=params, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("data", [{}])[0] if data.get("data") else {}
+    except Exception:  # pragma: no cover - dış servis hatası
+        return {}
+
+
+def fetch_event_calendar(api_key: str, symbol: str) -> list[dict]:
+    """CoinMarketCal API'inden yaklaşan etkinlikleri getirir."""
+    import requests
+
+    headers = {"x-api-key": api_key}
+    try:
+        resp = requests.get(
+            "https://developers.coinmarketcal.com/v1/events",
+            params={"symbols": symbol},
+            headers=headers,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json().get("body", [])
+    except Exception:  # pragma: no cover - dış servis hatası
+        return []
+
+
+def fetch_sentiment_news(api_key: str, asset: str) -> list[dict]:
+    """Messari News API'den duygu analizi yapılmış haberleri döndürür."""
+    import requests
+
+    try:
+        resp = requests.get(
+            "https://data.messari.io/api/v1/news",
+            params={"assets": asset},
+            headers={"x-messari-api-key": api_key},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json().get("data", [])
+    except Exception:  # pragma: no cover - dış servis hatası
+        return []
+
