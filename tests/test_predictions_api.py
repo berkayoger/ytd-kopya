@@ -25,6 +25,7 @@ def test_create_and_list_predictions(monkeypatch):
     monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
     monkeypatch.setattr(flask_jwt_extended, "fresh_jwt_required", lambda *a, **k: (lambda f: f), raising=False)
     monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    monkeypatch.setattr("backend.auth.jwt_utils.require_csrf", lambda f: f)
     app = create_app()
     client = app.test_client()
 
@@ -62,6 +63,7 @@ def test_update_and_delete_prediction(monkeypatch):
     monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
     monkeypatch.setattr(flask_jwt_extended, "fresh_jwt_required", lambda *a, **k: (lambda f: f), raising=False)
     monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    monkeypatch.setattr("backend.auth.jwt_utils.require_csrf", lambda f: f)
     app = create_app()
     client = app.test_client()
 
