@@ -102,6 +102,12 @@ def create_app():
     app = Flask(__name__)
 
     app.config.from_object(Config)
+
+    # Test ortamında varsayılan Postgres bağlantısını kullanma
+    if os.getenv("FLASK_ENV") == "testing":
+        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+        # SQLite memory veritabanı için pool ayarını minimize et
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"connect_args": {"check_same_thread": False}}
     
     # Üretim ortamı güvenlik doğrulamaları
     Config.assert_production_jwt_key()
