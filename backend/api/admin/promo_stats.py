@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from backend.auth.middlewares import admin_required
-from backend.db.models import PromoCodeUsage, PromoCode
+from backend.db.models import PromoCodeUsage, PromoCode, User
 from sqlalchemy import func
 from datetime import datetime
 
@@ -50,3 +50,27 @@ def promo_usage_stats():
         for code, count in stats
     ]
     return jsonify({"total": total, "page": page, "per_page": per_page, "items": result})
+
+
+@stats_bp.route("/api/admin/promo-codes/stats/<string:code>/usages", methods=["GET"])
+@jwt_required()
+@admin_required()
+def promo_code_usage_details(code):
+    usages = (
+        PromoCodeUsage.query
+        .join(User, User.id == PromoCodeUsage.user_id)
+        .join(PromoCode, PromoCode.id == PromoCodeUsage.promo_code_id)
+        .filter(PromoCode.code == code.upper())
+        .order_by(PromoCodeUsage.used_at.desc())
+        .with_entities(User.username, User.email, PromoCodeUsage.used_at)
+        .all()
+    )
+
+    return jsonify([
+        {
+            "username": u,
+            "email": e,
+            "used_at": ua.isoformat() if ua else None
+        }
+        for u, e, ua in usages
+    ])
