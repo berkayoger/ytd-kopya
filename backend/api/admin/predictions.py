@@ -116,3 +116,14 @@ DATA_SOURCES = [
     {"type": "Yorum & Söylem", "source": "Messari News", "reliability": "High", "cost": "Free Tier", "python_tool": "requests"},
     {"type": "Haber", "source": "CoinTelegraph RSS", "reliability": "High", "cost": "Free", "python_tool": "feedparser"}
 ]
+
+# Planlanan veri toplama görevleri (fonksiyon adları ve açıklamaları ile birlikte tanımlanacak)
+# Bu fonksiyonlar ayrı görev dosyalarında zamanlanmış görevler olarak çalıştırılacaktır
+
+# - fetch_price_data()      -> CoinGecko üzerinden fiyat verilerini alır
+# - fetch_technical_data()  -> Teknik analiz verilerini üretir
+# - fetch_news_rss()        -> RSS kaynaklarından haberleri çeker
+# - fetch_news_api()        -> NewsAPI ve CryptoPanic gibi API'lerden haberleri toplar
+# - fetch_social_signals()  -> LunarCrush gibi kaynaklardan sosyal etki sinyalleri çeker
+# - fetch_event_calendar()  -> CoinMarketCal'den yaklaşan etkinlikleri alır
+# - fetch_sentiment_news()  -> Messari gibi kaynaklardan yorumlu haberleri çeker
