@@ -159,12 +159,14 @@
 
     async function submitPromo() {
       const id = document.getElementById("promo-id").value;
+      const expiresInput = document.getElementById("expires-at").value;
+      const expiresAt = expiresInput ? new Date(expiresInput).toISOString() : null;
       const payload = {
         code: document.getElementById("code").value,
         plan: document.getElementById("plan").value,
         duration_days: parseInt(document.getElementById("duration").value),
         max_uses: parseInt(document.getElementById("max-uses").value),
-        expires_at: document.getElementById("expires-at").value || null
+        expires_at: expiresAt
       };
       const method = id ? 'PATCH' : 'POST';
       const url = id ? `${API}/${id}` : `${API}/`;
