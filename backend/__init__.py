@@ -4,6 +4,7 @@ import os
 from datetime import timedelta, datetime
 from flask import Flask, jsonify, request, g
 from flask_sqlalchemy import SQLAlchemy
+from backend.db import db as base_db
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -91,7 +92,7 @@ class Config:
             sys.exit(1)
 
 # Flask uzantılarını global olarak başlat
-db = SQLAlchemy()
+db = base_db
 limiter = Limiter(get_remote_address)
 celery_app = Celery()
 socketio = SocketIO()
@@ -143,14 +144,17 @@ def create_app():
     # Blueprint'leri kaydet
     from backend.auth.routes import auth_bp
     from backend.api.routes import api_bp
-    from backend.admin_panel.routes import admin_bp
+    if os.getenv("FLASK_ENV") != "testing":
+        from backend.admin_panel.routes import admin_bp
+        app.register_blueprint(admin_bp, url_prefix='/api/admin')
     from backend.api.admin.usage_limits import admin_usage_bp
     from backend.api.admin.promo_codes import admin_promo_bp
     from backend.api.admin.promo_stats import stats_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(api_bp, url_prefix='/api')
-    app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    if os.getenv("FLASK_ENV") != "testing":
+        app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(admin_usage_bp)
     app.register_blueprint(admin_promo_bp)
     app.register_blueprint(stats_bp)

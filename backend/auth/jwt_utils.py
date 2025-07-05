@@ -111,3 +111,16 @@ def require_csrf(func):
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def verify_jwt(token: str):
+    """Basit JWT dogrulamasi. Gecerliyse payload dondurur, degilse None."""
+    return verify_access_token(token)
+
+
+def verify_csrf() -> bool:
+    """Incoming istegin CSRF tokenini dogrular."""
+    sent = request.headers.get("X-CSRF-Token")
+    stored = request.cookies.get("csrf_token")
+    return bool(sent and stored and sent == stored)
+

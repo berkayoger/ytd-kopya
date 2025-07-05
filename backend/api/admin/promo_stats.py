@@ -13,10 +13,10 @@ stats_bp = Blueprint("promo_stats", __name__)
 def promo_usage_stats():
     start = request.args.get("start_date")
     end = request.args.get("end_date")
-    include_inactive_param = request.args.get("include_inactive")
-    include_inactive = True
-    if include_inactive_param is not None:
-        include_inactive = include_inactive_param.lower() in ("true", "1", "yes")
+    include_inactive_param = request.args.get("include_inactive", "true").lower()
+    include_inactive = include_inactive_param != "false"
+    new_users_only = request.args.get("new_users_only", "false").lower() == "true"
+    single_use_only = request.args.get("single_use_only", "false").lower() == "true"
     try:
         page = int(request.args.get("page", 1))
         per_page = int(request.args.get("per_page", 20))
@@ -38,6 +38,11 @@ def promo_usage_stats():
         q = q.filter(PromoCodeUsage.used_at <= end_date)
     if not include_inactive:
         q = q.filter(PromoCode.is_active.is_(True))
+    if new_users_only:
+        q = q.join(User, User.id == PromoCodeUsage.user_id)
+        q = q.filter(func.julianday(PromoCodeUsage.used_at) - func.julianday(User.created_at) < 1)
+    if single_use_only:
+        q = q.filter(PromoCode.is_single_use_per_user.is_(True))
 
     stats_query = (
         q.with_entities(PromoCode.code, func.count(PromoCodeUsage.id).label("count"))
