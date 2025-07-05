@@ -31,6 +31,14 @@
       </select>
     </div>
 
+    <div class="my-4 flex items-center space-x-4">
+      <label>Başlangıç:</label>
+      <input type="date" id="filter-start" class="border px-2 py-1 rounded">
+      <label>Bitiş:</label>
+      <input type="date" id="filter-end" class="border px-2 py-1 rounded">
+      <button onclick="loadPromoStats()" class="bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700">Filtrele</button>
+    </div>
+
     <table class="w-full table-auto border-collapse border border-gray-300">
       <thead class="bg-gray-200">
         <tr>
@@ -50,6 +58,10 @@
 
     <div class="mt-6">
       <canvas id="promoChart" height="100"></canvas>
+    </div>
+
+    <div class="mt-6">
+      <canvas id="promoStatsChart" height="100"></canvas>
     </div>
   </div>
 
@@ -202,7 +214,44 @@
       loadPromos();
     }
 
-    document.addEventListener("DOMContentLoaded", loadPromos);
+    async function loadPromoStats() {
+      const start = document.getElementById("filter-start").value;
+      const end = document.getElementById("filter-end").value;
+
+      let url = "/api/admin/promo-codes/stats";
+      const params = [];
+      if (start) params.push("start_date=" + start);
+      if (end) params.push("end_date=" + end);
+      if (params.length) url += "?" + params.join("&");
+
+      const res = await fetch(url, {
+        headers: { 'Authorization': 'Bearer ' + JWT }
+      });
+      const data = await res.json();
+
+      const labels = data.map(x => x.code);
+      const counts = data.map(x => x.count);
+
+      const ctx = document.getElementById("promoStatsChart");
+      if (window.promoStatsChartInstance) window.promoStatsChartInstance.destroy();
+      window.promoStatsChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Kullanım Sayısı',
+            data: counts,
+            backgroundColor: '#10b981'
+          }]
+        },
+        options: { scales: { y: { beginAtZero: true } } }
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadPromos();
+      loadPromoStats();
+    });
   </script>
 </body>
 </html>
