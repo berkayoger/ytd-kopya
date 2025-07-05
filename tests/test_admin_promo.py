@@ -72,7 +72,17 @@ def test_update_expiration_past_date(monkeypatch):
 
 def test_promo_usage_stats(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
-    monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
+    monkeypatch.setattr("backend.Config.SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
+    monkeypatch.setattr("backend.Config.SQLALCHEMY_ENGINE_OPTIONS", {}, raising=False)
+    import types, sys
+    sys.modules.setdefault("backend.core.routes", types.ModuleType("routes"))
+    sys.modules.setdefault("pandas_ta", types.ModuleType("pandas_ta"))
+    services_stub = types.ModuleType("services")
+    services_stub.YTDCryptoSystem = object
+    sys.modules["backend.core.services"] = services_stub
+    import flask_jwt_extended
+    monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
+    monkeypatch.setattr(flask_jwt_extended, "fresh_jwt_required", lambda *a, **k: (lambda f: f), raising=False)
     monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
     app = create_app()
     client = app.test_client()
@@ -99,11 +109,21 @@ def test_promo_usage_stats(monkeypatch):
     resp = client.get("/api/admin/promo-codes/stats")
     assert resp.status_code == 200
     data = resp.get_json()
-    assert any(d["code"] == "CODE1" and d["count"] == 2 for d in data)
-    assert any(d["code"] == "CODE2" and d["count"] == 1 for d in data)
+    items = data["items"]
+    assert data["total"] == 2
+    assert any(d["code"] == "CODE1" and d["count"] == 2 for d in items)
+    assert any(d["code"] == "CODE2" and d["count"] == 1 for d in items)
+
+    resp = client.get("/api/admin/promo-codes/stats?per_page=1&page=2")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    items = data["items"]
+    assert len(items) == 1
+    assert items[0]["code"] == "CODE2"
 
     resp = client.get("/api/admin/promo-codes/stats?include_inactive=false")
     assert resp.status_code == 200
     data = resp.get_json()
-    assert any(d["code"] == "CODE1" and d["count"] == 2 for d in data)
-    assert not any(d["code"] == "CODE2" for d in data)
+    items = data["items"]
+    assert any(d["code"] == "CODE1" and d["count"] == 2 for d in items)
+    assert not any(d["code"] == "CODE2" for d in items)
