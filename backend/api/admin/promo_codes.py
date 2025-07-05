@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from backend.auth.middlewares import admin_required
 from backend.db.models import db, PromoCode
-from datetime import datetime, timedelta
+from datetime import datetime
 
 admin_promo_bp = Blueprint("admin_promo", __name__, url_prefix="/api/admin/promo-codes")
 
@@ -21,12 +21,20 @@ def list_promo_codes():
 def create_promo_code():
     data = request.get_json() or {}
     try:
+        expires_at = None
+        expires_at_str = data.get("expires_at")
+        if expires_at_str:
+            try:
+                expires_at = datetime.fromisoformat(expires_at_str)
+            except ValueError:
+                return jsonify({"error": "Ge\u00e7ersiz tarih format\u0131 (expires_at)"}), 400
+
         code = PromoCode(
             code=data["code"].upper(),
             plan=data["plan"].upper(),
             duration_days=int(data["duration_days"]),
             max_uses=int(data["max_uses"]),
-            expires_at=datetime.utcnow() + timedelta(days=int(data.get("expires_in_days", 30))),
+            expires_at=expires_at,
             created_by="admin"
         )
         db.session.add(code)
@@ -60,6 +68,14 @@ def update_promo_code(promo_id):
             promo.duration_days = int(data["duration_days"])
         if "is_active" in data:
             promo.is_active = bool(data["is_active"])
+        if "expires_at" in data:
+            if data["expires_at"]:
+                try:
+                    promo.expires_at = datetime.fromisoformat(data["expires_at"])
+                except ValueError:
+                    return jsonify({"error": "Ge\u00e7ersiz tarih format\u0131 (expires_at)"}), 400
+            else:
+                promo.expires_at = None
         db.session.commit()
         return jsonify(promo.to_dict()), 200
     except Exception as e:
