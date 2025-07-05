@@ -29,12 +29,17 @@ def create_promo_code():
             except ValueError:
                 return jsonify({"error": "Ge\u00e7ersiz tarih format\u0131 (expires_at)"}), 400
 
+        user_email = data.get("user_email")
+        if user_email == "":
+            user_email = None
+
         code = PromoCode(
             code=data["code"].upper(),
             plan=data["plan"].upper(),
             duration_days=int(data["duration_days"]),
             max_uses=int(data["max_uses"]),
             expires_at=expires_at,
+            user_email=user_email,
             created_by="admin"
         )
         db.session.add(code)
@@ -68,6 +73,8 @@ def update_promo_code(promo_id):
             promo.duration_days = int(data["duration_days"])
         if "is_active" in data:
             promo.is_active = bool(data["is_active"])
+        if "user_email" in data:
+            promo.user_email = data["user_email"] or None
         if "expires_at" in data:
             if data["expires_at"]:
                 try:
