@@ -376,3 +376,36 @@ class UsageLimitModel(db.Model):
             "monthly_limit": self.monthly_limit,
             "created_at": self.created_at.isoformat(),
         }
+
+
+class PredictionOpportunity(db.Model):
+    """Yüksek potansiyelli trade fırsatlarını saklar."""
+
+    __tablename__ = "prediction_opportunities"
+
+    id = Column(Integer, primary_key=True)
+    symbol = Column(String(20), nullable=False, index=True)
+    current_price = Column(Float, nullable=False)
+    target_price = Column(Float, nullable=False)
+    forecast_horizon = Column(String(20), nullable=True)
+    expected_gain_pct = Column(Float, nullable=False)
+    confidence_score = Column(Float, nullable=True)
+    trend_type = Column(String(50), nullable=True)
+    source_model = Column(String(100), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "symbol": self.symbol,
+            "current_price": self.current_price,
+            "target_price": self.target_price,
+            "forecast_horizon": self.forecast_horizon,
+            "expected_gain_pct": self.expected_gain_pct,
+            "confidence_score": self.confidence_score,
+            "trend_type": self.trend_type,
+            "source_model": self.source_model,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat(),
+        }
