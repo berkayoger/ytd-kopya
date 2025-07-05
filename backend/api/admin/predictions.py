@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from backend.auth.middlewares import admin_required
+from backend.auth.jwt_utils import require_csrf
 from backend.db import db
 from backend.db.models import PredictionOpportunity
 from datetime import datetime
@@ -24,6 +25,7 @@ def list_predictions():
 @predictions_bp.route("/", methods=["POST"])
 @jwt_required()
 @admin_required()
+@require_csrf
 def create_prediction():
     """Yeni bir tahmin fırsatı oluşturur."""
     data = request.get_json() or {}
@@ -34,13 +36,28 @@ def create_prediction():
             if field not in data:
                 return jsonify({"error": f"'{field}' alanı zorunludur"}), 400
 
+        symbol = data["symbol"].strip().upper()
+        current_price = float(data["current_price"])
+        target_price = float(data["target_price"])
+        expected_gain = float(data["expected_gain_pct"])
+        confidence = float(data.get("confidence_score", 0.0))
+
+        if len(symbol) > 20:
+            return jsonify({"error": "Symbol en fazla 20 karakter olabilir"}), 400
+        if current_price < 0 or target_price < 0:
+            return jsonify({"error": "Fiyatlar negatif olamaz"}), 400
+        if not -100 <= expected_gain <= 100:
+            return jsonify({"error": "expected_gain_pct -100 ile 100 arasinda olmalidir"}), 400
+        if not 0 <= confidence <= 1:
+            return jsonify({"error": "confidence_score 0 ile 1 arasinda olmalidir"}), 400
+
         pred = PredictionOpportunity(
-            symbol=data["symbol"].upper(),
-            current_price=float(data["current_price"]),
-            target_price=float(data["target_price"]),
+            symbol=symbol,
+            current_price=current_price,
+            target_price=target_price,
             forecast_horizon=data.get("forecast_horizon"),
-            expected_gain_pct=float(data["expected_gain_pct"]),
-            confidence_score=float(data.get("confidence_score", 0.0)),
+            expected_gain_pct=expected_gain,
+            confidence_score=confidence,
             trend_type=data.get("trend_type", "short_term"),
             source_model=data.get("source_model", "AIModel"),
             is_active=bool(data.get("is_active", True)),
@@ -54,18 +71,19 @@ def create_prediction():
             commit=True,
         )
         return jsonify(pred.to_dict()), 201
-    except ValueError as ve:
+    except ValueError:
         # Sayısal alanlara yanlış tipte veri girilirse hata yakala
-        return jsonify({"error": f"Tip uyuşmazlığı: Lütfen sayısal alanlara geçerli bir değer girin. Detay: {str(ve)}"}), 400
-    except Exception as e:
+        return jsonify({"error": "Tip uyuşmazlığı: Lütfen sayısal alanlara geçerli bir değer girin."}), 400
+    except Exception:
         db.session.rollback()
         logger.exception("Tahmin oluşturma hatası")
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": "Sunucu hatası"}), 500
 
 
 @predictions_bp.route("/<int:prediction_id>", methods=["PATCH"])
 @jwt_required()
 @admin_required()
+@require_csrf
 def update_prediction(prediction_id):
     """Mevcut bir tahmin fırsatını kısmen günceller."""
     data = request.get_json() or {}
@@ -84,9 +102,19 @@ def update_prediction(prediction_id):
             if field in data:
                 value = data[field]
                 if field in float_fields:
-                    setattr(pred, field, float(value))
+                    num = float(value)
+                    if field in ["current_price", "target_price"] and num < 0:
+                        return jsonify({"error": f"{field} negatif olamaz"}), 400
+                    if field == "expected_gain_pct" and not -100 <= num <= 100:
+                        return jsonify({"error": "expected_gain_pct -100 ile 100 arasinda olmalidir"}), 400
+                    if field == "confidence_score" and not 0 <= num <= 1:
+                        return jsonify({"error": "confidence_score 0 ile 1 arasinda olmalidir"}), 400
+                    setattr(pred, field, num)
                 elif field == "symbol":
-                    setattr(pred, field, value.upper())
+                    sym = value.strip().upper()
+                    if len(sym) > 20:
+                        return jsonify({"error": "Symbol en fazla 20 karakter olabilir"}), 400
+                    setattr(pred, field, sym)
                 else:
                     setattr(pred, field, value)
 
@@ -98,18 +126,19 @@ def update_prediction(prediction_id):
             commit=True,
         )
         return jsonify(pred.to_dict()), 200
-    except ValueError as ve:
+    except ValueError:
         # Sayısal alanlara yanlış tipte veri girilirse hata yakala
-        return jsonify({"error": f"Tip uyuşmazlığı: Lütfen sayısal alanlara geçerli bir değer girin. Detay: {str(ve)}"}), 400
-    except Exception as e:
+        return jsonify({"error": "Tip uyuşmazlığı: Lütfen sayısal alanlara geçerli bir değer girin."}), 400
+    except Exception:
         db.session.rollback()
         logger.exception("Tahmin güncelleme hatası")
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": "Sunucu hatası"}), 500
 
 
 @predictions_bp.route("/<int:prediction_id>", methods=["DELETE"])
 @jwt_required()
 @admin_required()
+@require_csrf
 def delete_prediction(prediction_id):
     """Bir tahmin fırsatını siler."""
     pred = PredictionOpportunity.query.get_or_404(prediction_id)
