@@ -28,6 +28,7 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", 'sqlite:///ytd_crypto.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_SESSION_OPTIONS = {"expire_on_commit": False}
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_size": 10,
         "max_overflow": 20,
@@ -105,6 +106,7 @@ def create_app():
 
     # Test ortamında varsayılan Postgres bağlantısını kullanma
     if os.getenv("FLASK_ENV") == "testing":
+        app.config["TESTING"] = True
         app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
         # SQLite memory veritabanı için pool ayarını minimize et
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"connect_args": {"check_same_thread": False}}
@@ -132,6 +134,20 @@ def create_app():
         # Production için migration scriptleri kullanılmalıdır.
         if app.config['ENV'].lower() != "production": # ENV değeri küçük harfe çevrildi
             db.create_all()
+            # Testlerde gerekli olan temel roller ve izinler yoksa oluştur
+            from backend.db.models import Role, Permission
+            if not Role.query.filter_by(name="user").first():
+                user_role = Role(name="user")
+                admin_role = Role(name="admin")
+                db.session.add_all([user_role, admin_role])
+                db.session.commit()
+            if not Permission.query.filter_by(name="admin_access").first():
+                perm = Permission(name="admin_access")
+                db.session.add(perm)
+                db.session.commit()
+                admin_role = Role.query.filter_by(name="admin").first()
+                admin_role.permissions.append(perm)
+                db.session.commit()
         else:
             logger.info("Üretim ortamı: Otomatik db.create_all() atlandı. Migrasyonların uygulandığından emin olun.")
     
@@ -143,9 +159,12 @@ def create_app():
     app.extensions['socketio'] = socketio
     app.extensions['redis_client'] = Redis.from_url(app.config.get('REDIS_URL'))
 
-    # YTDCryptoSystem'ın tekil instance'ını burada oluştur ve app'e ata
-    from backend.core.services import YTDCryptoSystem
-    app.ytd_system_instance = YTDCryptoSystem() 
+    # YTDCryptoSystem'ın tekil instance'ı sadece test dışı ortamlarda
+    # oluşturulur. Testlerde bu servis karmaşık bağımlılıklar nedeniyle
+    # devre dışı bırakılır.
+    if os.getenv("FLASK_ENV") != "testing":
+        from backend.core.services import YTDCryptoSystem
+        app.ytd_system_instance = YTDCryptoSystem()
 
     # Blueprint'leri kaydet
     from backend.auth.routes import auth_bp

@@ -1,7 +1,11 @@
 # backend/db/models.py
 
 from datetime import datetime, timedelta
-from backend.db.__init__ import db
+# SQLAlchemy instance uygulama genelinde 'backend.db' paketinde tanımlıdır.
+# Bazı ortamlarda 'backend.db.__init__' şeklinde içe aktarmak yeni bir modül
+# oluşturabildiğinden, tekil nesnenin kullanılması için doğrudan paket
+# üzerinden içe aktarma yapılır.
+from backend.db import db
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 from enum import Enum
