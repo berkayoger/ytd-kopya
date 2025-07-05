@@ -5,7 +5,7 @@ import requests
 from flask import Blueprint, request, jsonify, current_app, g
 from backend import limiter
 from loguru import logger
-from flask_limiter.exceptions import RateLimitExceeded
+from flask_limiter.errors import RateLimitExceeded
 from datetime import datetime, date, timedelta
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import StaleDataError
@@ -42,7 +42,7 @@ BACKEND_PLAN_PRICES = {
 @api_bp.route('/analyze_coin/<string:coin_id>', methods=['GET', 'POST'])
 # Rate limit: Kullanıcıya özel (API key bazlı) veya IP bazlı.
 # rate limit aşıldığında 429 döner.
-@current_app.limit("60/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
+@limiter.limit("60/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
 # Backend Guard: Minimum BASIC aboneliği gereklidir.
 @require_subscription_plan(SubscriptionPlan.BASIC)
 # Backend Guard: Günlük analiz çağrısı kotasını kontrol et.
@@ -137,7 +137,7 @@ def analyze_coin_api(coin_id):
 
 # LLM Destekli Analiz Endpoint'i (Sadece Premium Kullanıcılar İçin)
 @api_bp.route('/llm/analyze', methods=['POST'])
-@current_app.limit("10/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
+@limiter.limit("10/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
 @require_subscription_plan(SubscriptionPlan.PREMIUM) # LLM için Premium plan
 @check_usage_limit("llm_analyze")
 def llm_analyze():
@@ -184,7 +184,7 @@ def llm_analyze():
 
 # Basit çok günlü fiyat tahmini endpoint'i
 @api_bp.route('/forecast/<string:coin_id>', methods=['GET'])
-@current_app.limit("60/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
+@limiter.limit("60/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
 @require_subscription_plan(SubscriptionPlan.PREMIUM)
 @check_usage_limit("forecast")
 def forecast_coin(coin_id):
@@ -254,7 +254,7 @@ def forecast_coin(coin_id):
 
 # Gelişmiş teknik göstergeler endpoint'i
 @api_bp.route('/technical_indicators/<string:coin_id>', methods=['GET'])
-@current_app.limit("60/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
+@limiter.limit("60/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
 @require_subscription_plan(SubscriptionPlan.ADVANCED)
 def technical_indicators(coin_id):
     """Return RSI, MACD and other indicators for the requested coin."""
@@ -271,7 +271,7 @@ def technical_indicators(coin_id):
 
 # Abonelik planını güncelleme endpoint'i
 @api_bp.route('/update_subscription', methods=['POST'])
-@current_app.limit("5/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
+@limiter.limit("5/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
 @require_subscription_plan(SubscriptionPlan.TRIAL) # Abone olunan endpoint'e erişim için minimum TRIAL planı
 def update_subscription():
     user = g.user # Dekorator'den gelen kullanıcı objesi
@@ -458,7 +458,7 @@ def update_subscription():
 
 # Kullanıcının mevcut abonelik durumunu getirme endpoint'i
 @api_bp.route('/get_subscription_status', methods=['GET'])
-@current_app.limit("60/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
+@limiter.limit("60/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
 @require_subscription_plan(SubscriptionPlan.TRIAL) # En az TRIAL planı gereklidir (herkes görebilir)
 def get_subscription_status():
     user = g.user # Dekorator'den gelen kullanıcı objesi
@@ -480,7 +480,7 @@ def get_subscription_status():
 
 # Kullanıcının kendi aboneliğini yükseltmesi için PATCH endpoint'i
 @api_bp.route('/users/<int:user_id>/upgrade_plan', methods=['PATCH'])
-@current_app.limit("3/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
+@limiter.limit("3/minute", key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
 @require_subscription_plan(SubscriptionPlan.TRIAL)
 def upgrade_plan(user_id):
     user = g.user

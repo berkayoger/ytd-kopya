@@ -32,7 +32,11 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from backend.db import db
 
-from backend.db.models import AuditLog
+# AuditLog modeli bazı ortamlarda mevcut olmayabilir
+try:
+    from backend.db.models import AuditLog
+except Exception:  # pragma: no cover - test ortamları için
+    AuditLog = None
 
 
 
@@ -42,65 +46,65 @@ from backend.db.models import AuditLog
 
 def auto_sensitive_fields(model_cls: Any) -> List[str]:
 
-    """
+    """
 
-    Bir modelin sütunlarını tarar ve bilinen riskli desenlerle eşleşen
+    Bir modelin sütunlarını tarar ve bilinen riskli desenlerle eşleşen
 
-    sütun adlarının bir listesini döndürür.
+    sütun adlarının bir listesini döndürür.
 
-    """
+    """
 
-    risky_patterns = ["password", "secret", "token", "key", "recovery", "code", "pin", "hash"]
+    risky_patterns = ["password", "secret", "token", "key", "recovery", "code", "pin", "hash"]
 
-    return [
+    return [
 
-        col.name for col in model_cls.__table__.columns
+        col.name for col in model_cls.__table__.columns
 
-        if any(pattern in col.name.lower() for pattern in risky_patterns)
+        if any(pattern in col.name.lower() for pattern in risky_patterns)
 
-    ]
+    ]
 
 
 
 def sanitize_log_string(s: Any) -> Any:
 
-    """
+    """
 
-    Log enjeksiyonunu ve temel PII sızıntısını önlemek için bir dizeyi temizler.
+    Log enjeksiyonunu ve temel PII sızıntısını önlemek için bir dizeyi temizler.
 
-    """
+    """
 
-    if not isinstance(s, str):
+    if not isinstance(s, str):
 
-        return s
+        return s
 
-    # Kontrol karakterlerini (yeni satırlar ve sekmeler dahil) kaldır
+    # Kontrol karakterlerini (yeni satırlar ve sekmeler dahil) kaldır
 
-    s = re.sub(r'[\r\n\t\x00-\x1F\x7F-\x9F]', '', s)
+    s = re.sub(r'[\r\n\t\x00-\x1F\x7F-\x9F]', '', s)
 
-    # Yazdırılamayan karakterleri '?' ile değiştir
+    # Yazdırılamayan karakterleri '?' ile değiştir
 
-    s = ''.join(c if c.isprintable() else '?' for c in s)
+    s = ''.join(c if c.isprintable() else '?' for c in s)
 
-    return s
+    return s
 
 
 
 def sanitize_dict(data: Any) -> Any:
 
-    """Bir sözlük veya liste içindeki dize değerlerini yinelemeli olarak temizler."""
+    """Bir sözlük veya liste içindeki dize değerlerini yinelemeli olarak temizler."""
 
-    if isinstance(data, dict):
+    if isinstance(data, dict):
 
-        return {sanitize_log_string(k) if isinstance(k, str) else k: sanitize_dict(v) for k, v in data.items()}
+        return {sanitize_log_string(k) if isinstance(k, str) else k: sanitize_dict(v) for k, v in data.items()}
 
-    elif isinstance(data, list):
+    elif isinstance(data, list):
 
-        return [sanitize_dict(i) for i in data]
+        return [sanitize_dict(i) for i in data]
 
-    else:
+    else:
 
-        return sanitize_log_string(data)
+        return sanitize_log_string(data)
 
 
 
@@ -110,143 +114,145 @@ def sanitize_dict(data: Any) -> Any:
 
 def audit_log_fallback_file(log_entry: Dict[str, Any]):
 
-    """
+    """
 
-    Veritabanı yazma işlemi başarısız olursa, bir log girişini yerel bir dosyaya yazar.
+    Veritabanı yazma işlemi başarısız olursa, bir log girişini yerel bir dosyaya yazar.
 
-    Dosya kilitleme ve güvenlik kontrolleri kullanarak çoklu işlem güvenliği sağlar.
+    Dosya kilitleme ve güvenlik kontrolleri kullanarak çoklu işlem güvenliği sağlar.
 
-    """
+    """
 
-    fallback_dir = os.getenv("AUDIT_FALLBACK_LOG_DIR", "/var/log/ytcrypto_audit_logs")
+    fallback_dir = os.getenv("AUDIT_FALLBACK_LOG_DIR", "/var/log/ytcrypto_audit_logs")
 
-    fallback_file = os.path.join(fallback_dir, "auditlog-failsafe.log")
-
-
-
-    try:
-
-        if not os.path.exists(fallback_dir):
-
-            os.makedirs(fallback_dir, mode=0o700, exist_ok=True)
+    fallback_file = os.path.join(fallback_dir, "auditlog-failsafe.log")
 
 
 
-        # Symlink saldırılarına karşı kontrol
+    try:
 
-        if os.path.islink(fallback_file):
+        if not os.path.exists(fallback_dir):
 
-            logger.critical(f"Denetim kaydı fallback dosyası bir sembolik link: {fallback_file}. Güvenlik nedeniyle yazma işlemi iptal edildi.")
-
-            return
+            os.makedirs(fallback_dir, mode=0o700, exist_ok=True)
 
 
 
-        # Dosya sahibi UID kontrolü
+        # Symlink saldırılarına karşı kontrol
 
-        if os.path.exists(fallback_file):
+        if os.path.islink(fallback_file):
 
-            if os.stat(fallback_file).st_uid != os.getuid():
+            logger.critical(f"Denetim kaydı fallback dosyası bir sembolik link: {fallback_file}. Güvenlik nedeniyle yazma işlemi iptal edildi.")
 
-                logger.critical(f"Denetim kaydı fallback dosyası sahibi UID uyuşmazlığı! Beklenen: {os.getuid()}, Bulunan: {os.stat(fallback_file).st_uid}. Yazma işlemi iptal edildi.")
-
-                return
+            return
 
 
 
-        fd = os.open(fallback_file, os.O_CREAT | os.O_APPEND | os.O_WRONLY, 0o600)
+        # Dosya sahibi UID kontrolü
 
-        with os.fdopen(fd, "a", encoding="utf-8") as f:
+        if os.path.exists(fallback_file):
 
-            try:
+            if os.stat(fallback_file).st_uid != os.getuid():
 
-                fcntl.flock(f, fcntl.LOCK_EX)
+                logger.critical(f"Denetim kaydı fallback dosyası sahibi UID uyuşmazlığı! Beklenen: {os.getuid()}, Bulunan: {os.stat(fallback_file).st_uid}. Yazma işlemi iptal edildi.")
 
-                f.write(json.dumps(log_entry, default=str) + "\n")
+                return
 
-            finally:
 
-                fcntl.flock(f, fcntl.LOCK_UN)
 
-        logger.info(f"Denetim kaydı başarıyla fallback dosyasına yazıldı: {fallback_file}")
+        fd = os.open(fallback_file, os.O_CREAT | os.O_APPEND | os.O_WRONLY, 0o600)
 
-    except Exception as ex:
+        with os.fdopen(fd, "a", encoding="utf-8") as f:
 
-        logger.critical(f"Denetim kaydı fallback dosyasına yazılamadı: {ex}")
+            try:
+
+                fcntl.flock(f, fcntl.LOCK_EX)
+
+                f.write(json.dumps(log_entry, default=str) + "\n")
+
+            finally:
+
+                fcntl.flock(f, fcntl.LOCK_UN)
+
+        logger.info(f"Denetim kaydı başarıyla fallback dosyasına yazıldı: {fallback_file}")
+
+    except Exception as ex:
+
+        logger.critical(f"Denetim kaydı fallback dosyasına yazılamadı: {ex}")
 
 
 
 def add_audit_log(
 
-    action_type: str,
+    action_type: str,
 
-    actor_id: Optional[int] = None,
+    actor_id: Optional[int] = None,
 
-    actor_username: Optional[str] = None,
+    actor_username: Optional[str] = None,
 
-    target_id: Optional[int] = None,
+    target_id: Optional[int] = None,
 
-    target_username: Optional[str] = None,
+    target_username: Optional[str] = None,
 
-    details: Optional[Dict[str, Any]] = None,
+    details: Optional[Dict[str, Any]] = None,
 
-    ip_address: Optional[str] = None,
+    ip_address: Optional[str] = None,
 
-    commit: bool = True
+    commit: bool = True
 
 ) -> None:
 
-    """Sistemdeki önemli eylemleri denetim amacıyla kaydeder."""
+    """Sistemdeki önemli eylemleri denetim amacıyla kaydeder."""
 
-    sanitized_details = sanitize_dict(details)
+    sanitized_details = sanitize_dict(details)
 
-    sanitized_ip = sanitize_log_string(ip_address or request.remote_addr)
+    sanitized_ip = sanitize_log_string(ip_address or request.remote_addr)
 
 
 
-    try:
+    try:
 
-        log_entry = AuditLog(
+        if AuditLog is None:
+            raise RuntimeError("AuditLog model not available")
+        log_entry = AuditLog(
 
-            action_type=action_type,
+            action_type=action_type,
 
-            actor_id=actor_id,
+            actor_id=actor_id,
 
-            actor_username=sanitize_log_string(actor_username),
+            actor_username=sanitize_log_string(actor_username),
 
-            target_id=target_id,
+            target_id=target_id,
 
-            target_username=sanitize_log_string(target_username),
+            target_username=sanitize_log_string(target_username),
 
-            details=json.dumps(sanitized_details, default=str) if sanitized_details else None,
+            details=json.dumps(sanitized_details, default=str) if sanitized_details else None,
 
-            ip_address=sanitized_ip
+            ip_address=sanitized_ip
 
-        )
+        )
 
-        db.session.add(log_entry)
+        db.session.add(log_entry)
 
-        if commit:
+        if commit:
 
-            db.session.commit()
+            db.session.commit()
 
-    except Exception as e:
+    except Exception as e:
 
-        db.session.rollback()
+        db.session.rollback()
 
-        logger.error(f"Denetim günlüğü kaydedilemedi, fallback deneniyor: {e}")
+        logger.error(f"Denetim günlüğü kaydedilemedi, fallback deneniyor: {e}")
 
-        log_data_for_fallback = {
+        log_data_for_fallback = {
 
-            "action_type": action_type, "actor_username": actor_username,
+            "action_type": action_type, "actor_username": actor_username,
 
-            "details": sanitized_details, "ip_address": sanitized_ip,
+            "details": sanitized_details, "ip_address": sanitized_ip,
 
-            "timestamp": datetime.utcnow().isoformat(), "error": str(e)
+            "timestamp": datetime.utcnow().isoformat(), "error": str(e)
 
-        }
+        }
 
-        audit_log_fallback_file(log_data_for_fallback)
+        audit_log_fallback_file(log_data_for_fallback)
 
 
 
@@ -256,61 +262,84 @@ def add_audit_log(
 
 def serialize_model(obj: Any, exclude_fields: Optional[List[str]] = None) -> Dict[str, Any]:
 
-    """
+    """
 
-    Bir SQLAlchemy model nesnesini, hassas alanları hariç tutarak bir sözlüğe dönüştürür.
+    Bir SQLAlchemy model nesnesini, hassas alanları hariç tutarak bir sözlüğe dönüştürür.
 
-    """
+    """
 
-    if not obj:
+    if not obj:
 
-        return {}
+        return {}
 
-       
+       
 
-    model_sensitive_fields = getattr(obj.__class__, '__sensitive_fields__', [])
+    model_sensitive_fields = getattr(obj.__class__, '__sensitive_fields__', [])
 
-    all_excluded = set(auto_sensitive_fields(obj.__class__) + model_sensitive_fields + (exclude_fields or []))
+    all_excluded = set(auto_sensitive_fields(obj.__class__) + model_sensitive_fields + (exclude_fields or []))
 
 
 
-    out = {}
+    out = {}
 
-    for col in obj.__table__.columns:
+    for col in obj.__table__.columns:
 
-        if col.name in all_excluded:
+        if col.name in all_excluded:
 
-            continue
+            continue
 
-        val = getattr(obj, col.name)
+        val = getattr(obj, col.name)
 
-        if isinstance(val, (datetime, date)):
+        if isinstance(val, (datetime, date)):
 
-            out[col.name] = val.isoformat()
+            out[col.name] = val.isoformat()
 
-        elif isinstance(val, PyEnum):
+        elif isinstance(val, PyEnum):
 
-            out[col.name] = val.name
+            out[col.name] = val.name
 
-        else:
+        else:
 
-            out[col.name] = val
+            out[col.name] = val
 
-    return out
+    return out
 
 
 
 def mask_email(email: str) -> str:
 
-    """Bir e-posta adresini güvenli bir şekilde maskeler."""
+    """Bir e-posta adresini güvenli bir şekilde maskeler."""
 
-    if not email or '@' not in email:
+    if not email or '@' not in email:
 
-        return email
+        return email
 
-    name, domain = email.split('@', 1)
+    name, domain = email.split('@', 1)
 
-    return name[0] + '****' + '@' + domain
+    return name[0] + '****' + '@' + domain
+
+
+def serialize_user_for_api(user: Any, scope: str = 'public') -> Dict[str, Any]:
+    """Kullanıcı nesnesini güvenli şekilde sözlüğe çevirir."""
+    if not user:
+        return {}
+
+    data = {
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'subscription_level': user.subscription_level.name if getattr(user, 'subscription_level', None) else None,
+        'subscription_start': user.subscription_start.isoformat() if getattr(user, 'subscription_start', None) else None,
+        'subscription_end': user.subscription_end.isoformat() if getattr(user, 'subscription_end', None) else None,
+        'is_active': user.is_subscription_active() if hasattr(user, 'is_subscription_active') else False,
+    }
+    if scope == 'self':
+        data.update({
+            'api_key': user.api_key,
+            'is_locked': getattr(user, 'is_locked', False),
+            'locked_until': user.locked_until.isoformat() if getattr(user, 'locked_until', None) else None,
+        })
+    return data
 
 
 
@@ -320,42 +349,42 @@ def mask_email(email: str) -> str:
 
 def bulk_insert_records(records: list, chunk_size: int = 1000):
 
-    """
+    """
 
-    Veritabanına toplu olarak kayıt ekler. Büyük listeleri parçalara böler.
+    Veritabanına toplu olarak kayıt ekler. Büyük listeleri parçalara böler.
 
-    """
+    """
 
-    if not records:
+    if not records:
 
-        return
+        return
 
-    try:
+    try:
 
-        with db.session.begin():
+        with db.session.begin():
 
-            for i in range(0, len(records), chunk_size):
+            for i in range(0, len(records), chunk_size):
 
-                db.session.bulk_save_objects(records[i:i + chunk_size])
+                db.session.bulk_save_objects(records[i:i + chunk_size])
 
-        logger.info(f"{len(records)} adet kayıt başarıyla eklendi.")
+        logger.info(f"{len(records)} adet kayıt başarıyla eklendi.")
 
-    except Exception as e:
+    except Exception as e:
 
-        logger.exception(f"Toplu kayıt ekleme sırasında hata: {e}")
+        logger.exception(f"Toplu kayıt ekleme sırasında hata: {e}")
 
-        db.session.rollback()
+        db.session.rollback()
 
 
 
 def generate_random_code(length: int = 6, alphanumeric: bool = False) -> str:
 
-    """İsteğe bağlı olarak alfanümerik, güvenli bir rastgele kod üretir."""
+    """İsteğe bağlı olarak alfanümerik, güvenli bir rastgele kod üretir."""
 
-    chars = string.digits
+    chars = string.digits
 
-    if alphanumeric:
+    if alphanumeric:
 
-        chars += string.ascii_uppercase
+        chars += string.ascii_uppercase
 
-    return ''.join(random.choices(chars, k=length))
+    return ''.join(random.choices(chars, k=length))
