@@ -147,6 +147,10 @@
                     <i data-lucide="bell-ring" class="w-5 h-5 mr-3"></i>
                     Bildirim Mekanizması
                 </a>
+                <a href="#" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" data-section="auto-ta">
+                    <i data-lucide="cpu" class="w-5 h-5 mr-3"></i>
+                    🧠 Otomatik Teknik Tahminler
+                </a>
                  <a href="#" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" data-section="guvenlik-yonetimi">
                     <i data-lucide="shield" class="w-5 h-5 mr-3"></i>
                     Güvenlik Yönetimi
@@ -436,7 +440,29 @@
                             <input type="checkbox" id="task-failures" class="rounded text-indigo-600 focus:ring-indigo-500">
                             <label for="task-failures" class="text-slate-300">Celery Görev Başarısızlıklarında Bildir</label>
                         </div>
-                        <button class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md">Ayarları Kaydet</button>
+                    <button class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md">Ayarları Kaydet</button>
+                </div>
+                </section>
+                <section id="auto-ta" class="content-section hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-white">Otomatik Teknik Tahminler (TA-Strategy)</h2>
+                    <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="border-b border-slate-700">
+                                    <tr>
+                                        <th class="p-3">Sembol</th>
+                                        <th class="p-3">Hedef</th>
+                                        <th class="p-3">Getiri %</th>
+                                        <th class="p-3">Güven</th>
+                                        <th class="p-3">Oluşturulma</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ta-table-body">
+                                    <tr class="border-b border-slate-800 hover:bg-slate-700"><td class="p-3" colspan="5">Tahmin bulunamadı.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <button id="load-ta-btn" class="mt-4 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-4 rounded-md">Yükle</button>
                     </div>
                 </section>
                 <section id="guvenlik-yonetimi" class="content-section hidden">
@@ -529,6 +555,11 @@
             const ADMIN_API_KEY = "your_admin_secret_key"; // .env'deki ADMIN_ACCESS_KEY ile aynı olmalı
             const BACKEND_BASE_URL = 'http://localhost:5000';
             const SECURITY_ALARMS_API_URL = `${BACKEND_BASE_URL}/api/admin/security_alarms`;
+            const TA_PREDICTIONS_API_URL = `${BACKEND_BASE_URL}/api/admin/predictions?source_model=TA-Strategy`;
+
+            const taTableBody = document.getElementById('ta-table-body');
+            const loadTaButton = document.getElementById('load-ta-btn');
+            let taPage = 1;
 
             // Sidebar navigation logic
             navLinks.forEach(link => {
@@ -557,6 +588,11 @@
                         alarmOffset = 0; // Her sekme değişiminde sıfırla
                         securityAlarmsTableBody.innerHTML = ''; // Tabloyu temizle
                         fetchSecurityAlarms();
+                    }
+                    if (sectionId === 'auto-ta') {
+                        taPage = 1;
+                        taTableBody.innerHTML = '';
+                        fetchTaPredictions();
                     }
                      // Kullanıcı Yönetimi sekmesine tıklandığında kullanıcıları yükle
                     if (sectionId === 'kullanici-yonetimi') {
@@ -788,6 +824,49 @@
             }
 
             loadMoreUsersButton.addEventListener('click', fetchUsers);
+
+            async function fetchTaPredictions() {
+                try {
+                    const response = await fetch(`${TA_PREDICTIONS_API_URL}&page=${taPage}`, {
+                        headers: { 'X-ADMIN-API-KEY': ADMIN_API_KEY }
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({error: 'Yanıt JSON değil.'}));
+                        throw new Error(errorData.error || `HTTP Error: ${response.status}`);
+                    }
+                    const data = await response.json();
+
+                    if (taPage === 1) taTableBody.innerHTML = '';
+                    if (data.items && data.items.length) {
+                        data.items.forEach(p => {
+                            const row = document.createElement('tr');
+                            row.className = 'border-b border-slate-800 hover:bg-slate-700';
+                            row.innerHTML = `
+                                <td class="p-3">${p.symbol}</td>
+                                <td class="p-3">${p.target_price}</td>
+                                <td class="p-3">${p.expected_gain_pct}</td>
+                                <td class="p-3">${p.confidence_score}</td>
+                                <td class="p-3">${new Date(p.created_at).toLocaleDateString('tr-TR')}</td>
+                            `;
+                            taTableBody.appendChild(row);
+                        });
+                        taPage += 1;
+                        loadTaButton.disabled = data.items.length < data.per_page;
+                        lucide.createIcons();
+                    } else if (taPage === 1) {
+                        taTableBody.innerHTML = '<tr class="border-b border-slate-800 hover:bg-slate-700"><td class="p-3" colspan="5">Tahmin bulunamadı.</td></tr>';
+                        loadTaButton.disabled = true;
+                    } else {
+                        loadTaButton.disabled = true;
+                    }
+                } catch (error) {
+                    console.error('TA-Strategy tahminleri çekilirken hata:', error);
+                    taTableBody.innerHTML = `<tr class="border-b border-slate-800"><td class="p-3 text-red-400" colspan="5">Hata: ${error.message}</td></tr>`;
+                    loadTaButton.disabled = true;
+                }
+            }
+
+            loadTaButton.addEventListener('click', fetchTaPredictions);
 
             // Abonelik Kodu Üretme İşlevi
             generatePromoButton.addEventListener('click', async () => {
