@@ -18,6 +18,7 @@ import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 from pycoingecko import CoinGeckoAPI
 import pandas_ta as ta
+from scripts.crypto_ta import fetch_ohlc_data, calculate_indicators
 import feedparser
 import requests
 
@@ -231,6 +232,32 @@ def fetch_sentiment_news():
     logger.info("[TASK] Messari haber taraması (placeholder)")
 
 
+def fetch_and_store_technical_indicators():
+    logger.info("[TASK] Teknik analiz (RSI/MACD) hesaplama başlatıldı")
+    try:
+        df = fetch_ohlc_data("bitcoin", days=7)
+        result = calculate_indicators(df)
+        latest = result.dropna().iloc[-1]
+
+        logger.info(
+            f"[RSI] {latest['rsi']:.2f}, [MACD] {latest['MACD_12_26_9']:.4f}, Signal: {latest['MACDs_12_26_9']:.4f}"
+        )
+
+        from backend.db.models import TechnicalIndicator
+
+        ind = TechnicalIndicator(
+            symbol="BTC",
+            rsi=round(latest['rsi'], 2),
+            macd=round(latest['MACD_12_26_9'], 4),
+            signal=round(latest['MACDs_12_26_9'], 4),
+            created_at=datetime.utcnow(),
+        )
+        db.session.add(ind)
+        db.session.commit()
+    except Exception as e:
+        logger.exception(f"[ERROR] Teknik analiz verisi alınamadı: {e}")
+
+
 def evaluate_prediction_success():
     """Check active predictions and mark them as fulfilled when conditions met."""
 
@@ -276,4 +303,5 @@ scheduler.add_job(fetch_social_signals, 'interval', hours=3, id="social_task")
 scheduler.add_job(fetch_event_calendar, 'interval', hours=6, id="event_task")
 scheduler.add_job(fetch_sentiment_news, 'interval', hours=4, id="sentiment_task")
 scheduler.add_job(evaluate_prediction_success, 'interval', minutes=20, id="evaluate_predictions")
+scheduler.add_job(fetch_and_store_technical_indicators, 'interval', minutes=30, id="technical_analysis")
 scheduler.start()

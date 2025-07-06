@@ -412,3 +412,22 @@ class PredictionOpportunity(db.Model):
             "is_public": self.is_public,
             "created_at": self.created_at.isoformat(),
         }
+
+
+class TechnicalIndicator(db.Model):
+    __tablename__ = "technical_indicators"
+    id = Column(Integer, primary_key=True)
+    symbol = Column(String(10), nullable=False, index=True)
+    rsi = Column(Float, nullable=True)
+    macd = Column(Float, nullable=True)
+    signal = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            "symbol": self.symbol,
+            "rsi": self.rsi,
+            "macd": self.macd,
+            "signal": self.signal,
+            "created_at": self.created_at.isoformat(),
+        }
