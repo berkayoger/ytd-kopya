@@ -55,57 +55,92 @@ def list_predictions():
 
 @predictions_bp.route("/public", methods=["GET"])
 def public_predictions():
-    """Kullanıcılara açık, aktif tahminleri listeler."""
+    """Kullanıcılara açık önerileri listeler."""
     try:
         page = int(request.args.get("page", 1))
         per_page = int(request.args.get("per_page", 20))
         trend_type = request.args.get("trend_type")
-        min_confidence = request.args.get("min_confidence")
+        min_confidence = request.args.get("min_confidence", type=float)
 
-        query = PredictionOpportunity.query.filter_by(is_active=True, is_public=True)
+        q = PredictionOpportunity.query.filter_by(is_active=True, is_public=True)
 
         if trend_type:
-            query = query.filter(PredictionOpportunity.trend_type == trend_type)
-        if min_confidence:
-            try:
-                min_conf = float(min_confidence)
-                query = query.filter(PredictionOpportunity.confidence_score >= min_conf)
-            except ValueError:
-                pass
+            q = q.filter(PredictionOpportunity.trend_type == trend_type)
+        if min_confidence is not None:
+            q = q.filter(PredictionOpportunity.confidence_score >= min_confidence)
 
-        query = query.order_by(PredictionOpportunity.created_at.desc())
-        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        total = q.count()
+        predictions = (
+            q.order_by(PredictionOpportunity.created_at.desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+            .all()
+        )
 
         result = []
-        now = datetime.utcnow()
-        for p in pagination.items:
-            status = "tamamlandı" if p.fulfilled_at else (
-                "aktif" if (not p.expires_at or p.expires_at > now) else "süresi doldu"
-            )
-            result.append({
-                "symbol": p.symbol,
-                "target_price": p.target_price,
-                "expected_gain_pct": p.expected_gain_pct,
-                "confidence_score": p.confidence_score,
-                "trend_type": p.trend_type,
-                "forecast_horizon": p.forecast_horizon,
-                "created_at": p.created_at.isoformat(),
-                "realized_gain_pct": p.realized_gain_pct,
-                "fulfilled_at": p.fulfilled_at.isoformat() if p.fulfilled_at else None,
-                "was_successful": p.was_successful,
-                "status": status,
-            })
+        for p in predictions:
+            now = datetime.utcnow()
+            if p.fulfilled_at:
+                status = "Tamamlandı ✅" if p.was_successful else "Başarısız ❌"
+            elif p.expires_at and p.expires_at < now:
+                status = "Süresi doldu ❌"
+            else:
+                status = "Devam ediyor ⏳"
 
-        return jsonify({
-            "total": pagination.total,
-            "page": pagination.page,
-            "per_page": pagination.per_page,
-            "pages": pagination.pages,
-            "items": result,
-        }), 200
+            remaining_time = None
+            if p.expires_at:
+                remaining_time = (
+                    str(p.expires_at - now) if p.expires_at > now else "Expired"
+                )
+
+            description = (
+                f"{p.symbol} için hedef fiyat: {p.target_price} USD (%{p.expected_gain_pct} getiri bekleniyor). Güven: %{p.confidence_score}"
+            )
+
+            result.append(
+                {
+                    "symbol": p.symbol,
+                    "target_price": p.target_price,
+                    "expected_gain_pct": p.expected_gain_pct,
+                    "confidence_score": p.confidence_score,
+                    "trend_type": p.trend_type,
+                    "forecast_horizon": p.forecast_horizon,
+                    "created_at": p.created_at.isoformat(),
+                    "realized_gain_pct": p.realized_gain_pct,
+                    "fulfilled_at": p.fulfilled_at.isoformat() if p.fulfilled_at else None,
+                    "was_successful": p.was_successful,
+                    "status": status,
+                    "description": description,
+                    "expires_at": p.expires_at.isoformat() if p.expires_at else None,
+                    "remaining_time": remaining_time,
+                }
+            )
+
+        confidence_scores = [
+            p.confidence_score for p in predictions if p.confidence_score is not None
+        ]
+        min_conf_range = [round(min(confidence_scores), 1), 100] if confidence_scores else [0, 100]
+
+        return (
+            jsonify(
+                {
+                    "total": total,
+                    "page": page,
+                    "per_page": per_page,
+                    "items": result,
+                    "filters": {
+                        "available_trend_types": sorted(
+                            set(p.trend_type for p in predictions if p.trend_type)
+                        ),
+                        "min_confidence_range": min_conf_range,
+                    },
+                }
+            ),
+            200,
+        )
     except Exception as e:
-        logger.error(f"[ERROR] Public prediction fetch failed: {e}")
-        return jsonify({"error": str(e)}), 400
+        logger.error("Public prediction fetch error", exc_info=e)
+        return jsonify({"error": "Beklenmeyen hata oluştu."}), 500
 
 
 @predictions_bp.route("/", methods=["POST"])
