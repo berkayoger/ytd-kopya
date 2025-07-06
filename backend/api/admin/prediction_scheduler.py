@@ -10,7 +10,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from backend.auth.middlewares import admin_required
 from backend.db import db
-from backend.db.models import PredictionOpportunity
+from backend.db.models import PredictionOpportunity, TechnicalIndicator
 from datetime import datetime, timedelta
 from backend.utils.helpers import add_audit_log
 import logging
@@ -232,28 +232,28 @@ def fetch_sentiment_news():
     logger.info("[TASK] Messari haber taraması (placeholder)")
 
 
+def store_latest_ta(symbol="bitcoin"):
+    """Fetch OHLC data and persist latest RSI/MACD values."""
+    df = fetch_ohlc_data(coin_id=symbol)
+    ta_df = calculate_indicators(df)
+    latest = ta_df.iloc[-1]
+
+    ti = TechnicalIndicator(
+        symbol=symbol.upper(),
+        rsi=float(latest["rsi"]),
+        macd=float(latest["MACD_12_26_9"]),
+        signal=float(latest["MACDs_12_26_9"]),
+        created_at=datetime.utcnow(),
+    )
+    db.session.add(ti)
+    db.session.commit()
+
+
 def fetch_and_store_technical_indicators():
     logger.info("[TASK] Teknik analiz (RSI/MACD) hesaplama başlatıldı")
     try:
-        df = fetch_ohlc_data("bitcoin", days=7)
-        result = calculate_indicators(df)
-        latest = result.dropna().iloc[-1]
-
-        logger.info(
-            f"[RSI] {latest['rsi']:.2f}, [MACD] {latest['MACD_12_26_9']:.4f}, Signal: {latest['MACDs_12_26_9']:.4f}"
-        )
-
-        from backend.db.models import TechnicalIndicator
-
-        ind = TechnicalIndicator(
-            symbol="BTC",
-            rsi=round(latest['rsi'], 2),
-            macd=round(latest['MACD_12_26_9'], 4),
-            signal=round(latest['MACDs_12_26_9'], 4),
-            created_at=datetime.utcnow(),
-        )
-        db.session.add(ind)
-        db.session.commit()
+        store_latest_ta("bitcoin")
+        logger.info("[TASK] Teknik analiz verisi kaydedildi")
     except Exception as e:
         logger.exception(f"[ERROR] Teknik analiz verisi alınamadı: {e}")
 
