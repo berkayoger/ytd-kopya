@@ -25,6 +25,8 @@ def test_create_prediction_from_decision(monkeypatch):
         }
         result = create_prediction_from_decision("bitcoin", indicators)
         assert result["symbol"] == "BITCOIN"
+        assert result["expected_gain_days"] == "45-60"
+        assert result["description"]
         assert PredictionOpportunity.query.count() == 1
 
 
