@@ -25,6 +25,7 @@ def list_predictions():
         order = request.args.get("order", "desc")
         symbol = request.args.get("symbol")
         is_successful = request.args.get("was_successful")
+        source_model = request.args.get("source_model")
 
         query = PredictionOpportunity.query
 
@@ -33,6 +34,8 @@ def list_predictions():
         if is_successful in ["true", "false"]:
             success_val = is_successful == "true"
             query = query.filter(PredictionOpportunity.was_successful == success_val)
+        if source_model:
+            query = query.filter(PredictionOpportunity.source_model == source_model)
 
         if order == "desc":
             query = query.order_by(getattr(PredictionOpportunity, sort_by).desc())
