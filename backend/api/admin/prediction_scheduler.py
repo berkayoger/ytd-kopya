@@ -1,3 +1,11 @@
+"""Utility endpoints and background tasks for prediction opportunities.
+
+This module exposes a minimal CRUD API for managing prediction opportunities
+as well as scheduled jobs that gather data from various sources.  The collected
+data can later be used by the forecasting engine.  All endpoints in this
+blueprint require admin privileges.
+"""
+
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from backend.auth.middlewares import admin_required
@@ -21,13 +29,17 @@ logger = logging.getLogger(__name__)
 @jwt_required()
 @admin_required()
 def list_predictions():
-    predictions = PredictionOpportunity.query.order_by(PredictionOpportunity.created_at.desc()).all()
+    """Return all prediction opportunities in descending order of creation."""
+
+    predictions = PredictionOpportunity.query.order_by(
+        PredictionOpportunity.created_at.desc()
+    ).all()
     return jsonify([p.to_dict() for p in predictions])
 
 
 @predictions_bp.route("/public", methods=["GET"])
 def public_predictions():
-    """Kullanıcılara açık önerileri listeler."""
+    """List public and active prediction opportunities."""
     predictions = PredictionOpportunity.query.filter_by(is_active=True, is_public=True).order_by(PredictionOpportunity.created_at.desc()).all()
     result = [
         {
@@ -50,6 +62,8 @@ def public_predictions():
 @jwt_required()
 @admin_required()
 def create_prediction():
+    """Create a new prediction opportunity based on the posted JSON body."""
+
     data = request.get_json() or {}
     try:
         required_fields = ["symbol", "current_price", "target_price", "expected_gain_pct"]
@@ -103,6 +117,8 @@ def create_prediction():
 @jwt_required()
 @admin_required()
 def update_prediction(prediction_id):
+    """Partially update an existing prediction opportunity."""
+
     data = request.get_json() or {}
     pred = PredictionOpportunity.query.get_or_404(prediction_id)
     try:
@@ -139,6 +155,8 @@ def update_prediction(prediction_id):
 @jwt_required()
 @admin_required()
 def delete_prediction(prediction_id):
+    """Delete a prediction opportunity by its identifier."""
+
     pred = PredictionOpportunity.query.get_or_404(prediction_id)
     db.session.delete(pred)
     db.session.commit()
@@ -151,6 +169,8 @@ cg = CoinGeckoAPI()
 
 
 def fetch_price_data():
+    """Fetch simple price data for Bitcoin and Ethereum from CoinGecko."""
+
     logger.info("[TASK] CoinGecko veri toplama başlatıldı")
     try:
         data = cg.get_price(ids='bitcoin,ethereum', vs_currencies='usd')
@@ -160,6 +180,8 @@ def fetch_price_data():
 
 
 def fetch_technical_data():
+    """Calculate a basic RSI indicator using pandas-ta."""
+
     logger.info("[TASK] Teknik analiz hesaplama başlatıldı")
     import pandas as pd
     df = pd.DataFrame({'close': [100, 102, 101, 105, 110]})
@@ -168,6 +190,8 @@ def fetch_technical_data():
 
 
 def fetch_news_rss():
+    """Fetch a few recent headlines from CoinTelegraph RSS feed."""
+
     logger.info("[TASK] RSS haber toplama başlatıldı")
     feed = feedparser.parse('https://cointelegraph.com/rss')
     for entry in feed.entries[:3]:
@@ -175,6 +199,8 @@ def fetch_news_rss():
 
 
 def fetch_news_api():
+    """Get crypto related news from NewsAPI using the demo key."""
+
     logger.info("[TASK] NewsAPI verisi çekiliyor")
     try:
         url = "https://newsapi.org/v2/everything?q=crypto&apiKey=demo"
@@ -188,18 +214,26 @@ def fetch_news_api():
 
 
 def fetch_social_signals():
+    """Placeholder for collecting social sentiment data."""
+
     logger.info("[TASK] Sosyal sinyal verisi toplanıyor (placeholder)")
 
 
 def fetch_event_calendar():
+    """Placeholder for checking events from CoinMarketCal."""
+
     logger.info("[TASK] CoinMarketCal etkinlik kontrolü (placeholder)")
 
 
 def fetch_sentiment_news():
+    """Placeholder for scanning sentiment-based news sources."""
+
     logger.info("[TASK] Messari haber taraması (placeholder)")
 
 
 def evaluate_prediction_success():
+    """Check active predictions and mark them as fulfilled when conditions met."""
+
     logger.info("[TASK] Tahmin başarı takibi başlatıldı")
     try:
         now = datetime.utcnow()
