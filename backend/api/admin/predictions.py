@@ -82,40 +82,14 @@ def public_predictions():
 
         result = []
         for p in predictions:
-            now = datetime.utcnow()
-            if p.fulfilled_at:
-                status = "Tamamlandı ✅" if p.was_successful else "Başarısız ❌"
-            elif p.expires_at and p.expires_at < now:
-                status = "Süresi doldu ❌"
-            else:
-                status = "Devam ediyor ⏳"
-
-            remaining_time = None
-            if p.expires_at:
-                remaining_time = (
-                    str(p.expires_at - now) if p.expires_at > now else "Expired"
-                )
-
-            description = (
-                f"{p.symbol} için hedef fiyat: {p.target_price} USD (%{p.expected_gain_pct} getiri bekleniyor). Güven: %{p.confidence_score}"
-            )
-
             result.append(
                 {
                     "symbol": p.symbol,
-                    "target_price": p.target_price,
+                    "signal": "buy",
+                    "confidence": round((p.confidence_score or 0) / 100, 2),
                     "expected_gain_pct": p.expected_gain_pct,
-                    "confidence_score": p.confidence_score,
-                    "trend_type": p.trend_type,
-                    "forecast_horizon": p.forecast_horizon,
-                    "created_at": p.created_at.isoformat(),
-                    "realized_gain_pct": p.realized_gain_pct,
-                    "fulfilled_at": p.fulfilled_at.isoformat() if p.fulfilled_at else None,
-                    "was_successful": p.was_successful,
-                    "status": status,
-                    "description": description,
-                    "expires_at": p.expires_at.isoformat() if p.expires_at else None,
-                    "remaining_time": remaining_time,
+                    "expected_gain_days": p.expected_gain_days,
+                    "description": p.description,
                 }
             )
 
