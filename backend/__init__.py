@@ -43,7 +43,14 @@ class Config:
     
     # JWT Gizli Anahtarı (Ortam değişkeninden al, yoksa varsayılan güvenli olmayan bir değer kullan)
     # Üretimde bu anahtar çok güçlü ve güvenli tutulmalıdır.
-    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-jwt-key-change-this-in-prod!") 
+    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-jwt-key-change-this-in-prod!")
+    ACCESS_TOKEN_SECRET = os.getenv("ACCESS_TOKEN_SECRET", "change_me_access")
+    REFRESH_TOKEN_SECRET = os.getenv("REFRESH_TOKEN_SECRET", "change_me_refresh")
+    ACCESS_TOKEN_EXP_MINUTES = int(os.getenv("ACCESS_TOKEN_EXP_MINUTES", "15"))
+    REFRESH_TOKEN_EXP_DAYS = int(os.getenv("REFRESH_TOKEN_EXP_DAYS", "7"))
+    JWT_TOKEN_LOCATION = ["headers"]
+    JWT_HEADER_NAME = "Authorization"
+    JWT_HEADER_TYPE = "Bearer"
     
     # Celery Beat için periyodik görevlerin tanımlanması
     CELERY_BEAT_SCHEDULE = {
