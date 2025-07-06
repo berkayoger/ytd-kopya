@@ -215,21 +215,66 @@ def fetch_news_api():
 
 
 def fetch_social_signals():
-    """Placeholder for collecting social sentiment data."""
+    """Collect social sentiment data from LunarCrush."""
 
-    logger.info("[TASK] Sosyal sinyal verisi toplanıyor (placeholder)")
+    logger.info("[TASK] LunarCrush sosyal verisi çekiliyor...")
+    try:
+        url = "https://api.lunarcrush.com/v2?data=assets&key=demo"
+        res = requests.get(url)
+        if res.ok:
+            data = res.json().get("data", [])
+            for asset in data[:3]:
+                logger.info(
+                    f"[SOCIAL] {asset['name']} - Galaxy Score: {asset.get('galaxy_score')}"
+                )
+        else:
+            logger.warning(f"[SOCIAL] LunarCrush response: {res.status_code}")
+    except Exception as e:
+        logger.error(f"[SOCIAL] LunarCrush hata: {e}")
 
 
 def fetch_event_calendar():
-    """Placeholder for checking events from CoinMarketCal."""
+    """Retrieve upcoming events from CoinMarketCal."""
 
-    logger.info("[TASK] CoinMarketCal etkinlik kontrolü (placeholder)")
+    logger.info("[TASK] CoinMarketCal etkinlikleri alınıyor...")
+    try:
+        headers = {
+            "x-api-key": "YOUR_API_KEY",  # Gerçek anahtar gereklidir
+        }
+        url = "https://developers.coinmarketcal.com/v1/events"
+        params = {
+            "max": 3,
+            "coins": "bitcoin",
+            "page": 1,
+        }
+        res = requests.get(url, headers=headers, params=params)
+        if res.ok:
+            data = res.json().get("body", [])
+            for ev in data:
+                logger.info(f"[EVENT] {ev['title']} - {ev['date_event']}")
+        else:
+            logger.warning(f"[EVENT] CoinMarketCal response: {res.status_code}")
+    except Exception as e:
+        logger.error(f"[EVENT] CoinMarketCal hata: {e}")
 
 
 def fetch_sentiment_news():
-    """Placeholder for scanning sentiment-based news sources."""
+    """Collect news articles from Messari for sentiment analysis."""
 
-    logger.info("[TASK] Messari haber taraması (placeholder)")
+    logger.info("[TASK] Messari haber verisi alınıyor...")
+    try:
+        url = "https://data.messari.io/api/v1/news"
+        res = requests.get(url)
+        if res.ok:
+            articles = res.json().get("data", [])
+            for article in articles[:3]:
+                logger.info(
+                    f"[NEWS] {article['title']} - {article['published_at']}"
+                )
+        else:
+            logger.warning(f"[NEWS] Messari status: {res.status_code}")
+    except Exception as e:
+        logger.error(f"[NEWS] Messari API hatası: {e}")
 
 
 def fetch_and_store_technical_indicators():
