@@ -12,6 +12,7 @@ from backend.auth.middlewares import admin_required
 from backend.db import db
 from backend.db.models import PredictionOpportunity, TechnicalIndicator
 from datetime import datetime, timedelta
+from sqlalchemy import desc
 from backend.utils.helpers import add_audit_log
 import logging
 
@@ -303,6 +304,48 @@ def fetch_and_store_technical_indicators():
         logger.exception(f"[ERROR] Teknik analiz verisi alınamadı: {e}")
 
 
+def generate_prediction_from_ta(symbol="bitcoin", threshold_gain: float = 3.0):
+    """Create a short-term prediction using latest RSI and MACD values."""
+    last_ta = (
+        TechnicalIndicator.query
+        .filter_by(symbol=symbol.upper())
+        .order_by(desc(TechnicalIndicator.created_at))
+        .first()
+    )
+    if not last_ta:
+        return None
+
+    rec = []
+    if last_ta.rsi is not None and last_ta.rsi < 30:
+        rec.append("RSI düşük, olası dönüş")
+    if last_ta.macd is not None and last_ta.signal is not None:
+        if last_ta.macd > last_ta.signal:
+            rec.append("MACD kesişimi → Al")
+        elif last_ta.macd < last_ta.signal:
+            rec.append("MACD kesişimi → Sat")
+
+    if not rec:
+        return None
+
+    current_price = 100  # TODO: gerçek fiyat verisi ile değiştirilmeli
+    prediction = PredictionOpportunity(
+        symbol=symbol.upper(),
+        current_price=current_price,
+        target_price=round(current_price * (1 + threshold_gain / 100), 2),
+        expected_gain_pct=threshold_gain,
+        confidence_score=80,
+        trend_type="short_term",
+        source_model="TA-Strategy",
+        is_active=True,
+        is_public=True,
+        forecast_horizon="1d",
+        created_at=datetime.utcnow(),
+        expires_at=datetime.utcnow() + timedelta(days=1),
+    )
+    db.session.add(prediction)
+    db.session.commit()
+    return prediction.to_dict()
+
 def evaluate_prediction_success():
     """Check active predictions and mark them as fulfilled when conditions met."""
 
@@ -349,4 +392,5 @@ scheduler.add_job(fetch_event_calendar, 'interval', hours=6, id="event_task")
 scheduler.add_job(fetch_sentiment_news, 'interval', hours=4, id="sentiment_task")
 scheduler.add_job(evaluate_prediction_success, 'interval', minutes=20, id="evaluate_predictions")
 scheduler.add_job(fetch_and_store_technical_indicators, 'interval', minutes=30, id="technical_analysis")
+scheduler.add_job(lambda: generate_prediction_from_ta("bitcoin"), 'interval', hours=2, id="ta_predictions")
 scheduler.start()
