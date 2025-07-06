@@ -169,9 +169,7 @@ def create_app():
     # Blueprint'leri kaydet
     from backend.auth.routes import auth_bp
     from backend.api.routes import api_bp
-    if os.getenv("FLASK_ENV") != "testing":
-        from backend.admin_panel.routes import admin_bp
-        app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    from backend.admin_panel.routes import admin_bp
     from backend.api.admin.usage_limits import admin_usage_bp
     from backend.api.admin.promo_codes import admin_promo_bp
     from backend.api.admin.promo_stats import stats_bp
@@ -179,8 +177,7 @@ def create_app():
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(api_bp, url_prefix='/api')
-    if os.getenv("FLASK_ENV") != "testing":
-        app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(admin_usage_bp)
     app.register_blueprint(admin_promo_bp)
     app.register_blueprint(stats_bp)

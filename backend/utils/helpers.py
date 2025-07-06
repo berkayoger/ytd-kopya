@@ -319,6 +319,11 @@ def mask_email(email: str) -> str:
     return name[0] + '****' + '@' + domain
 
 
+def is_user_accessible(user: Any) -> bool:
+    """RBAC için temel kullanıcı erişilebilirlik kontrolü."""
+    return not getattr(user, 'is_locked', False)
+
+
 def serialize_user_for_api(user: Any, scope: str = 'public') -> Dict[str, Any]:
     """Kullanıcı nesnesini güvenli şekilde sözlüğe çevirir."""
     if not user:
