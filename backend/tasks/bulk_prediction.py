@@ -6,7 +6,6 @@ from backend.db.models import PredictionOpportunity
 from backend.utils.price_fetcher import fetch_current_price
 from datetime import datetime, timedelta
 import logging
- main
 
 logger = logging.getLogger(__name__)
 cg = CoinGeckoAPI()
@@ -36,7 +35,6 @@ def generate_predictions_for_all_coins(limit=5):
                     is_public=True,
                     forecast_horizon="1d",
                     created_at=datetime.utcnow(),
-                    expires_at=datetime.utcnow() + timedelta(days=1),
                 )
                 db.session.add(pred)
                 created.append(data["symbol"])
@@ -44,6 +42,5 @@ def generate_predictions_for_all_coins(limit=5):
         logger.info(f"[TA-BULK] Otomatik tahminler üretildi: {created}")
         return created
     except Exception as e:  # pragma: no cover - logging
- main
         logger.error(f"[TA-BULK] Tahmin üretim hatası: {e}")
         return []
