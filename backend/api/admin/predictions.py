@@ -22,6 +22,30 @@ def list_predictions():
     return jsonify([p.to_dict() for p in predictions])
 
 
+@predictions_bp.route("/public", methods=["GET"])
+def public_predictions():
+    """Kullanıcılara açık, aktif tahminleri listeler."""
+    predictions = (
+        PredictionOpportunity.query
+        .filter_by(is_active=True, is_public=True)
+        .order_by(PredictionOpportunity.created_at.desc())
+        .all()
+    )
+    result = [
+        {
+            "symbol": p.symbol,
+            "target_price": p.target_price,
+            "expected_gain_pct": p.expected_gain_pct,
+            "confidence_score": p.confidence_score,
+            "trend_type": p.trend_type,
+            "forecast_horizon": p.forecast_horizon,
+            "created_at": p.created_at.isoformat(),
+        }
+        for p in predictions
+    ]
+    return jsonify(result), 200
+
+
 @predictions_bp.route("/", methods=["POST"])
 @jwt_required()
 @admin_required()
@@ -61,6 +85,7 @@ def create_prediction():
             trend_type=data.get("trend_type", "short_term"),
             source_model=data.get("source_model", "AIModel"),
             is_active=bool(data.get("is_active", True)),
+            is_public=bool(data.get("is_public", True)),
             created_at=datetime.utcnow(),
         )
         db.session.add(pred)
@@ -94,8 +119,8 @@ def update_prediction(prediction_id):
         float_fields = ["current_price", "target_price", "expected_gain_pct", "confidence_score"]
         all_fields = [
             "symbol", "current_price", "target_price", "forecast_horizon",
-            "expected_gain_pct", "confidence_score", "trend_type", 
-            "source_model", "is_active"
+            "expected_gain_pct", "confidence_score", "trend_type",
+            "source_model", "is_active", "is_public"
         ]
 
         for field in all_fields:

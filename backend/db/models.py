@@ -394,6 +394,7 @@ class PredictionOpportunity(db.Model):
     trend_type = Column(String(50), nullable=False, default='short_term')
     source_model = Column(String(100), nullable=False, default='AIModel')
     is_active = Column(Boolean, default=True, nullable=False)
+    is_public = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     def to_dict(self):
@@ -408,5 +409,6 @@ class PredictionOpportunity(db.Model):
             "trend_type": self.trend_type,
             "source_model": self.source_model,
             "is_active": self.is_active,
+            "is_public": self.is_public,
             "created_at": self.created_at.isoformat(),
         }
