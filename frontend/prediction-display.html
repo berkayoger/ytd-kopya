@@ -8,6 +8,7 @@
 <body class="bg-gray-100 text-gray-900 p-6">
     <div class="max-w-6xl mx-auto">
         <h1 class="text-2xl font-bold mb-4">Tahmin Fırsatları</h1>
+        <div id="ta-summary" class="mb-4 p-3 bg-white rounded shadow text-sm"></div>
         <div class="flex space-x-2 mb-4">
             <select id="trend-type" class="border px-3 py-2 rounded"></select>
             <input id="min-confidence" type="number" step="0.1" class="border px-3 py-2 rounded" placeholder="Min güven">
@@ -79,7 +80,23 @@
                 tbody.appendChild(row);
             }
         }
-        document.addEventListener('DOMContentLoaded', () => loadPredictions());
+        async function loadTA() {
+            const res = await fetch('/api/technical/latest');
+            const data = await res.json();
+            const div = document.getElementById('ta-summary');
+            if (data && Object.keys(data).length) {
+                div.innerHTML = `
+        <strong>BTC RSI:</strong> ${data.rsi} |
+        <strong>MACD:</strong> ${data.macd} |
+        <strong>Signal:</strong> ${data.signal}
+        <span class="text-gray-500">(${new Date(data.created_at).toLocaleString()})</span>
+                `;
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTA();
+            loadPredictions();
+        });
     </script>
 </body>
 </html>

@@ -181,6 +181,7 @@ def create_app():
     from backend.api.admin.promo_codes import admin_promo_bp
     from backend.api.admin.promo_stats import stats_bp
     from backend.api.admin.predictions import predictions_bp
+    from backend.api.ta_routes import bp as ta_bp
 
     # APScheduler tabanli gorevleri istege bagli olarak baslat
     if os.getenv("ENABLE_SCHEDULER", "0") == "1":
@@ -193,6 +194,7 @@ def create_app():
     app.register_blueprint(admin_promo_bp)
     app.register_blueprint(stats_bp)
     app.register_blueprint(predictions_bp)
+    app.register_blueprint(ta_bp)
 
     # Sağlık Kontrol Endpoint'i
     @app.route('/health', methods=['GET'])
