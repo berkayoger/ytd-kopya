@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required
 from backend.auth.middlewares import admin_required
 from backend.db import db
 from backend.db.models import PredictionOpportunity
-from datetime import datetime
+from datetime import datetime, timedelta
 from backend.utils.helpers import add_audit_log
 import logging
 
@@ -28,12 +28,7 @@ def list_predictions():
 @predictions_bp.route("/public", methods=["GET"])
 def public_predictions():
     """Kullanıcılara açık önerileri listeler."""
-    predictions = (
-        PredictionOpportunity.query
-        .filter_by(is_active=True, is_public=True)
-        .order_by(PredictionOpportunity.created_at.desc())
-        .all()
-    )
+    predictions = PredictionOpportunity.query.filter_by(is_active=True, is_public=True).order_by(PredictionOpportunity.created_at.desc()).all()
     result = [
         {
             "symbol": p.symbol,
@@ -43,8 +38,10 @@ def public_predictions():
             "trend_type": p.trend_type,
             "forecast_horizon": p.forecast_horizon,
             "created_at": p.created_at.isoformat(),
-        }
-        for p in predictions
+            "realized_gain_pct": p.realized_gain_pct,
+            "fulfilled_at": p.fulfilled_at.isoformat() if p.fulfilled_at else None,
+            "was_successful": p.was_successful
+        } for p in predictions
     ]
     return jsonify(result), 200
 
@@ -60,18 +57,35 @@ def create_prediction():
             if field not in data:
                 return jsonify({"error": f"'{field}' alanı zorunludur"}), 400
 
+        created_at = datetime.utcnow()
+        forecast_horizon = data.get("forecast_horizon")
+        expires_at = None
+        if forecast_horizon:
+            try:
+                num = int(forecast_horizon[:-1])
+                unit = forecast_horizon[-1]
+                if unit == 'd':
+                    expires_at = created_at + timedelta(days=num)
+                elif unit == 'h':
+                    expires_at = created_at + timedelta(hours=num)
+                elif unit == 'w':
+                    expires_at = created_at + timedelta(weeks=num)
+            except Exception:
+                pass
+
         pred = PredictionOpportunity(
             symbol=data["symbol"].upper(),
             current_price=float(data["current_price"]),
             target_price=float(data["target_price"]),
-            forecast_horizon=data.get("forecast_horizon"),
+            forecast_horizon=forecast_horizon,
             expected_gain_pct=float(data["expected_gain_pct"]),
             confidence_score=float(data.get("confidence_score", 0.0)),
             trend_type=data.get("trend_type", "short_term"),
             source_model=data.get("source_model", "AIModel"),
             is_active=bool(data.get("is_active", True)),
             is_public=bool(data.get("is_public", True)),
-            created_at=datetime.utcnow()
+            created_at=created_at,
+            expires_at=expires_at
         )
         db.session.add(pred)
         db.session.commit()
@@ -92,15 +106,20 @@ def update_prediction(prediction_id):
     data = request.get_json() or {}
     pred = PredictionOpportunity.query.get_or_404(prediction_id)
     try:
-        float_fields = ["current_price", "target_price", "expected_gain_pct", "confidence_score"]
+        float_fields = ["current_price", "target_price", "expected_gain_pct", "confidence_score", "realized_gain_pct"]
+        datetime_fields = ["fulfilled_at", "expires_at"]
         for field in [
             "symbol", "current_price", "target_price", "forecast_horizon",
-            "expected_gain_pct", "confidence_score", "trend_type", "source_model", "is_active", "is_public"
+            "expected_gain_pct", "confidence_score", "trend_type", "source_model",
+            "is_active", "is_public", "realized_gain_pct", "fulfilled_at",
+            "was_successful", "expires_at"
         ]:
             if field in data:
                 value = data[field]
                 if field in float_fields:
                     setattr(pred, field, float(value))
+                elif field in datetime_fields:
+                    setattr(pred, field, datetime.fromisoformat(value))
                 elif field == "symbol":
                     setattr(pred, field, value.upper())
                 else:
@@ -180,6 +199,40 @@ def fetch_sentiment_news():
     logger.info("[TASK] Messari haber taraması (placeholder)")
 
 
+def evaluate_prediction_success():
+    logger.info("[TASK] Tahmin başarı takibi başlatıldı")
+    try:
+        now = datetime.utcnow()
+        active_preds = PredictionOpportunity.query.filter(
+            PredictionOpportunity.is_active == True,
+            PredictionOpportunity.fulfilled_at == None
+        ).all()
+
+        ids = list(set(p.symbol.lower() for p in active_preds))
+        if not ids:
+            return
+
+        price_data = cg.get_price(ids=','.join(ids), vs_currencies='usd')
+
+        for pred in active_preds:
+            sym = pred.symbol.lower()
+            if sym in price_data:
+                current_price = price_data[sym]['usd']
+                gain_pct = ((current_price - pred.current_price) / pred.current_price) * 100
+                pred.realized_gain_pct = round(gain_pct, 2)
+                if current_price >= pred.target_price:
+                    pred.was_successful = True
+                    pred.fulfilled_at = now
+                    logger.info(f"[FULFILLED] {pred.symbol} hedefe ulaştı → %{gain_pct:.2f}")
+                elif pred.expires_at and pred.expires_at < now:
+                    pred.was_successful = False
+                    pred.fulfilled_at = now
+                    logger.info(f"[FAILED] {pred.symbol} süre doldu → %{gain_pct:.2f}")
+        db.session.commit()
+    except Exception as e:
+        logger.error(f"[ERROR] Tahmin güncelleme: {e}")
+
+
 scheduler = BackgroundScheduler(daemon=True)
 scheduler.add_job(fetch_price_data, 'interval', minutes=15, id="price_task")
 scheduler.add_job(fetch_technical_data, 'interval', hours=1, id="tech_task")
@@ -188,4 +241,5 @@ scheduler.add_job(fetch_news_api, 'interval', hours=2, id="news_task")
 scheduler.add_job(fetch_social_signals, 'interval', hours=3, id="social_task")
 scheduler.add_job(fetch_event_calendar, 'interval', hours=6, id="event_task")
 scheduler.add_job(fetch_sentiment_news, 'interval', hours=4, id="sentiment_task")
+scheduler.add_job(evaluate_prediction_success, 'interval', minutes=20, id="evaluate_predictions")
 scheduler.start()
