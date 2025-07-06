@@ -9,19 +9,21 @@
     <div class="max-w-6xl mx-auto">
         <h1 class="text-2xl font-bold mb-4">Tahmin Fırsatları</h1>
         <div class="flex space-x-2 mb-4">
-            <input id="trend-type" type="text" placeholder="Trend tipi" class="border px-3 py-2 rounded">
-            <input id="min-confidence" type="number" placeholder="Min güven" class="border px-3 py-2 rounded">
+            <select id="trend-type" class="border px-3 py-2 rounded"></select>
+            <input id="min-confidence" type="number" step="0.1" class="border px-3 py-2 rounded" placeholder="Min güven">
             <button onclick="loadPredictions()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Yükle</button>
         </div>
         <table class="w-full table-auto border-collapse border border-gray-300">
             <thead class="bg-gray-200">
                 <tr>
                     <th class="border px-2 py-1">Sembol</th>
+                    <th class="border px-2 py-1">Trend</th>
                     <th class="border px-2 py-1">Hedef Fiyat</th>
                     <th class="border px-2 py-1">Beklenen Getiri %</th>
                     <th class="border px-2 py-1">Güven %</th>
                     <th class="border px-2 py-1">Durum</th>
                     <th class="border px-2 py-1">Kalan Süre</th>
+                    <th class="border px-2 py-1">Açıklama</th>
                 </tr>
             </thead>
             <tbody id="pred-table"></tbody>
@@ -38,16 +40,41 @@
             const data = await res.json();
             const tbody = document.getElementById('pred-table');
             tbody.innerHTML = '';
+
+            if (data.filters) {
+                const select = document.getElementById('trend-type');
+                if (!select.options.length) {
+                    const def = document.createElement('option');
+                    def.value = '';
+                    def.textContent = 'Trend tipi';
+                    select.appendChild(def);
+                    for (const t of data.filters.available_trend_types || []) {
+                        const opt = document.createElement('option');
+                        opt.value = t;
+                        opt.textContent = t;
+                        select.appendChild(opt);
+                    }
+                }
+                if (data.filters.min_confidence_range) {
+                    const [minVal, maxVal] = data.filters.min_confidence_range;
+                    const confInput = document.getElementById('min-confidence');
+                    confInput.min = minVal;
+                    confInput.max = maxVal;
+                }
+            }
+
             if (!data.items) return;
             for (const p of data.items) {
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td class="border px-2 py-1">${p.symbol}</td>
+                    <td class="border px-2 py-1">${p.trend_type || '-'}</td>
                     <td class="border px-2 py-1">${p.target_price}</td>
                     <td class="border px-2 py-1">${p.expected_gain_pct}</td>
                     <td class="border px-2 py-1">${p.confidence_score}</td>
                     <td class="border px-2 py-1">${p.status}</td>
                     <td class="border px-2 py-1">${p.remaining_time || '-'}</td>
+                    <td class="border px-2 py-1">${p.description}</td>
                 `;
                 tbody.appendChild(row);
             }
