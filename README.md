@@ -5,6 +5,12 @@ Bu proje Flask tabanlı bir kripto para analiz uygulamasıdır. Depo iki ana kı
 * **backend/** - Flask API ve analiz servisleri
 * **frontend/** - Basit HTML arayüzü
 
+Ek olarak `scripts/` dizininde yardımcı araçlar bulunur.
+
+Hızlı bir analiz denemek için `scripts/crypto_ta.py` dosyasını çalıştırabilirsiniz.
+Bu betik CoinGecko servisine erişim olmadığında örnek verilerle teknik
+analiz göstergelerini hesaplar.
+
 Backend klasör yapısı aşağıdaki gibidir:
 
 ```
@@ -184,7 +190,8 @@ Ana klasördeki `.html` dosyaları statik sayfalardır: `index.html`, `giris.htm
 
 - `migrations/` - Alembic tarafından oluşturulacak veritabanı göç dosyaları için yer tutucu.
 - `tests/` - Uygulamanın temel işlevlerini doğrulayan Pytest testleri.
-- `scripts/` - Ortam kurulumuna yardımcı betikler.
+- `scripts/` - Ortam kurulumuna yardımcı betikler. Burada ayrıca `crypto_ta.py`
+  dosyası bulunur ve çevrimdışı modda örnek teknik analiz yapar.
 ### Dizin Yapısı
 
 ```text
