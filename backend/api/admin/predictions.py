@@ -4,7 +4,7 @@ from backend.auth.middlewares import admin_required
 from backend.auth.jwt_utils import require_csrf
 from backend.db import db
 from backend.db.models import PredictionOpportunity
-from datetime import datetime
+from datetime import datetime, timedelta
 from backend.utils.helpers import add_audit_log
 import logging
 
@@ -17,33 +17,95 @@ logger = logging.getLogger(__name__)
 @jwt_required()
 @admin_required()
 def list_predictions():
-    """Tüm tahmin fırsatlarını en yeniden eskiye doğru listeler."""
-    predictions = PredictionOpportunity.query.order_by(PredictionOpportunity.created_at.desc()).all()
-    return jsonify([p.to_dict() for p in predictions])
+    """Tahmin fırsatlarını sayfalı ve filtreli olarak listeler."""
+    try:
+        page = int(request.args.get("page", 1))
+        per_page = int(request.args.get("per_page", 20))
+        sort_by = request.args.get("sort_by", "created_at")
+        order = request.args.get("order", "desc")
+        symbol = request.args.get("symbol")
+        is_successful = request.args.get("was_successful")
+
+        query = PredictionOpportunity.query
+
+        if symbol:
+            query = query.filter(PredictionOpportunity.symbol.ilike(f"%{symbol}%"))
+        if is_successful in ["true", "false"]:
+            success_val = is_successful == "true"
+            query = query.filter(PredictionOpportunity.was_successful == success_val)
+
+        if order == "desc":
+            query = query.order_by(getattr(PredictionOpportunity, sort_by).desc())
+        else:
+            query = query.order_by(getattr(PredictionOpportunity, sort_by).asc())
+
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+        return jsonify({
+            "total": pagination.total,
+            "page": pagination.page,
+            "per_page": pagination.per_page,
+            "pages": pagination.pages,
+            "items": [p.to_dict() for p in pagination.items]
+        })
+    except Exception as e:
+        logger.error(f"[ERROR] Tahmin listeleme hatası: {e}")
+        return jsonify({"error": str(e)}), 400
 
 
 @predictions_bp.route("/public", methods=["GET"])
 def public_predictions():
     """Kullanıcılara açık, aktif tahminleri listeler."""
-    predictions = (
-        PredictionOpportunity.query
-        .filter_by(is_active=True, is_public=True)
-        .order_by(PredictionOpportunity.created_at.desc())
-        .all()
-    )
-    result = [
-        {
-            "symbol": p.symbol,
-            "target_price": p.target_price,
-            "expected_gain_pct": p.expected_gain_pct,
-            "confidence_score": p.confidence_score,
-            "trend_type": p.trend_type,
-            "forecast_horizon": p.forecast_horizon,
-            "created_at": p.created_at.isoformat(),
-        }
-        for p in predictions
-    ]
-    return jsonify(result), 200
+    try:
+        page = int(request.args.get("page", 1))
+        per_page = int(request.args.get("per_page", 20))
+        trend_type = request.args.get("trend_type")
+        min_confidence = request.args.get("min_confidence")
+
+        query = PredictionOpportunity.query.filter_by(is_active=True, is_public=True)
+
+        if trend_type:
+            query = query.filter(PredictionOpportunity.trend_type == trend_type)
+        if min_confidence:
+            try:
+                min_conf = float(min_confidence)
+                query = query.filter(PredictionOpportunity.confidence_score >= min_conf)
+            except ValueError:
+                pass
+
+        query = query.order_by(PredictionOpportunity.created_at.desc())
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+        result = []
+        now = datetime.utcnow()
+        for p in pagination.items:
+            status = "tamamlandı" if p.fulfilled_at else (
+                "aktif" if (not p.expires_at or p.expires_at > now) else "süresi doldu"
+            )
+            result.append({
+                "symbol": p.symbol,
+                "target_price": p.target_price,
+                "expected_gain_pct": p.expected_gain_pct,
+                "confidence_score": p.confidence_score,
+                "trend_type": p.trend_type,
+                "forecast_horizon": p.forecast_horizon,
+                "created_at": p.created_at.isoformat(),
+                "realized_gain_pct": p.realized_gain_pct,
+                "fulfilled_at": p.fulfilled_at.isoformat() if p.fulfilled_at else None,
+                "was_successful": p.was_successful,
+                "status": status,
+            })
+
+        return jsonify({
+            "total": pagination.total,
+            "page": pagination.page,
+            "per_page": pagination.per_page,
+            "pages": pagination.pages,
+            "items": result,
+        }), 200
+    except Exception as e:
+        logger.error(f"[ERROR] Public prediction fetch failed: {e}")
+        return jsonify({"error": str(e)}), 400
 
 
 @predictions_bp.route("/", methods=["POST"])
@@ -66,6 +128,22 @@ def create_prediction():
         expected_gain = float(data["expected_gain_pct"])
         confidence = float(data.get("confidence_score", 0.0))
 
+        created_at = datetime.utcnow()
+        forecast_horizon = data.get("forecast_horizon")
+        expires_at = None
+        if forecast_horizon:
+            try:
+                num = int(forecast_horizon[:-1])
+                unit = forecast_horizon[-1]
+                if unit == 'd':
+                    expires_at = created_at + timedelta(days=num)
+                elif unit == 'h':
+                    expires_at = created_at + timedelta(hours=num)
+                elif unit == 'w':
+                    expires_at = created_at + timedelta(weeks=num)
+            except Exception:
+                pass
+
         if len(symbol) > 20:
             return jsonify({"error": "Symbol en fazla 20 karakter olabilir"}), 400
         if current_price < 0 or target_price < 0:
@@ -79,14 +157,15 @@ def create_prediction():
             symbol=symbol,
             current_price=current_price,
             target_price=target_price,
-            forecast_horizon=data.get("forecast_horizon"),
+            forecast_horizon=forecast_horizon,
             expected_gain_pct=expected_gain,
             confidence_score=confidence,
             trend_type=data.get("trend_type", "short_term"),
             source_model=data.get("source_model", "AIModel"),
             is_active=bool(data.get("is_active", True)),
             is_public=bool(data.get("is_public", True)),
-            created_at=datetime.utcnow(),
+            created_at=created_at,
+            expires_at=expires_at,
         )
         db.session.add(pred)
         db.session.commit()
