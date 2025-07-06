@@ -1,3 +1,4 @@
+
 from pycoingecko import CoinGeckoAPI
 from backend.tasks.strategic_recommender import generate_ta_based_recommendation
 from backend.db import db
@@ -5,9 +6,11 @@ from backend.db.models import PredictionOpportunity
 from backend.utils.price_fetcher import fetch_current_price
 from datetime import datetime, timedelta
 import logging
+ main
 
 logger = logging.getLogger(__name__)
 cg = CoinGeckoAPI()
+
 
 
 def generate_predictions_for_all_coins(limit=5):
@@ -41,5 +44,6 @@ def generate_predictions_for_all_coins(limit=5):
         logger.info(f"[TA-BULK] Otomatik tahminler üretildi: {created}")
         return created
     except Exception as e:  # pragma: no cover - logging
+ main
         logger.error(f"[TA-BULK] Tahmin üretim hatası: {e}")
         return []

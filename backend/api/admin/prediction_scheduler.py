@@ -24,6 +24,7 @@ import feedparser
 import requests
 
 from backend.utils.price_fetcher import fetch_current_price
+from backend.tasks.bulk_prediction import generate_predictions_for_all_coins
 
 predictions_bp = Blueprint("predictions", __name__, url_prefix="/api/admin/predictions")
 logger = logging.getLogger(__name__)
@@ -398,4 +399,5 @@ scheduler.add_job(fetch_sentiment_news, 'interval', hours=4, id="sentiment_task"
 scheduler.add_job(evaluate_prediction_success, 'interval', minutes=20, id="evaluate_predictions")
 scheduler.add_job(fetch_and_store_technical_indicators, 'interval', minutes=30, id="technical_analysis")
 scheduler.add_job(lambda: generate_prediction_from_ta("bitcoin"), 'interval', hours=2, id="ta_predictions")
+scheduler.add_job(lambda: generate_predictions_for_all_coins(limit=10), 'interval', hours=6, id="bulk_ta_predictions")
 scheduler.start()
