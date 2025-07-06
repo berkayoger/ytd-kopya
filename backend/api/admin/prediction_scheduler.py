@@ -23,6 +23,8 @@ from scripts.crypto_ta import fetch_ohlc_data, calculate_indicators
 import feedparser
 import requests
 
+from backend.utils.price_fetcher import fetch_current_price
+
 predictions_bp = Blueprint("predictions", __name__, url_prefix="/api/admin/predictions")
 logger = logging.getLogger(__name__)
 
@@ -327,7 +329,10 @@ def generate_prediction_from_ta(symbol="bitcoin", threshold_gain: float = 3.0):
     if not rec:
         return None
 
-    current_price = 100  # TODO: gerçek fiyat verisi ile değiştirilmeli
+    current_price = fetch_current_price(symbol)
+    if not current_price:
+        logger.warning("[TA] Gerçek zamanlı fiyat alınamadı")
+        return None
     prediction = PredictionOpportunity(
         symbol=symbol.upper(),
         current_price=current_price,

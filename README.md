@@ -11,6 +11,10 @@ Hızlı bir analiz denemek için `scripts/crypto_ta.py` dosyasını çalıştır
 Bu betik CoinGecko servisine erişim olmadığında örnek verilerle teknik
 analiz göstergelerini hesaplar.
 
+Gerçek zamanlı fiyat bilgisini almak için `backend/utils/price_fetcher.py`
+içindeki `fetch_current_price` fonksiyonu kullanılabilir. Ağ sorunu olduğunda
+fonksiyon `None` döndürür ve görevler bunu ele alacak şekilde tasarlanmıştır.
+
 Backend klasör yapısı aşağıdaki gibidir:
 
 ```
