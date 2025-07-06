@@ -17,4 +17,5 @@ def test_generate_ta_based_recommendation(monkeypatch):
         db.session.commit()
         data = generate_ta_based_recommendation("BTC")
         assert data["symbol"] == "BTC"
-        assert any("Aşırı satım" in msg for msg in data["insight"])
+        assert data["insight"]["signal"] == "buy"
+        assert data["insight"]["confidence"] > 0.5
