@@ -176,7 +176,7 @@ Alt klasörler:
 
 ### `frontend/` Klasörü
 
-Ana klasördeki `.html` dosyaları statik sayfalardır: `index.html`, `giris.html`, `kayit.html`, `abonelik.html`, `dashboard.html`, `sifremi-unuttum.html` ve `reset-password.html`. Bunlar Flask tarafından servis edilen basit arayüzleri içerir.
+Ana klasördeki `.html` dosyaları statik sayfalardır: `index.html`, `giris.html`, `kayit.html`, `abonelik.html`, `dashboard.html`, `sifremi-unuttum.html`, `reset-password.html` ve `prediction-display.html`. Bunlar Flask tarafından servis edilen basit arayüzleri içerir.
 
 `static/` klasöründe istemci JavaScript kodları (`api.js`) ve diğer statik varlıklar bulunur.
 
@@ -207,6 +207,7 @@ Ana klasördeki `.html` dosyaları statik sayfalardır: `index.html`, `giris.htm
 │   ├── abonelik.html
 │   ├── abonelik2.html
 │   ├── dashboard.html
+│   ├── prediction-display.html
 │   ├── frontend-crypto-analysis-dashboard
 │   ├── giris.html
 │   ├── homepage-unregistered.html
