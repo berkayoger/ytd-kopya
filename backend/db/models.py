@@ -390,6 +390,8 @@ class PredictionOpportunity(db.Model):
     target_price = Column(Float, nullable=False)
     forecast_horizon = Column(String(50), nullable=True)
     expected_gain_pct = Column(Float, nullable=False)
+    expected_gain_days = Column(String(50), nullable=True)
+    description = Column(Text, nullable=True)
     confidence_score = Column(Float, nullable=True, default=0.0)
     trend_type = Column(String(50), nullable=False, default='short_term')
     source_model = Column(String(100), nullable=False, default='AIModel')
@@ -405,6 +407,8 @@ class PredictionOpportunity(db.Model):
             "target_price": self.target_price,
             "forecast_horizon": self.forecast_horizon,
             "expected_gain_pct": self.expected_gain_pct,
+            "expected_gain_days": self.expected_gain_days,
+            "description": self.description,
             "confidence_score": self.confidence_score,
             "trend_type": self.trend_type,
             "source_model": self.source_model,
