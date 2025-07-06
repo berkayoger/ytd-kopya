@@ -175,6 +175,10 @@ def create_app():
     from backend.api.admin.promo_stats import stats_bp
     from backend.api.admin.predictions import predictions_bp
 
+    # APScheduler tabanli gorevleri istege bagli olarak baslat
+    if os.getenv("ENABLE_SCHEDULER", "0") == "1":
+        from backend.api.admin import prediction_scheduler  # noqa: F401
+
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
