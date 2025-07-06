@@ -19,21 +19,11 @@ import os
 import uuid
 from datetime import datetime, timedelta
 from backend.utils.rbac import require_permission
+from backend.auth.middlewares import admin_required as _admin_required
 
-# Yönetici yetkilendirme yardımcısı dekoratörü
+
 def admin_required(f):
-    def decorated_function(*args, **kwargs):
-        admin_api_key = request.headers.get('X-ADMIN-API-KEY')
-        # ADMIN_ACCESS_KEY ortam değişkeninden alınır
-        if admin_api_key != os.getenv("ADMIN_ACCESS_KEY"):
-            logger.warning(f"Yetkisiz admin erişim denemesi: {request.remote_addr} - Admin API Anahtarı Eksik veya Geçersiz.")
-            return jsonify({"error": "Yetkisiz erişim. Geçerli bir Yönetici API anahtarı sağlayın."}), 403
-
-        # Ek RBAC kontrolü
-        permission_check = require_permission("admin_access")
-        wrapped = permission_check(f)
-        return wrapped(*args, **kwargs)
-    return decorated_function
+    return _admin_required()(f)
 
 # Kullanıcı Yönetimi
 # Tüm kullanıcıları listeleme endpoint'i
