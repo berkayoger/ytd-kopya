@@ -26,5 +26,17 @@ def advanced_decision_logic(indicators: dict) -> dict:
         signal = "avoid"
 
     confidence = min(0.95, 0.6 + 0.1 * score)
-    return {"signal": signal, "confidence": round(confidence, 2)}
+
+    result = {"signal": signal, "confidence": round(confidence, 2)}
+
+    if signal == "buy":
+        result.update(
+            {
+                "expected_gain_pct": 25,
+                "expected_gain_days": "45-60",
+                "description": "RSI < 30 ve MACD kesişimi görüldü. Teknik olarak alım bölgesi.",
+            }
+        )
+
+    return result
 
