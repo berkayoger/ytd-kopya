@@ -64,6 +64,8 @@ def public_predictions():
         per_page = int(request.args.get("per_page", 20))
         trend_type = request.args.get("trend_type")
         min_confidence = request.args.get("min_confidence", type=float)
+        symbol = request.args.get("symbol")
+        duration_range = request.args.get("duration_range")
 
         q = PredictionOpportunity.query.filter_by(is_active=True, is_public=True)
 
@@ -71,6 +73,14 @@ def public_predictions():
             q = q.filter(PredictionOpportunity.trend_type == trend_type)
         if min_confidence is not None:
             q = q.filter(PredictionOpportunity.confidence_score >= min_confidence)
+        if symbol:
+            q = q.filter(PredictionOpportunity.symbol.ilike(f"%{symbol}%"))
+        if duration_range:
+            try:
+                min_days, max_days = duration_range.split("-")
+                q = q.filter(PredictionOpportunity.expected_gain_days.ilike(f"{min_days}-%"))
+            except Exception:
+                pass
 
         total = q.count()
         predictions = (
