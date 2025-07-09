@@ -4,6 +4,16 @@
   <meta charset="UTF-8">
   <title>Tahminler | Admin Panel</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .trend-badge {
+        font-size: 0.75rem;
+        background-color: #e0e7ff;
+        color: #3730a3;
+        padding: 2px 6px;
+        border-radius: 0.25rem;
+        margin-left: 0.5rem;
+    }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-900 p-6">
   <div class="max-w-6xl mx-auto">
@@ -52,11 +62,16 @@ async function loadFilteredPredictions(page = 1) {
         const card = document.createElement("div");
         card.className = "bg-white rounded shadow p-4 border border-gray-300";
         card.innerHTML = `
-            <h3 class="text-lg font-bold text-indigo-700">${item.symbol}</h3>
+            <div class="flex items-center mb-2">
+              <img src="https://cryptoicon-api.vercel.app/api/icon/${item.symbol.toLowerCase()}" alt="${item.symbol}" class="w-6 h-6 mr-2">
+              <h3 class="text-lg font-bold text-indigo-700">${item.symbol}</h3>
+              <span class="trend-badge">${item.trend_type}</span>
+            </div>
             <p><strong>Beklenen Getiri:</strong> %${item.expected_gain_pct}</p>
             <p><strong>Getiri Süresi:</strong> ${item.expected_gain_days}</p>
             <p><strong>Güven:</strong> %${Math.round((item.confidence || 0) * 100)}</p>
             <p class="text-sm text-gray-600 mt-2">${item.description}</p>
+            <p class="text-xs text-gray-400 mt-1">📅 ${new Date(item.created_at).toLocaleString()}</p>
         `;
         container.appendChild(card);
     }
