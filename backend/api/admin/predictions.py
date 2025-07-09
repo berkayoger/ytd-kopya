@@ -100,6 +100,8 @@ def public_predictions():
                     "expected_gain_pct": p.expected_gain_pct,
                     "expected_gain_days": p.expected_gain_days,
                     "description": p.description,
+                    "trend_type": p.trend_type,
+                    "created_at": p.created_at.isoformat(),
                 }
             )
 
