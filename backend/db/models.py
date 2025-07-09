@@ -414,7 +414,7 @@ class PredictionOpportunity(db.Model):
             "source_model": self.source_model,
             "is_active": self.is_active,
             "is_public": self.is_public,
-            "created_at": self.created_at.isoformat(),
+            "created_at": self.created_at.isoformat(),  # time info
         }
 
 
