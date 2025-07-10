@@ -1,3 +1,4 @@
+import json
 from backend.db import db
 
 class Plan(db.Model):
@@ -13,6 +14,6 @@ class Plan(db.Model):
             "id": self.id,
             "name": self.name,
             "price": self.price,
-            "features": self.features,
+            "features": json.loads(self.features or "{}"),
             "is_active": self.is_active,
         }
