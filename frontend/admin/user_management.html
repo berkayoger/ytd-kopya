@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Kullanıcı Yönetimi | Admin Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 p-6">
+  <div class="max-w-5xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">Kullanıcı Yönetimi</h1>
+    <table class="w-full text-left border border-gray-300 rounded">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="p-2">ID</th>
+          <th class="p-2">E-posta</th>
+          <th class="p-2">Rol</th>
+          <th class="p-2">Plan</th>
+          <th class="p-2">Aktif mi?</th>
+          <th class="p-2">İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="user-table-body"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const API = '/api/admin/users';
+    const JWT = sessionStorage.getItem('admin_jwt');
+
+    async function loadUsers() {
+      const res = await fetch(API + '/', {
+        headers: { 'Authorization': 'Bearer ' + JWT }
+      });
+      const users = await res.json();
+      const tbody = document.getElementById('user-table-body');
+      tbody.innerHTML = '';
+      users.forEach(u => {
+        tbody.innerHTML += `
+          <tr class="border-t">
+            <td class="p-2">${u.id}</td>
+            <td class="p-2">${u.email || ''}</td>
+            <td class="p-2">${u.role}</td>
+            <td class="p-2">${u.subscription_level}</td>
+            <td class="p-2">${u.is_active ? '✅' : '❌'}</td>
+            <td class="p-2">
+              ${u.is_active ? `<button onclick="deactivateUser(${u.id})" class="text-red-500 hover:underline">Pasifleştir</button>` : ''}
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    async function deactivateUser(id) {
+      await fetch(API + '/' + id, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + JWT
+        },
+        body: JSON.stringify({ is_active: false })
+      });
+      loadUsers();
+    }
+
+    document.addEventListener('DOMContentLoaded', loadUsers);
+  </script>
+</body>
+</html>
+
