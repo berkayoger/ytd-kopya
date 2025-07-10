@@ -37,6 +37,23 @@
       </thead>
       <tbody id="user-table-body"></tbody>
     </table>
+
+    <hr class="my-6">
+    <h3 class="text-lg font-semibold mb-2">Yeni Kullanıcı Oluştur</h3>
+    <div class="flex flex-col md:flex-row gap-4">
+      <input id="new-email" placeholder="E-posta" class="p-2 border rounded w-full" />
+      <input id="new-password" placeholder="Şifre" type="password" class="p-2 border rounded w-full" />
+      <select id="new-role" class="p-2 border rounded">
+        <option value="user">user</option>
+        <option value="admin">admin</option>
+      </select>
+      <select id="new-plan" class="p-2 border rounded">
+        <option value="Free">Free</option>
+        <option value="Pro">Pro</option>
+        <option value="Premium">Premium</option>
+      </select>
+      <button onclick="createUser()" class="bg-green-600 text-white px-4 py-2 rounded">Ekle</button>
+    </div>
   </div>
 
   <script>
@@ -74,6 +91,30 @@
           </tr>
         `;
       });
+    }
+
+    async function createUser() {
+      const email = document.getElementById("new-email").value;
+      const password = document.getElementById("new-password").value;
+      const role = document.getElementById("new-role").value;
+      const plan = document.getElementById("new-plan").value;
+
+      const res = await fetch(API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": 'Bearer ' + JWT
+        },
+        body: JSON.stringify({ email, password, role, subscription_level: plan })
+      });
+
+      if (res.status === 201) {
+        alert("Kullanıcı oluşturuldu ✅");
+        loadUsers();
+      } else {
+        const err = await res.json();
+        alert("Hata: " + (err.error || "Bilinmeyen"));
+      }
     }
 
     async function deactivateUser(id) {
