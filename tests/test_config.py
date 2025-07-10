@@ -10,3 +10,8 @@ def test_testing_config(monkeypatch):
     app = create_app()
     assert app.config["TESTING"] is True
 
+
+def test_price_cache_default(monkeypatch):
+    monkeypatch.setenv("FLASK_ENV", "testing")
+    app = create_app()
+    assert app.config["PRICE_CACHE_TTL"] == 0
