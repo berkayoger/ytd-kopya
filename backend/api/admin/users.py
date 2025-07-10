@@ -13,7 +13,20 @@ user_admin_bp = Blueprint("user_admin", __name__, url_prefix="/api/admin/users")
 @jwt_required()
 @admin_required()
 def list_users():
-    users = User.query.all()
+    email = request.args.get("email")
+    role = request.args.get("role")
+    plan = request.args.get("subscription_level")
+
+    query = User.query
+
+    if email:
+        query = query.filter(User.email.ilike(f"%{email}%"))
+    if role:
+        query = query.filter(User.role == role)
+    if plan:
+        query = query.filter(User.subscription_level == plan)
+
+    users = query.all()
     return jsonify([u.to_dict() for u in users])
 
 
