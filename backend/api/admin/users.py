@@ -4,9 +4,56 @@ from flask_jwt_extended import jwt_required
 from backend.auth.middlewares import admin_required
 from backend.db import db
 from backend.db.models import User, SubscriptionPlan, UserRole
+from werkzeug.security import generate_password_hash
+import secrets
 
 
 user_admin_bp = Blueprint("user_admin", __name__, url_prefix="/api/admin/users")
+
+
+@user_admin_bp.route("/", methods=["POST"])
+@jwt_required()
+@admin_required()
+def create_user():
+    data = request.get_json() or {}
+
+    email = data.get("email")
+    password = data.get("password")
+    role = data.get("role", "user")
+    plan = data.get("subscription_level", "Free")
+
+    if not email or not password:
+        return jsonify({"error": "E-posta ve şifre zorunludur"}), 400
+
+    if User.query.filter_by(email=email).first():
+        return jsonify({"error": "Bu e-posta zaten kayıtlı"}), 409
+
+    hashed_pw = generate_password_hash(password)
+    api_key = secrets.token_hex(32)
+
+    try:
+        role_enum = UserRole[role.upper()]
+    except KeyError:
+        role_enum = UserRole.USER
+
+    try:
+        plan_enum = SubscriptionPlan[plan.upper()]
+    except KeyError:
+        plan_enum = SubscriptionPlan.TRIAL
+
+    user = User(
+        username=email,
+        email=email,
+        password_hash=hashed_pw,
+        role=role_enum,
+        subscription_level=plan_enum,
+        api_key=api_key,
+        is_active=True,
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    return jsonify(user.to_dict()), 201
 
 
 @user_admin_bp.route("/", methods=["GET"])
