@@ -13,6 +13,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from .jwt_utils import generate_tokens, verify_jwt, verify_csrf
 from loguru import logger
 from backend import limiter
+from backend.utils.token_helper import generate_reset_token, verify_reset_token
+from backend.utils.email import send_password_reset_email
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 import uuid
@@ -174,3 +176,57 @@ def request_password_reset():
     except Exception:
         logger.exception("Şifre sıfırlama isteğinde hata oluştu")
         return jsonify(error="Sunucu hatası. Lütfen daha sonra tekrar deneyin."), 500
+
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+@limiter.limit("5/hour")
+def forgot_password():
+    data = request.get_json() or {}
+    email = data.get('email')
+    if not email:
+        return jsonify({"error": "E-posta gerekli"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user or not user.is_active:
+        return jsonify({"message": "Eğer hesap varsa, e-posta gönderildi."}), 200
+
+    token = generate_reset_token(email)
+    expires_at = datetime.utcnow() + timedelta(minutes=15)
+    reset_entry = PasswordResetToken(
+        user_id=user.id,
+        reset_token=token,
+        expires_at=expires_at,
+        is_used=False,
+    )
+    db.session.add(reset_entry)
+    db.session.commit()
+
+    send_password_reset_email(email, token)
+    return jsonify({"message": "Eğer hesap varsa, e-posta gönderildi."}), 200
+
+
+@auth_bp.route('/reset-password', methods=['POST'])
+def reset_password():
+    data = request.get_json() or {}
+    token = data.get('token')
+    new_password = data.get('password')
+
+    if not token or not new_password:
+        return jsonify({"error": "Eksik veri"}), 400
+
+    email = verify_reset_token(token)
+    if not email:
+        return jsonify({"error": "Geçersiz veya süresi dolmuş link"}), 400
+
+    reset_entry = PasswordResetToken.query.filter_by(reset_token=token, is_used=False).first()
+    if not reset_entry or reset_entry.expires_at < datetime.utcnow():
+        return jsonify({"error": "Geçersiz veya süresi dolmuş link"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı"}), 404
+
+    user.password_hash = generate_password_hash(new_password)
+    reset_entry.is_used = True
+    db.session.commit()
+    return jsonify({"message": "Şifre başarıyla güncellendi."}), 200
