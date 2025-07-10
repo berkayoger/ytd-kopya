@@ -104,6 +104,40 @@ Docker yüklüyse projeyi şu komutla hızlıca başlatabilirsiniz:
 docker-compose up --build
 ```
 
+## Production Kurulumu (Gunicorn ve Nginx)
+
+Gerçek bir sunucuda uygulamayı yayınlamak için `app.py` dosyası üzerinden
+`create_app` fonksiyonunu kullanarak Gunicorn çalıştırabilirsiniz:
+
+```bash
+gunicorn -w 4 -b 127.0.0.1:5000 'app:create_app()'
+```
+
+Ardından Nginx'i ters proxy olarak yapılandırıp statik dosyaları servis
+edecek şekilde ayarlayabilirsiniz. Örnek bir konfigürasyon:
+
+```nginx
+server {
+    listen 80;
+    server_name admin.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location /static/ {
+        alias /path/to/your/frontend/;
+    }
+}
+```
+
+HTTPS sertifikası için Let's Encrypt (`certbot --nginx`) ve güvenlik için UFW
+kuralları eklemeniz önerilir. Uygulamanın arka planda kalıcı olarak
+çalışması için Supervisor kullanılabilir.
+
 ## Testler
 
 Testleri çalıştırmak için `pytest` kullanılabilir:
