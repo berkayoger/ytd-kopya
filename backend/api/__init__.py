@@ -10,3 +10,4 @@ api_bp = Blueprint('api', __name__)
 # ana uygulama tarafından tanınabilsinler.
 # Bu satırın çalışması için aynı dizinde route'ları tanımladığınız bir dosya olmalı.
 from backend.api import routes
+from backend.api import plan_routes
