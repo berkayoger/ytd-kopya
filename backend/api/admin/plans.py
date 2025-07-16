@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from backend.db import db
 from backend.models.plan import Plan
-from backend.db.models import User
+from backend.db.models import User, UserRole
 from backend.utils.decorators import admin_required
 import json
 from datetime import datetime
@@ -23,6 +23,10 @@ def create_plan():
         name=data["name"],
         price=data["price"],
         features=json.dumps(features),
+        discount_price=data.get("discount_price"),
+        discount_start=datetime.fromisoformat(data["discount_start"]) if data.get("discount_start") else None,
+        discount_end=datetime.fromisoformat(data["discount_end"]) if data.get("discount_end") else None,
+        is_public=data.get("is_public", True),
         is_active=data.get("is_active", True),
     )
     db.session.add(plan)
@@ -37,6 +41,14 @@ def update_plan(plan_id):
     plan.name = data.get("name", plan.name)
     plan.price = data.get("price", plan.price)
     plan.is_active = data.get("is_active", plan.is_active)
+    if "discount_price" in data:
+        plan.discount_price = data["discount_price"]
+    if "discount_start" in data:
+        plan.discount_start = datetime.fromisoformat(data["discount_start"]) if data["discount_start"] else None
+    if "discount_end" in data:
+        plan.discount_end = datetime.fromisoformat(data["discount_end"]) if data["discount_end"] else None
+    if "is_public" in data:
+        plan.is_public = data.get("is_public", plan.is_public)
     if "features" in data:
         plan.features = json.dumps(data["features"])
     db.session.commit()
@@ -58,6 +70,9 @@ def change_user_plan(user_id):
     plan_id = data.get("plan_id")
     plan = Plan.query.get_or_404(plan_id)
     user.plan_id = plan.id
+    plan_roles = plan.features_dict().get("grants_roles", [])
+    if plan_roles:
+        user.role = UserRole[plan_roles[0]] if plan_roles[0] in UserRole.__members__ else user.role
     if "expire_at" in data:
         user.plan_expire_at = datetime.fromisoformat(data["expire_at"])
     db.session.commit()
@@ -76,3 +91,24 @@ def manual_automation():
     auto_downgrade_expired_plans.delay()
     auto_expire_boosts.delay()
     return jsonify({"ok": True})
+
+
+@plan_admin_bp.route("/admin/plans/analytics", methods=["GET"])
+@admin_required
+def plan_analytics():
+    stats = db.session.execute(
+        "SELECT plan_id, COUNT(*) FROM users GROUP BY plan_id"
+    )
+    return jsonify([
+        {"plan_id": row[0], "user_count": row[1]} for row in stats
+    ])
+
+
+@plan_admin_bp.route("/admin/users/<int:user_id>/recommend-plan", methods=["GET"])
+@admin_required
+def recommend_plan_api(user_id):
+    user = User.query.get_or_404(user_id)
+    usage = {"predictions": getattr(user, "prediction_count_last_30d", 0)}
+    from backend.utils.plan_recommender import recommend_plan
+    suggested = recommend_plan(user, usage)
+    return jsonify({"suggested_plan": suggested})
