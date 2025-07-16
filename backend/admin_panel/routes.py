@@ -20,6 +20,8 @@ import uuid
 from datetime import datetime, timedelta
 from backend.utils.rbac import require_permission
 from backend.auth.middlewares import admin_required as _admin_required
+from flask_jwt_extended import get_jwt_identity
+from backend.utils.audit import log_action
 
 
 def admin_required(f):
@@ -84,6 +86,13 @@ def update_user_details(user_id):
 
         db.session.commit()
         logger.info(f"Kullanıcı {user.username} detayları güncellendi.")
+        admin_id = get_jwt_identity()
+        admin_user = User.query.get(admin_id) if admin_id else None
+        log_action(
+            admin_user,
+            action="plan_update",
+            details=f"Kullanıcı {user.username}, yeni plan: {user.subscription_level.value}",
+        )
         return jsonify({"message": "Kullanıcı başarıyla güncellendi.", "user": {
             "id": user.id,
             "username": user.username,
