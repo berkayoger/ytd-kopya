@@ -6,11 +6,12 @@ from flask import Flask, jsonify, request, g
 from flask_sqlalchemy import SQLAlchemy
 from backend.db import db as base_db
 from flask_cors import CORS
-from flask_limiter import Limiter
+from backend.limiting import limiter
 from flask_limiter.util import get_remote_address
 from celery import Celery
 from flask_socketio import SocketIO, emit
 from backend.db.models import User, SubscriptionPlan
+from backend.models.plan import Plan
 from backend.utils.usage_limits import check_usage_limit
 from loguru import logger
 from redis import Redis
@@ -111,7 +112,6 @@ class Config:
 
 # Flask uzantılarını global olarak başlat
 db = base_db
-limiter = Limiter(get_remote_address)
 celery_app = Celery()
 socketio = SocketIO()
 
@@ -182,6 +182,9 @@ def create_app():
     if os.getenv("FLASK_ENV") != "testing":
         from backend.core.services import YTDCryptoSystem
         app.ytd_system_instance = YTDCryptoSystem()
+    else:
+        from types import SimpleNamespace
+        app.ytd_system_instance = SimpleNamespace(collector=None, ai=None)
 
     # Blueprint'leri kaydet
     from backend.auth.routes import auth_bp

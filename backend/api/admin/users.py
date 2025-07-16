@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required
 from backend.auth.middlewares import admin_required
 from backend.db import db
 from backend.db.models import User, SubscriptionPlan, UserRole
+import json
 from werkzeug.security import generate_password_hash
 import secrets
 
@@ -113,3 +114,14 @@ def delete_user(user_id):
     db.session.delete(user)
     db.session.commit()
     return jsonify({"message": "Kullanıcı silindi"})
+
+
+@user_admin_bp.route("/<int:user_id>/custom-features", methods=["PUT"])
+@jwt_required()
+@admin_required()
+def set_custom_features(user_id):
+    user = User.query.get_or_404(user_id)
+    data = request.get_json() or {}
+    user.custom_features = json.dumps(data.get("custom_features", {}))
+    db.session.commit()
+    return jsonify(user.to_dict())
