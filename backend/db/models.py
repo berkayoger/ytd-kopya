@@ -125,6 +125,7 @@ class User(db.Model):
     plan_expire_at = Column(DateTime, nullable=True)
     boost_features = Column(Text, nullable=True)
     boost_expire_at = Column(DateTime, nullable=True)
+    custom_features = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True, nullable=False)
 
@@ -166,6 +167,7 @@ class User(db.Model):
             "plan_expire_at": self.plan_expire_at.isoformat() if self.plan_expire_at else None,
             "boost_features": self.boost_features,
             "boost_expire_at": self.boost_expire_at.isoformat() if self.boost_expire_at else None,
+            "custom_features": self.custom_features,
         }
 
 
