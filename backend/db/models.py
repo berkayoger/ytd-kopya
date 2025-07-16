@@ -546,3 +546,19 @@ class TechnicalIndicator(db.Model):
             "signal": self.signal,
             "created_at": self.created_at.isoformat(),
         }
+
+
+class AuditLog(db.Model):
+    """Stores user actions for auditing purposes."""
+
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    username = Column(String(128), nullable=True)
+    action = Column(String(128), nullable=False)
+    ip_address = Column(String(64), nullable=True)
+    details = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = db.relationship("User", backref="audit_logs", lazy=True)

@@ -15,6 +15,7 @@ from loguru import logger
 from backend import limiter
 from backend.utils.token_helper import generate_reset_token, verify_reset_token
 from backend.utils.email import send_password_reset_email
+from backend.utils.audit import log_action
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 import uuid
@@ -120,6 +121,7 @@ def login_user():
         )
 
         logger.info(f"Kullanıcı girişi başarılı: {username}")
+        log_action(user, action="login")
         return response
 
     except Exception:
@@ -229,4 +231,5 @@ def reset_password():
     user.password_hash = generate_password_hash(new_password)
     reset_entry.is_used = True
     db.session.commit()
+    log_action(user, action="password_reset")
     return jsonify({"message": "Şifre başarıyla güncellendi."}), 200

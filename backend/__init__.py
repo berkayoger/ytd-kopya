@@ -183,6 +183,7 @@ def create_app():
     from backend.api.admin.promo_stats import stats_bp
     from backend.api.admin.predictions import predictions_bp
     from backend.api.admin.users import user_admin_bp
+    from backend.api.admin.audit import audit_bp
     from backend.api.ta_routes import bp as ta_bp
     from backend.api.public.technical import technical_bp
     from backend.api.public.subscriptions import subscriptions_bp
@@ -200,6 +201,7 @@ def create_app():
     app.register_blueprint(stats_bp)
     app.register_blueprint(predictions_bp)
     app.register_blueprint(user_admin_bp)
+    app.register_blueprint(audit_bp, url_prefix='/api')
     app.register_blueprint(ta_bp)
     app.register_blueprint(technical_bp)
     app.register_blueprint(subscriptions_bp)
