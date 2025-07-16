@@ -8,6 +8,13 @@
 <body class="bg-gray-100 text-gray-900">
   <div class="p-4">
     <h2 class="text-xl font-bold mb-4">Kullanıcı Eylem Kayıtları (Audit Trail)</h2>
+    <div class="flex gap-4 mb-4">
+      <input id="filter-username" placeholder="Kullanıcı" class="p-2 border rounded" />
+      <input id="filter-action" placeholder="Aksiyon" class="p-2 border rounded" />
+      <input id="filter-ip" placeholder="IP" class="p-2 border rounded" />
+      <button onclick="loadAuditLogs()" class="bg-blue-600 text-white px-4 py-2 rounded">Filtrele</button>
+      <button onclick="purgeLogs()" class="bg-red-600 text-white px-4 py-2 rounded ml-2">Eski Logları Sil</button>
+    </div>
     <table class="w-full border text-left">
       <thead class="bg-gray-100">
         <tr>
@@ -23,7 +30,15 @@
   </div>
   <script>
   async function loadAuditLogs() {
-    const res = await fetch("/api/admin/audit-logs?limit=100", {
+    const username = document.getElementById("filter-username").value;
+    const action = document.getElementById("filter-action").value;
+    const ip = document.getElementById("filter-ip").value;
+    const params = new URLSearchParams();
+    if (username) params.append("username", username);
+    if (action) params.append("action", action);
+    if (ip) params.append("ip", ip);
+    params.append("limit", 100);
+    const res = await fetch("/api/admin/audit-logs?" + params.toString(), {
       headers: { Authorization: sessionStorage.getItem("token") }
     });
     const logs = await res.json();
@@ -41,6 +56,20 @@
       `;
     });
   }
+
+  async function purgeLogs() {
+    const days = prompt("Kaç günden eski loglar silinsin? (varsayılan: 90)", "90");
+    if (!days || isNaN(parseInt(days))) return;
+    if (!confirm(`${days} günden eski loglar silinsin mi?`)) return;
+    const res = await fetch(`/api/admin/audit-logs/purge?days=${days}`, {
+      method: "DELETE",
+      headers: { Authorization: sessionStorage.getItem("token") }
+    });
+    const result = await res.json();
+    alert(`${result.deleted} adet eski log silindi.`);
+    loadAuditLogs();
+  }
+
   loadAuditLogs();
   </script>
 </body>
