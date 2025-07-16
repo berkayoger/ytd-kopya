@@ -71,6 +71,16 @@ class Config:
             'schedule': timedelta(days=1),
             'options': {'queue': 'default'},
         },
+        'auto-downgrade-plans-everyday': {
+            'task': 'backend.tasks.plan_tasks.auto_downgrade_expired_plans',
+            'schedule': timedelta(days=1),
+            'options': {'queue': 'default'},
+        },
+        'auto-expire-boosts-everyday': {
+            'task': 'backend.tasks.plan_tasks.auto_expire_boosts',
+            'schedule': timedelta(days=1),
+            'options': {'queue': 'default'},
+        },
     }
     # CORS Origins ayarı .env dosyasından
     # supports_credentials=True ise origins ASLA '*' olmamalıdır.
