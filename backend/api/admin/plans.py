@@ -62,3 +62,17 @@ def change_user_plan(user_id):
         user.plan_expire_at = datetime.fromisoformat(data["expire_at"])
     db.session.commit()
     return jsonify(user.to_dict())
+
+
+@plan_admin_bp.route("/admin/plan-automation/run", methods=["POST"])
+@admin_required
+def manual_automation():
+    """Manually trigger plan automation tasks."""
+    from backend.tasks.plan_tasks import (
+        auto_downgrade_expired_plans,
+        auto_expire_boosts,
+    )
+
+    auto_downgrade_expired_plans.delay()
+    auto_expire_boosts.delay()
+    return jsonify({"ok": True})

@@ -123,6 +123,8 @@ class User(db.Model):
     plan_id = Column(Integer, ForeignKey("plans.id"), nullable=True)
     plan = db.relationship("Plan", backref="users")
     plan_expire_at = Column(DateTime, nullable=True)
+    boost_features = Column(Text, nullable=True)
+    boost_expire_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True, nullable=False)
 
@@ -162,6 +164,8 @@ class User(db.Model):
             "is_active": self.is_active,
             "plan": self.plan.to_dict() if self.plan else None,
             "plan_expire_at": self.plan_expire_at.isoformat() if self.plan_expire_at else None,
+            "boost_features": self.boost_features,
+            "boost_expire_at": self.boost_expire_at.isoformat() if self.boost_expire_at else None,
         }
 
 
