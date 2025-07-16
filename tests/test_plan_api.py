@@ -38,11 +38,11 @@ def test_plan_features_and_auth(monkeypatch):
         db.session.add(p)
         db.session.commit()
 
-    resp = client.get("/api/plans")
+    resp = client.get("/api/admin/plans")
     assert resp.status_code == 401
 
     create_admin(app)
-    resp = client.get("/api/plans", headers={"Authorization": "adminkey"})
+    resp = client.get("/api/admin/plans", headers={"Authorization": "adminkey"})
     assert resp.status_code == 200
     data = resp.get_json()
     assert data[0]["features"]["a"] == 1
