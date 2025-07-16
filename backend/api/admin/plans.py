@@ -86,10 +86,12 @@ def manual_automation():
     from backend.tasks.plan_tasks import (
         auto_downgrade_expired_plans,
         auto_expire_boosts,
+        activate_pending_plans,
     )
 
     auto_downgrade_expired_plans.delay()
     auto_expire_boosts.delay()
+    activate_pending_plans.delay()
     return jsonify({"ok": True})
 
 

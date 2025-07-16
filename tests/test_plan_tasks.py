@@ -66,3 +66,35 @@ def test_auto_expire_boost(monkeypatch):
         updated = User.query.get(user.id)
         assert updated.boost_features is None
         assert updated.boost_expire_at is None
+
+def test_activate_pending_plan(monkeypatch):
+    app = setup_app(monkeypatch)
+    with app.app_context():
+        role = Role.query.filter_by(name="user").first()
+        base = Plan(name="Base", price=0.0)
+        nextp = Plan(name="Next", price=5.0)
+        db.session.add_all([base, nextp])
+        db.session.commit()
+        user = User(
+            username="pendinguser",
+            api_key="pendkey",
+            role_id=role.id,
+            role=UserRole.USER,
+            plan_id=base.id,
+        )
+        user.set_password("pass")
+        db.session.add(user)
+        db.session.commit()
+        from backend.models.pending_plan import PendingPlan
+        start_at = datetime.utcnow() - timedelta(minutes=1)
+        expire_at = datetime.utcnow() + timedelta(days=1)
+        pp = PendingPlan(user_id=user.id, plan_id=nextp.id, start_at=start_at, expire_at=expire_at)
+        db.session.add(pp)
+        db.session.commit()
+        from backend.tasks.plan_tasks import activate_pending_plans
+        activate_pending_plans.run()
+        db.session.expire_all()
+        updated = User.query.get(user.id)
+        assert updated.plan_id == nextp.id
+        assert updated.plan_expire_at == expire_at
+        assert PendingPlan.query.count() == 0

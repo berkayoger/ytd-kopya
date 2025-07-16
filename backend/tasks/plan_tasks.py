@@ -6,6 +6,9 @@ from flask import current_app
 from backend import celery_app, create_app, db
 from backend.db.models import User, UserRole
 from backend.models.plan import Plan
+from backend.models.pending_plan import PendingPlan
+from backend.models.plan_history import PlanHistory
+from backend.utils.helpers import add_audit_log
 
 logger = logging.getLogger(__name__)
 
@@ -53,3 +56,44 @@ def auto_expire_boosts():
             u.boost_expire_at = None
             db.session.commit()
             logger.info("Expired boost cleared for user %s", u.username)
+
+@celery_app.task
+def activate_pending_plans():
+    """Activate queued plans when their start time arrives."""
+    logger.info("Checking for pending plans to activate")
+    ctx_app = current_app._get_current_object() if current_app else create_app()
+    with ctx_app.app_context():
+        now = datetime.utcnow()
+        pendings = PendingPlan.query.filter(PendingPlan.start_at <= now).all()
+        for p in pendings:
+            user = User.query.get(p.user_id)
+            if not user:
+                db.session.delete(p)
+                db.session.commit()
+                continue
+            user.plan_id = p.plan_id
+            user.plan_expire_at = p.expire_at
+            db.session.delete(p)
+            db.session.commit()
+            try:
+                add_audit_log(
+                    "plan_activated",
+                    actor_id=user.id,
+                    actor_username=user.username,
+                    details={"plan_id": p.plan_id},
+                    ip_address=p.ip if hasattr(p, "ip") else None,
+                )
+            except Exception:
+                logger.exception("Failed to add audit log for plan activation")
+            PlanHistory = globals().get("PlanHistory")
+            if PlanHistory:
+                history = PlanHistory(
+                    user_id=user.id,
+                    plan_id=user.plan_id,
+                    device=getattr(p, "device", None),
+                    ip=getattr(p, "ip", None),
+                    is_automatic=True,
+                )
+                db.session.add(history)
+                db.session.commit()
+                logger.info("Activated pending plan for user %s", user.username)
