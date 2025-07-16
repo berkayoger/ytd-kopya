@@ -178,6 +178,7 @@ def create_app():
     from backend.api.routes import api_bp
     from backend.admin_panel.routes import admin_bp
     from backend.api.plan_routes import plan_bp
+    from backend.api.admin.plans import plan_admin_bp
     from backend.api.admin.usage_limits import admin_usage_bp
     from backend.api.admin.promo_codes import admin_promo_bp
     from backend.api.admin.promo_stats import stats_bp
@@ -195,6 +196,7 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(plan_bp, url_prefix='/api')
+    app.register_blueprint(plan_admin_bp, url_prefix='/api')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(admin_usage_bp)
     app.register_blueprint(admin_promo_bp)
