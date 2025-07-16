@@ -339,6 +339,7 @@ class PromoCode(db.Model):
     __tablename__ = "promo_codes"
     id = Column(Integer, primary_key=True)
     code = Column(String(50), unique=True, nullable=False, index=True)
+    description = Column(String(128), nullable=True)
     plan = Column(
         SqlEnum(SubscriptionPlan, name="promo_code_plan_enum", create_type=True),
         nullable=False,
@@ -363,6 +364,7 @@ class PromoCode(db.Model):
         return {
             "id": self.id,
             "code": self.code,
+            "description": self.description,
             "plan": self.plan.name if self.plan else None,
             "duration_days": self.duration_days,
             "max_uses": self.max_uses,
