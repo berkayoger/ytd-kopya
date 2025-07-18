@@ -576,3 +576,18 @@ class AuditLog(db.Model):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = db.relationship("User", backref="audit_logs", lazy=True)
+
+
+class DatabaseBackup(db.Model):
+    """Stores database backup metadata."""
+
+    __tablename__ = "database_backups"
+
+    id = Column(Integer, primary_key=True)
+    filename = Column(String(128), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    admin_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    file_hash = Column(String(64), nullable=False)
+
+    admin = db.relationship("User", lazy=True)
+
