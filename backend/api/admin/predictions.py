@@ -189,7 +189,6 @@ def create_prediction():
             is_active=bool(data.get("is_active", True)),
             is_public=bool(data.get("is_public", True)),
             created_at=created_at,
-            expires_at=expires_at,
         )
         db.session.add(pred)
         db.session.commit()
