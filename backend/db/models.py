@@ -591,3 +591,19 @@ class DatabaseBackup(db.Model):
 
     admin = db.relationship("User", lazy=True)
 
+
+class SystemEvent(db.Model):
+    """Stores system events and operational logs."""
+
+    __tablename__ = "system_events"
+
+    id = Column(Integer, primary_key=True)
+    event_type = Column(String(32), nullable=False)
+    level = Column(String(16), nullable=False)
+    message = Column(String(512), nullable=False)
+    meta = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    user = db.relationship("User", lazy=True)
+
