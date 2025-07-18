@@ -26,3 +26,4 @@ Flask-Limiter
 flask_socketio
 loguru
 requests
+psutil

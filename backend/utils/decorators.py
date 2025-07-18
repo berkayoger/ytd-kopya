@@ -70,7 +70,15 @@ def require_subscription_plan(minimum_plan: SubscriptionPlan):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if not hasattr(g, 'user') or not isinstance(g.user, User):
-                return _error_response("Yetkilendirme hatası: Kullanıcı bilgisi bulunamadı.", 401)
+                api_key = request.headers.get('X-API-KEY')
+                if api_key:
+                    user = User.query.filter_by(api_key=api_key).first()
+                    if user:
+                        g.user = user
+            if not hasattr(g, 'user') or not isinstance(g.user, User):
+                return _error_response(
+                    "Yetkilendirme hatası: Kullanıcı bilgisi bulunamadı.", 401
+                )
 
             user_plan_level = g.user.subscription_level.value
             required_plan_level = minimum_plan.value
