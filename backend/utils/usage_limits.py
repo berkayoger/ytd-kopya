@@ -13,6 +13,12 @@ def check_usage_limit(feature_name):
         def wrapper(*args, **kwargs):
             user = getattr(g, "user", None)
             if not user:
+                api_key = request.headers.get("X-API-KEY")
+                if api_key:
+                    user = User.query.filter_by(api_key=api_key).first()
+                    if user:
+                        g.user = user
+            if not user:
                 return jsonify({"error": "Yetkilendirme hatası"}), 401
 
             plan_name = user.subscription_level.name.upper()
