@@ -194,6 +194,7 @@ def create_app():
     from backend.api.admin.plans import plan_admin_bp
     from backend.api.admin.usage_limits import admin_usage_bp
     from backend.api.admin.promo_codes import admin_promo_bp
+    from backend.api.admin.promotion_codes import admin_promotion_bp
     from backend.api.admin.promo_stats import stats_bp
     from backend.api.admin.predictions import predictions_bp
     from backend.api.admin.users import user_admin_bp
@@ -216,6 +217,7 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(admin_usage_bp)
     app.register_blueprint(admin_promo_bp)
+    app.register_blueprint(admin_promotion_bp)
     app.register_blueprint(stats_bp)
     app.register_blueprint(predictions_bp)
     app.register_blueprint(user_admin_bp)
