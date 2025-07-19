@@ -12,6 +12,8 @@ plan_admin_bp = Blueprint("plan_admin_bp", __name__)
 @admin_required
 def list_plans():
     plans = Plan.query.all()
+    if request.args.get("simple") == "1":
+        return jsonify({"plans": [{"id": p.id, "name": p.name} for p in plans]})
     return jsonify([p.to_dict() for p in plans])
 
 @plan_admin_bp.route("/admin/plans", methods=["POST"])
