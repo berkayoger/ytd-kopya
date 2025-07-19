@@ -155,6 +155,14 @@ pytest --cov=backend --cov=frontend tests/
 
 Backend API'lari OpenAPI (Swagger) standardina uygun sekilde belgelenmektedir. Calisan bir sunucu uzerinde `/api/docs` adresinden interaktif dokumanlara erisilebilir. Bu yontem frontend gelistiricileri icin net bir kontrat saglar ve API surumlerini takip etmeyi kolaylastirir.
 
+### Analytics Uc Noktalari
+
+Yonetim panelindeki gelismis raporlar icin eklenen API'lar:
+
+- `/api/admin/analytics/summary` – Belirli tarihler arasinda aktif kullanici, yeni kayit, odeme ve pasif kullanici sayilarini dondurur.
+- `/api/admin/analytics/plans` – Abonelik planlarina gore kullanici dagilimini listeler.
+- `/api/admin/analytics/usage` – Yapilan toplam tahmin ve sistem olayi sayisini dondurur.
+
 ## Guvenlik Notlari
 
 Sifreler `werkzeug` kutuphanesi ile guclu bicimde hashlenir ve JWT tabanli oturumlar kullanilir. Kullanici girislerinde olusan **refresh token** degeri `user_sessions` tablosunda saklanir ve token yenileme islemlerinde bu tablo uzerinden dogrulama yapilir. CSRF korumasi icin her istek `X-CSRF-Token` basligi ile dogrulanir. RBAC modeli ile yetki kontrolu saglanir. Flask-Limiter kullanilarak API istekleri oran sinirlariyla korunur. Hassas islemler Celery uzerinden gerceklestirilir ve kritik olaylarda `send_security_alert_task` tetiklenerek loglama yapilir.
