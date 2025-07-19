@@ -63,7 +63,10 @@ Bu proje servis odakli bir mimariye sahiptir. Backend katmani Flask uzerinde cal
 Proje kök dizininde `wsgi.py` adlı bir çalıştırıcı dosya bulunur. Bu dosya
 `backend.create_app()` fonksiyonunu kullanarak Flask uygulamasını başlatır.
 
-Frontend klasörü; `giris.html`, `kayit.html`, `abonelik.html`, `abonelik2.html`, `dashboard.html` ve `homepage-unregistered.html` gibi sayfaları içerir. Yönetim ve analiz paneli için `ytdcrypto-admin-dashboard` ile `frontend-crypto-analysis-dashboard` dosyaları bulunur. Şifre sıfırlama akışı için `sifremi-unuttum.html` ve `reset-password.html` dosyaları da eklenmiştir. Statik varlıklar `frontend/static/` altında tutulur. Uygulama Docker kullanılarak kolayca çalıştırılabilir.
+
+## Mobil Uyumlu Panel
+
+Admin ve kullanıcı sayfaları mobil cihazlarda da rahat kullanılabilmesi için responsive hâle getirildi. HTML dosyalarına `viewport` meta etiketi eklendi ve tablolar `overflow-x-auto` sınıfı ile yatay kaydırılabilir yapıldı. Böylece küçük ekranlarda menü ve kritik işlemler erişilebilir oldu.
 
 ## Kurulum
 

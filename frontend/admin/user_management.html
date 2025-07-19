@@ -2,6 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kullanıcı Yönetimi | Admin Panel</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -24,6 +25,7 @@
       </select>
       <button onclick="loadUsers()" class="bg-blue-600 text-white px-4 py-2 rounded">Filtrele</button>
     </div>
+    <div class="overflow-x-auto">
     <table class="w-full text-left border border-gray-300 rounded">
       <thead class="bg-gray-100">
         <tr>
@@ -37,6 +39,7 @@
       </thead>
       <tbody id="user-table-body"></tbody>
     </table>
+    </div>
 
     <hr class="my-6">
     <h3 class="text-lg font-semibold mb-2">Yeni Kullanıcı Oluştur</h3>
