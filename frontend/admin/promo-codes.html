@@ -2,6 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Promosyon Kodları | Admin Panel</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -39,6 +40,7 @@
       <button onclick="loadPromoStats()" class="bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700">Filtrele</button>
     </div>
 
+    <div class="overflow-x-auto">
     <table class="w-full table-auto border-collapse border border-gray-300">
       <thead class="bg-gray-200">
         <tr>
@@ -55,6 +57,7 @@
       </thead>
       <tbody id="promo-table"></tbody>
     </table>
+    </div>
 
     <div class="mt-6">
       <canvas id="promoChart" height="100"></canvas>
