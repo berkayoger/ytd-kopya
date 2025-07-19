@@ -2,6 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Audit Logları</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -15,6 +16,7 @@
       <button onclick="loadAuditLogs()" class="bg-blue-600 text-white px-4 py-2 rounded">Filtrele</button>
       <button onclick="purgeLogs()" class="bg-red-600 text-white px-4 py-2 rounded ml-2">Eski Logları Sil</button>
     </div>
+    <div class="overflow-x-auto">
     <table class="w-full border text-left">
       <thead class="bg-gray-100">
         <tr>
@@ -27,6 +29,7 @@
       </thead>
       <tbody id="audit-table-body"></tbody>
     </table>
+    </div>
   </div>
   <script>
   async function loadAuditLogs() {
