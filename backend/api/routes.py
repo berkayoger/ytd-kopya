@@ -22,6 +22,7 @@ from backend.utils.usage_limits import check_usage_limit
 
 # Yardımcı fonksiyonları import et
 from backend.utils.helpers import serialize_user_for_api, add_audit_log
+from backend.utils.plan_limits import get_user_effective_limits
 
 # API Blueprint'i tanımla
 api_bp = Blueprint('api', __name__)
@@ -477,6 +478,29 @@ def get_subscription_status():
         "api_key": user_data['api_key'],
         "is_locked": user_data['is_locked'],
         "locked_until": user_data['locked_until']
+    }), 200
+
+# Kullanıcı profil ve limit bilgisini döndüren yeni endpoint
+@api_bp.route('/user/me', methods=['GET'])
+@limiter.limit(get_plan_rate_limit, key_func=lambda: request.headers.get('X-API-KEY') or request.remote_addr)
+@require_subscription_plan(SubscriptionPlan.TRIAL)
+def get_user_profile():
+    user = g.user
+    daily_usage = DailyUsage.query.filter_by(user_id=user.id, date=date.today()).first()
+    used = daily_usage.analyze_calls if daily_usage else 0
+    limits = get_user_effective_limits(user)
+    max_daily = limits.get('coin_analysis') or limits.get('max_prediction_per_day')
+    remaining = None
+    if isinstance(max_daily, int) or isinstance(max_daily, float):
+        remaining = max(max_daily - used, 0)
+    user_data = serialize_user_for_api(user, scope='self')
+    return jsonify({
+        'user': user_data,
+        'limits': {
+            'used_prediction_today': used,
+            'remaining_prediction_today': remaining
+        },
+        'plan': user.plan.to_dict() if user.plan else None
     }), 200
 
 # Kullanıcının kendi aboneliğini yükseltmesi için PATCH endpoint'i
