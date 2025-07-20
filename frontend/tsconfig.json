@@ -1,9 +1,15 @@
 {
   "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["DOM", "ES2017"],
+    "moduleResolution": "node",
     "jsx": "react",
     "esModuleInterop": true,
     "allowJs": true,
     "isolatedModules": true,
-    "skipLibCheck": true
-  }
+    "skipLibCheck": true,
+    "types": ["jest", "node"],
+    "outDir": "dist"
+  },
+  "exclude": ["node_modules", "dist", "__mocks__"]
 }
