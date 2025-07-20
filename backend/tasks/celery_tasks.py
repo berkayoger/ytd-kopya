@@ -150,16 +150,23 @@ def check_and_downgrade_subscriptions():
     ctx_app = current_app._get_current_object() if current_app else create_app()
     with ctx_app.app_context():
         now = datetime.utcnow()
-        users = User.query.all()
-        for user in users:
-            if user.subscription_end and user.subscription_end < now:
-                user.subscription_level = SubscriptionPlan.BASIC
-                user.subscription_end = None
-                logger.info(f"Kullanici {user.username} aboneligi sona erdi, BASIC plana dusuruldu.")
+        db.session.expire_all()
+        expired_q = User.query.filter(User.subscription_end.isnot(None)).filter(User.subscription_end < now)
+        for user in expired_q.all():
+            target = User.query.get(user.id)
+            if target:
+                target.subscription_level = SubscriptionPlan.BASIC
+                target.subscription_end = None
+                db.session.flush()
+                db.session.refresh(target)
+                logger.info(
+                    f"Kullanici {target.username} aboneligi sona erdi, BASIC plana dusuruldu."
+                )
         db.session.commit()
         if os.getenv("FLASK_ENV") == "testing":
             # Testlerde degisikliklerin hemen gorunmesi icin oturumu yenile
             db.session.expire_all()
+            db.session.remove()
 
 
 from backend.utils.alarms import send_alarm, AlarmSeverityEnum
