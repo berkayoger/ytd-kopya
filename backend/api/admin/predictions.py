@@ -44,6 +44,10 @@ def list_predictions():
 
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
+        # Basit listeleme durumunda yalnızca tahmin dizisini döndür
+        if not request.args:
+            return jsonify([p.to_dict() for p in pagination.items])
+
         return jsonify({
             "total": pagination.total,
             "page": pagination.page,
