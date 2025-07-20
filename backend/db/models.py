@@ -35,6 +35,15 @@ class SubscriptionPlan(Enum):
     PREMIUM = 3
 
 
+class SubscriptionPlanLimits:
+    """Provides plan based limit configurations."""
+
+    @staticmethod
+    def get_limits(plan: SubscriptionPlan) -> dict:
+        from backend.utils.plan_limits import PLAN_LIMITS
+        return PLAN_LIMITS.get(plan.name.lower(), {})
+
+
 class UserRole(Enum):
     """Kullanıcı Rolü Enum'u (Yönetici Paneli için)"""
 
