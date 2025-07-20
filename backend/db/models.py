@@ -621,6 +621,15 @@ class AuditLog(db.Model):
     user = db.relationship("User", backref="audit_logs", lazy=True)
 
 
+class UsageLog(db.Model):
+    __tablename__ = "usage_log"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, nullable=False)
+    action = Column(String(64), nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+
 class DatabaseBackup(db.Model):
     """Stores database backup metadata."""
 
