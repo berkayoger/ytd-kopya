@@ -175,6 +175,10 @@
                     <i data-lucide="bar-chart" class="w-5 h-5 mr-3"></i>
                     Limit Kullanımı
                 </a>
+                <a href="#" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" data-section="ozel-ozellikler">
+                    <i data-lucide="settings-2" class="w-5 h-5 mr-3"></i>
+                    Özel Özellikler
+                </a>
             </nav>
         </aside>
 
@@ -548,6 +552,9 @@
                 </section>
                 <section id="limit-usage" class="content-section hidden">
                     <div id="limit-usage-root"></div>
+                </section>
+                <section id="ozel-ozellikler" class="content-section hidden">
+                    <div id="custom-features-editor-root"></div>
                 </section>
             </main>
         </div>
@@ -1186,6 +1193,13 @@
         if (limitUsageRoot) {
           import('/react/LimitUsageStats.tsx').then((module) => {
             const root = ReactDOM.createRoot(limitUsageRoot);
+            root.render(React.createElement(module.default));
+          });
+        }
+        const customFeaturesRoot = document.getElementById('custom-features-editor-root');
+        if (customFeaturesRoot) {
+          import('/react/CustomFeaturesEditor.tsx').then((module) => {
+            const root = ReactDOM.createRoot(customFeaturesRoot);
             root.render(React.createElement(module.default));
           });
         }
