@@ -6,11 +6,12 @@ from flask import Flask, jsonify, request, g
 from flask_sqlalchemy import SQLAlchemy
 from backend.db import db as base_db
 from flask_cors import CORS
-from flask_limiter import Limiter
+from backend.limiting import limiter
 from flask_limiter.util import get_remote_address
 from celery import Celery
 from flask_socketio import SocketIO, emit
 from backend.db.models import User, SubscriptionPlan
+from backend.models.plan import Plan
 from backend.utils.usage_limits import check_usage_limit
 from loguru import logger
 from redis import Redis
@@ -77,6 +78,16 @@ class Config:
             "schedule": timedelta(days=1),
             "options": {"queue": "default"},
         },
+        'auto-downgrade-plans-everyday': {
+            'task': 'backend.tasks.plan_tasks.auto_downgrade_expired_plans',
+            'schedule': timedelta(days=1),
+            'options': {'queue': 'default'},
+        },
+        'auto-expire-boosts-everyday': {
+            'task': 'backend.tasks.plan_tasks.auto_expire_boosts',
+            'schedule': timedelta(days=1),
+            'options': {'queue': 'default'},
+        },
     }
     # CORS Origins ayarı .env dosyasından
     # supports_credentials=True ise origins ASLA '*' olmamalıdır.
@@ -120,7 +131,6 @@ class Config:
 
 # Flask uzantılarını global olarak başlat
 db = base_db
-limiter = Limiter(get_remote_address)
 celery_app = Celery()
 socketio = SocketIO()
 
@@ -206,31 +216,55 @@ def create_app():
         from backend.core.services import YTDCryptoSystem
 
         app.ytd_system_instance = YTDCryptoSystem()
+    else:
+        from types import SimpleNamespace
+        app.ytd_system_instance = SimpleNamespace(collector=None, ai=None)
 
     # Blueprint'leri kaydet
     from backend.auth.routes import auth_bp
     from backend.api.routes import api_bp
     from backend.admin_panel.routes import admin_bp
+    from backend.api.plan_routes import plan_bp
+    from backend.api.admin.plans import plan_admin_bp
     from backend.api.admin.usage_limits import admin_usage_bp
     from backend.api.admin.promo_codes import admin_promo_bp
+    from backend.api.admin.promotion_codes import admin_promotion_bp
     from backend.api.admin.promo_stats import stats_bp
     from backend.api.admin.predictions import predictions_bp
+    from backend.api.admin.users import user_admin_bp
+    from backend.api.admin.audit import audit_bp
+    from backend.api.admin.backup import backup_bp
+    from backend.api.admin.system_events import events_bp
+    from backend.api.admin.analytics import analytics_bp
     from backend.api.ta_routes import bp as ta_bp
     from backend.api.public.technical import technical_bp
+    from backend.api.public.subscriptions import subscriptions_bp
 
     # APScheduler tabanli gorevleri istege bagli olarak baslat
     if os.getenv("ENABLE_SCHEDULER", "0") == "1":
         from backend.api.admin import prediction_scheduler  # noqa: F401
 
+ 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
-    app.register_blueprint(api_bp, url_prefix="/api")
-    app.register_blueprint(admin_bp, url_prefix="/api/admin")
+
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(plan_bp, url_prefix='/api')
+    app.register_blueprint(plan_admin_bp, url_prefix='/api')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(admin_usage_bp)
     app.register_blueprint(admin_promo_bp)
+    app.register_blueprint(admin_promotion_bp)
     app.register_blueprint(stats_bp)
     app.register_blueprint(predictions_bp)
+    app.register_blueprint(user_admin_bp)
+    app.register_blueprint(audit_bp, url_prefix='/api')
+    app.register_blueprint(backup_bp)
+    app.register_blueprint(events_bp)
+    app.register_blueprint(analytics_bp)
     app.register_blueprint(ta_bp)
     app.register_blueprint(technical_bp)
+    app.register_blueprint(subscriptions_bp)
 
     # Sağlık Kontrol Endpoint'i
     @app.route("/health", methods=["GET"])

@@ -169,3 +169,27 @@ def test_promo_code_usage_details(monkeypatch):
     data = resp.get_json()
     assert any(item["username"] == "u1" for item in data)
     assert any(item["username"] == "u2" for item in data)
+
+
+def test_get_user_promos(monkeypatch):
+    monkeypatch.setenv("FLASK_ENV", "testing")
+    monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
+    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    app = create_app()
+    client = app.test_client()
+    setup_admin(app)
+
+    with app.app_context():
+        role = Role.query.filter_by(name="user").first()
+        user = User(username="userx", api_key="keyx", role_id=role.id)
+        user.set_password("p")
+        promo1 = PromoCode(code="UU1", plan=SubscriptionPlan.BASIC, duration_days=1, max_uses=1, assigned_user_id=1)
+        db.session.add_all([user, promo1])
+        db.session.commit()
+        promo1.assigned_user_id = user.id
+        db.session.commit()
+
+    resp = client.get(f"/api/admin/promo-codes/user/{user.id}")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert any(p["code"] == "UU1" for p in data)
