@@ -35,6 +35,7 @@ def init_celery(app):
 def autodiscover_tasks():
     """Import Celery task modules."""
     import backend.tasks.celery_tasks  # noqa
+    import backend.tasks.plan_tasks  # noqa
 
 
 if os.getenv("FLASK_ENV") != "testing":

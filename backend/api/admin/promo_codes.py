@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from backend.auth.middlewares import admin_required
-from backend.db.models import db, PromoCode
+from backend.db.models import db, PromoCode, SubscriptionPlan
 from datetime import datetime
 
 admin_promo_bp = Blueprint("admin_promo", __name__, url_prefix="/api/admin/promo-codes")
@@ -32,15 +32,16 @@ def create_promo_code():
         user_email = data.get("user_email")
         if user_email == "":
             user_email = None
+        assigned_user_id = data.get("assigned_user_id")
 
         code = PromoCode(
             code=data["code"].upper(),
-            plan=data["plan"].upper(),
+            plan=SubscriptionPlan[data["plan"].upper()],
             duration_days=int(data["duration_days"]),
             max_uses=int(data["max_uses"]),
             expires_at=expires_at,
             user_email=user_email,
-            created_by="admin"
+            assigned_user_id=assigned_user_id,
         )
         db.session.add(code)
         db.session.commit()
@@ -48,6 +49,14 @@ def create_promo_code():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
+
+
+@admin_promo_bp.route("/user/<int:user_id>", methods=["GET"])
+@jwt_required()
+@admin_required()
+def get_user_promos(user_id):
+    promos = PromoCode.query.filter_by(assigned_user_id=user_id).all()
+    return jsonify([p.to_dict() for p in promos]), 200
 
 
 @admin_promo_bp.route("/<int:promo_id>", methods=["DELETE"])
@@ -75,6 +84,8 @@ def update_promo_code(promo_id):
             promo.is_active = bool(data["is_active"])
         if "user_email" in data:
             promo.user_email = data["user_email"] or None
+        if "assigned_user_id" in data:
+            promo.assigned_user_id = data["assigned_user_id"]
         if "expires_at" in data:
             if data["expires_at"]:
                 try:

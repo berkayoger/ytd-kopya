@@ -63,7 +63,10 @@ Bu proje servis odakli bir mimariye sahiptir. Backend katmani Flask uzerinde cal
 Proje kök dizininde `wsgi.py` adlı bir çalıştırıcı dosya bulunur. Bu dosya
 `backend.create_app()` fonksiyonunu kullanarak Flask uygulamasını başlatır.
 
-Frontend klasörü; `giris.html`, `kayit.html`, `abonelik.html`, `abonelik2.html`, `dashboard.html` ve `homepage-unregistered.html` gibi sayfaları içerir. Yönetim ve analiz paneli için `ytdcrypto-admin-dashboard` ile `frontend-crypto-analysis-dashboard` dosyaları bulunur. Şifre sıfırlama akışı için `sifremi-unuttum.html` ve `reset-password.html` dosyaları da eklenmiştir. Statik varlıklar `frontend/static/` altında tutulur. Uygulama Docker kullanılarak kolayca çalıştırılabilir.
+
+## Mobil Uyumlu Panel
+
+Admin ve kullanıcı sayfaları mobil cihazlarda da rahat kullanılabilmesi için responsive hâle getirildi. HTML dosyalarına `viewport` meta etiketi eklendi ve tablolar `overflow-x-auto` sınıfı ile yatay kaydırılabilir yapıldı. Böylece küçük ekranlarda menü ve kritik işlemler erişilebilir oldu.
 
 ## Kurulum
 
@@ -104,6 +107,40 @@ Docker yüklüyse projeyi şu komutla hızlıca başlatabilirsiniz:
 docker-compose up --build
 ```
 
+## Production Kurulumu (Gunicorn ve Nginx)
+
+Gerçek bir sunucuda uygulamayı yayınlamak için `app.py` dosyası üzerinden
+`create_app` fonksiyonunu kullanarak Gunicorn çalıştırabilirsiniz:
+
+```bash
+gunicorn -w 4 -b 127.0.0.1:5000 'app:create_app()'
+```
+
+Ardından Nginx'i ters proxy olarak yapılandırıp statik dosyaları servis
+edecek şekilde ayarlayabilirsiniz. Örnek bir konfigürasyon:
+
+```nginx
+server {
+    listen 80;
+    server_name admin.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location /static/ {
+        alias /path/to/your/frontend/;
+    }
+}
+```
+
+HTTPS sertifikası için Let's Encrypt (`certbot --nginx`) ve güvenlik için UFW
+kuralları eklemeniz önerilir. Uygulamanın arka planda kalıcı olarak
+çalışması için Supervisor kullanılabilir.
+
 ## Testler
 
 Testleri çalıştırmak için `pytest` kullanılabilir:
@@ -120,6 +157,14 @@ pytest --cov=backend --cov=frontend tests/
 ## API Dokumantasyonu
 
 Backend API'lari OpenAPI (Swagger) standardina uygun sekilde belgelenmektedir. Calisan bir sunucu uzerinde `/api/docs` adresinden interaktif dokumanlara erisilebilir. Bu yontem frontend gelistiricileri icin net bir kontrat saglar ve API surumlerini takip etmeyi kolaylastirir.
+
+### Analytics Uc Noktalari
+
+Yonetim panelindeki gelismis raporlar icin eklenen API'lar:
+
+- `/api/admin/analytics/summary` – Belirli tarihler arasinda aktif kullanici, yeni kayit, odeme ve pasif kullanici sayilarini dondurur.
+- `/api/admin/analytics/plans` – Abonelik planlarina gore kullanici dagilimini listeler.
+- `/api/admin/analytics/usage` – Yapilan toplam tahmin ve sistem olayi sayisini dondurur.
 
 ## Guvenlik Notlari
 
@@ -189,6 +234,8 @@ Alt klasörler:
 Ana klasördeki `.html` dosyaları statik sayfalardır: `index.html`, `giris.html`, `kayit.html`, `abonelik.html`, `dashboard.html`, `sifremi-unuttum.html`, `reset-password.html` ve `prediction-display.html`. Bunlar Flask tarafından servis edilen basit arayüzleri içerir.
 
 `static/` klasöründe istemci JavaScript kodları (`api.js`) ve diğer statik varlıklar bulunur.
+
+Ek olarak `admin/promo-codes-advanced.html` dosyası React ve Tailwind kullanılarak hazırlanmış gelişmiş promosyon kodu oluşturma formu örneğini içerir.
 
 ### Diğer Klasörler
 
