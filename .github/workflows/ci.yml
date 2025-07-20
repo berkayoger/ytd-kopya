@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  build-test:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -21,15 +21,26 @@ jobs:
           pip install flake8 pytest pytest-cov codecov pycoingecko
       - name: Lint
         run: flake8 backend
-      - name: Test & Coverage
-        run: pytest --cov=backend --cov=frontend --cov-report=xml
+      - name: Backend tests
+        run: pytest --cov=backend tests/ --cov-report=xml --cov-fail-under=80
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install frontend deps
+        run: |
+          cd frontend
+          npm install
+      - name: Frontend tests
+        run: |
+          cd frontend
+          npm test -- --watchAll=false
       - name: Upload Coverage
         uses: codecov/codecov-action@v3
         with:
           fail_ci_if_error: true
 
   deploy:
-    needs: build-test
+    needs: test
     if: github.ref == 'refs/heads/main' && success()
     runs-on: ubuntu-latest
     steps:
