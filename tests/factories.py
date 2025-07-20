@@ -13,9 +13,12 @@ class PromotionCodeFactory(factory.alchemy.SQLAlchemyModelFactory):
     promo_type = "discount"
     discount_type = "%"
     discount_amount = 50
+    feature = None
     plans = "plan1"
+    usage_count = 0
     usage_limit = 5
     active_days = 7
     validity_days = 7
     user_segment = "all"
+    custom_users = None
     is_active = True
