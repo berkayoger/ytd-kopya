@@ -18,6 +18,7 @@ from loguru import logger
 import os
 import uuid
 from datetime import datetime, timedelta
+import json
 from backend.utils.rbac import require_permission
 from backend.auth.middlewares import admin_required as _admin_required
 from flask_jwt_extended import get_jwt_identity
@@ -43,10 +44,32 @@ def list_users():
                 "api_key": user.api_key, # Üretimde doğrudan API key'i döndürmeyin!
                 "is_active_subscriber": user.is_subscription_active(),
                 "subscription_end": user.subscription_end.isoformat() if user.subscription_end else None,
-                "created_at": user.created_at.isoformat()
-            } for user in users
+                "created_at": user.created_at.isoformat(),
+                "custom_features": user.custom_features or "{}",
+            }
+            for user in users
         ]
         return jsonify(user_list), 200
+
+
+@admin_bp.route('/users/<int:user_id>/custom-features', methods=['POST'])
+@admin_required
+def set_custom_features(user_id):
+    """Kullanıcıya özel custom_features tanımı yap."""
+    with current_app.app_context():
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+        data = request.get_json()
+        features = data.get("custom_features", "")
+        try:
+            # Geçerli bir JSON olup olmadığını kontrol et
+            json_obj = json.loads(features)
+            user.custom_features = json.dumps(json_obj)
+            db.session.commit()
+            return jsonify({"message": "Custom features güncellendi."}), 200
+        except Exception:
+            return jsonify({"error": "Geçersiz JSON"}), 400
 
 # Kullanıcı detaylarını ve abonelik/rol güncelleme
 @admin_bp.route('/users/<int:user_id>', methods=['PUT'])
