@@ -54,22 +54,25 @@ def list_users():
 
 @admin_bp.route('/users/<int:user_id>/custom-features', methods=['POST'])
 @admin_required
-def set_custom_features(user_id):
-    """Kullanıcıya özel custom_features tanımı yap."""
+def update_custom_features(user_id):
+    data = request.get_json()
+    if not data or "custom_features" not in data:
+        return jsonify({"error": "Eksik veri"}), 400
+
+    try:
+        parsed = json.loads(data["custom_features"])
+    except json.JSONDecodeError:
+        return jsonify({"error": "Geçersiz JSON"}), 400
+
     with current_app.app_context():
         user = User.query.get(user_id)
         if not user:
-            return jsonify({"error": "Kullanıcı bulunamadı."}), 404
-        data = request.get_json()
-        features = data.get("custom_features", "")
-        try:
-            # Geçerli bir JSON olup olmadığını kontrol et
-            json_obj = json.loads(features)
-            user.custom_features = json.dumps(json_obj)
-            db.session.commit()
-            return jsonify({"message": "Custom features güncellendi."}), 200
-        except Exception:
-            return jsonify({"error": "Geçersiz JSON"}), 400
+            return jsonify({"error": "Kullanıcı bulunamadı"}), 404
+
+        user.custom_features = json.dumps(parsed)
+        db.session.commit()
+
+    return jsonify({"message": "Özel özellikler güncellendi."}), 200
 
 # Kullanıcı detaylarını ve abonelik/rol güncelleme
 @admin_bp.route('/users/<int:user_id>', methods=['PUT'])
