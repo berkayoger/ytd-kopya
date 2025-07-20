@@ -14,6 +14,15 @@ export default function CustomFeaturesEditor() {
   const [customFeatures, setCustomFeatures] = useState<string>('{}');
   const [status, setStatus] = useState('');
 
+  function isValidJSON(str: string): boolean {
+    try {
+      JSON.parse(str);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   useEffect(() => {
     fetch('/api/admin/users')
       .then(res => res.json())
@@ -69,11 +78,30 @@ export default function CustomFeaturesEditor() {
             value={customFeatures}
             onChange={e => setCustomFeatures(e.target.value)}
           />
-          <Button onClick={saveCustomFeatures}>Kaydet</Button>
+          <Button
+            onClick={() => {
+              if (!isValidJSON(customFeatures)) {
+                setStatus('❌ Geçersiz JSON formatı');
+                return;
+              }
+              saveCustomFeatures();
+            }}
+            color="primary"
+          >
+            Kaydet
+          </Button>
         </>
       )}
 
-      {status && <p className="mt-2 text-sm text-slate-400">{status}</p>}
+      {status && (
+        <p
+          className={`mt-2 text-sm ${
+            status.startsWith('❌') ? 'text-red-500' : 'text-green-400'
+          }`}
+        >
+          {status}
+        </p>
+      )}
     </div>
   );
 }
