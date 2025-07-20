@@ -1,16 +1,10 @@
 import json
-from backend.db.models import SubscriptionPlan
-from backend.utils.plan_limits import PLAN_LIMITS
-
-class SubscriptionPlanLimits:
-    """Provides plan based limit configurations."""
-
-    @staticmethod
-    def get_limits(plan: SubscriptionPlan) -> dict:
-        return PLAN_LIMITS.get(plan.name.lower(), {})
+from backend.db.models import SubscriptionPlanLimits
 
 def get_effective_limits(user):
-    """Kullanıcıya özel limit varsa onu, yoksa plan limitini döndür."""
+    """
+    Kullanıcıya özel limit varsa onu döndür, yoksa plan bazlı limitleri döndür.
+    """
     if getattr(user, "custom_features", None):
         try:
             return json.loads(user.custom_features)
@@ -19,7 +13,9 @@ def get_effective_limits(user):
     return SubscriptionPlanLimits.get_limits(user.subscription_level)
 
 def enforce_limit(user, key: str, usage_count: int) -> bool:
-    """Belirli bir limit için kullanıcının sınırı aşıp aşmadığını kontrol eder."""
+    """
+    Belirli bir limit anahtarı için kullanıcının limiti aşıp aşmadığını kontrol eder.
+    """
     limits = get_effective_limits(user)
     limit_value = limits.get(key)
     if limit_value is None:
