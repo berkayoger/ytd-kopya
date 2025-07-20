@@ -216,9 +216,6 @@ def create_app():
         from backend.core.services import YTDCryptoSystem
 
         app.ytd_system_instance = YTDCryptoSystem()
-    else:
-        from types import SimpleNamespace
-        app.ytd_system_instance = SimpleNamespace(collector=None, ai=None)
 
     # Blueprint'leri kaydet
     from backend.auth.routes import auth_bp
@@ -246,8 +243,6 @@ def create_app():
 
  
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
-
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(plan_bp, url_prefix='/api')
     app.register_blueprint(plan_admin_bp, url_prefix='/api')
