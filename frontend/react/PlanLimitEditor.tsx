@@ -41,24 +41,31 @@ export default function PlanLimitEditor() {
   return (
     <div className="p-6">
       <h2 className="text-xl font-bold mb-4">Plan Limitleri</h2>
-      {plans.map(plan => (
-        <div key={plan.id} className="border p-4 mb-4 rounded">
-          <h3 className="font-semibold mb-2">{plan.name}</h3>
-          <div className="grid grid-cols-2 gap-4">
-            {Object.entries(plan.features).map(([key, val]) => (
-              <div key={key}>
-                <label className="block text-sm font-medium">{key}</label>
-                <Input
-                  type="number"
-                  value={val}
-                  onChange={e => updateLimit(plan.id, key, Number(e.target.value))}
-                />
-              </div>
-            ))}
+      {plans.map(plan => {
+        const featuresObj =
+          typeof plan.features === 'string'
+            ? JSON.parse(plan.features || '{}')
+            : plan.features || {};
+
+        return (
+          <div key={plan.id} className="border p-4 mb-4 rounded">
+            <h3 className="font-semibold mb-2">{plan.name}</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {Object.entries(featuresObj).map(([key, val]) => (
+                <div key={key}>
+                  <label className="block text-sm font-medium">{key}</label>
+                  <Input
+                    type="number"
+                    value={val}
+                    onChange={e => updateLimit(plan.id, key, Number(e.target.value))}
+                  />
+                </div>
+              ))}
+            </div>
+            <Button className="mt-4" onClick={() => saveChanges(plan.id)} disabled={loading}>Kaydet</Button>
           </div>
-          <Button className="mt-4" onClick={() => saveChanges(plan.id)} disabled={loading}>Kaydet</Button>
-        </div>
-      ))}
+        );
+      })}
       {resultMsg && <div className="mt-2 text-sm">{resultMsg}</div>}
     </div>
   );
