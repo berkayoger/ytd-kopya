@@ -171,6 +171,10 @@
                     <i data-lucide="sliders" class="w-5 h-5 mr-3"></i>
                     Plan Limitleri
                 </a>
+                <a href="#" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" data-section="limit-usage">
+                    <i data-lucide="bar-chart" class="w-5 h-5 mr-3"></i>
+                    Limit Kullanımı
+                </a>
             </nav>
         </aside>
 
@@ -541,6 +545,9 @@
                 </section>
                 <section id="plan-limitleri" class="content-section hidden">
                     <div id="plan-limit-editor-root"></div>
+                </section>
+                <section id="limit-usage" class="content-section hidden">
+                    <div id="limit-usage-root"></div>
                 </section>
             </main>
         </div>
@@ -1174,6 +1181,14 @@
 
         const planLimitRoot = ReactDOM.createRoot(document.getElementById('plan-limit-editor-root'));
         planLimitRoot.render(<PlanLimitEditor />);
+
+        const limitUsageRoot = document.getElementById('limit-usage-root');
+        if (limitUsageRoot) {
+          import('/react/LimitUsageStats.tsx').then((module) => {
+            const root = ReactDOM.createRoot(limitUsageRoot);
+            root.render(React.createElement(module.default));
+          });
+        }
     </script>
 </body>
 </html>
