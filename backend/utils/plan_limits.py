@@ -1,5 +1,7 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
+from flask import g, jsonify, request
+from backend.db.models import UsageLog
 
 
 def get_limit_status(user, limit_name, usage_value):
@@ -50,3 +52,68 @@ def give_user_boost(user, features, expire_at):
     user.boost_expire_at = expire_at
     from backend import db
     db.session.commit()
+
+
+PLAN_LIMITS = {
+    "basic": {
+        "predict_daily": 10,
+        "api_request_daily": 100,
+    },
+    "premium": {
+        "predict_daily": 100,
+        "api_request_daily": 1000,
+    },
+}
+
+
+def enforce_plan_limits(limit_key):
+    def wrapper(fn):
+        def inner(*args, **kwargs):
+            user = g.user if hasattr(g, "user") else None
+            if not user:
+                api_key = request.headers.get("X-API-KEY")
+                if api_key:
+                    from backend.db.models import User
+                    user = User.query.filter_by(api_key=api_key).first()
+                    if user:
+                        g.user = user
+            if not user:
+                return jsonify({"error": "Auth required"}), 401
+
+            plan_name = (
+                user.plan.name.lower() if getattr(user, "plan", None) else "basic"
+            )
+            limits = PLAN_LIMITS.get(plan_name, {})
+            limit = limits.get(limit_key)
+
+            if limit is None:
+                return fn(*args, **kwargs)
+
+            start_time = datetime.utcnow() - timedelta(days=1)
+            usage_count = (
+                UsageLog.query.filter_by(user_id=user.id, action=limit_key)
+                .filter(UsageLog.timestamp > start_time)
+                .count()
+            )
+
+            if usage_count >= limit:
+                return (
+                    jsonify(
+                        {
+                            "error": "PlanLimitExceeded",
+                            "message": f"{plan_name} plan\u0131 i\u00e7in '{limit_key}' limiti ({limit}) a\u015f\u0131ld\u0131."
+                        }
+                    ),
+                    429,
+                )
+
+            log = UsageLog(user_id=user.id, action=limit_key, timestamp=datetime.utcnow())
+            from backend import db
+            db.session.add(log)
+            db.session.commit()
+
+            return fn(*args, **kwargs)
+
+        return inner
+
+    return wrapper
