@@ -27,41 +27,47 @@ logger = logging.getLogger(__name__)
 
 
 def admin_required():
-    """
-    Sadece veritabanında 'is_admin' alanı True olan kullanıcıların erişimine izin verir.
-    Bu decorator, @fresh_jwt_required() decorator'ından sonra kullanılır.
-    Yetkisiz erişim denemeleri uyarı logu üretir.
-    """
+    """Admin yetkisi gerektiren uç nokta dekoratörü."""
+
     def wrapper(fn):
         @wraps(fn)
-        @fresh_jwt_required()
         def decorator(*args, **kwargs):
-            try:
-                # JWT'den kullanıcı kimliğini al
-                user_id = get_jwt_identity()
-                # Veritabanından kullanıcıyı çekip admin yetkisini doğrula
-                user = User.query.get(user_id)
-                if not user:
-                    logger.warning(f"Admin erişim: kullanıcı bulunamadı. ID: {user_id}")
-                    return jsonify({"error": "Admin yetkisi gereklidir!"}), 403
+            admin_key = request.headers.get("X-ADMIN-API-KEY")
+            expected_key = os.getenv("ADMIN_ACCESS_KEY")
 
-                if not getattr(user, 'is_admin', False):
-                    jti = get_jwt().get('jti')
-                    logger.warning(
-                        f"Unauthorized admin access attempt! User ID: {user_id}, JTI: {jti}"
-                    )
+            # Özel admin anahtarı varsa JWT kontrolü yapmadan yetki ver
+            if admin_key and expected_key and admin_key == expected_key:
+                api_key = request.headers.get("X-API-KEY")
+                user = User.query.filter_by(api_key=api_key).first()
+                if not user or user.role != UserRole.ADMIN:
                     return jsonify({"error": "Admin yetkisi gereklidir!"}), 403
-
-                # Yetkili kullanıcı, orijinal handler'a devam et
+                g.user = user
                 return fn(*args, **kwargs)
-            except SQLAlchemyError:
-                logger.exception("admin_required: Veritabanı hatası oluştu")
-                return jsonify({"error": "Sunucu hatası. Lütfen daha sonra tekrar deneyin."}), 500
-            except Exception:
-                logger.exception("admin_required: Beklenmeyen bir hata oluştu")
-                return jsonify({"error": "Sunucu hatası. Lütfen daha sonra tekrar deneyin."}), 500
+
+            @fresh_jwt_required()
+            def jwt_protected():
+                try:
+                    user_id = get_jwt_identity()
+                    user = User.query.get(user_id)
+                    if not user or user.role != UserRole.ADMIN:
+                        jti = get_jwt().get('jti')
+                        logger.warning(
+                            f"Unauthorized admin access attempt! User ID: {user_id}, JTI: {jti}"
+                        )
+                        return jsonify({"error": "Admin yetkisi gereklidir!"}), 403
+                    g.user = user
+                    return fn(*args, **kwargs)
+                except SQLAlchemyError:
+                    logger.exception("admin_required: Veritabanı hatası oluştu")
+                    return jsonify({"error": "Sunucu hatası. Lütfen daha sonra tekrar deneyin."}), 500
+                except Exception:
+                    logger.exception("admin_required: Beklenmeyen bir hata oluştu")
+                    return jsonify({"error": "Sunucu hatası. Lütfen daha sonra tekrar deneyin."}), 500
+
+            return jwt_protected()
 
         return decorator
+
     return wrapper
 
 # Örnek Kullanım:
