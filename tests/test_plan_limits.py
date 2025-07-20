@@ -2,6 +2,7 @@ import os, sys
 from datetime import datetime, timedelta
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from backend import create_app, db
+import json
 from backend.db.models import User, Role, UserRole
 from backend.models.plan import Plan
 from flask import g
@@ -28,7 +29,16 @@ def create_user(app, plan="basic"):
             role = Role(name="user")
             db.session.add(role)
             db.session.commit()
-        user = User(username="planuser", api_key="apikey", role_id=role.id, role=UserRole.USER)
+        plan_obj = Plan(name="TestPlan", price=0.0, features=json.dumps({"prediction": 10}))
+        db.session.add(plan_obj)
+        db.session.commit()
+        user = User(
+            username="planuser",
+            api_key="apikey",
+            role_id=role.id,
+            role=UserRole.USER,
+            plan_id=plan_obj.id,
+        )
         user.set_password("pass")
         db.session.add(user)
         db.session.commit()
@@ -69,7 +79,7 @@ def test_plan_limit_exceeded(monkeypatch):
     user = create_user(app)
 
     for _ in range(10):
-        log_usage(app, user.id, "predict_daily")
+        log_usage(app, user.id, "prediction")
 
     resp = client.post("/api/predict/", headers={"X-API-KEY": user.api_key})
     assert resp.status_code == 429
