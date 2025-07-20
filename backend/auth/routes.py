@@ -19,6 +19,7 @@ from backend.utils.audit import log_action
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 import uuid
+import jwt
 
 # Limiter instance from application factory
 
@@ -127,6 +128,51 @@ def login_user():
     except Exception:
         logger.exception("Giriş sırasında hata oluştu")
         return jsonify(error="Sunucu hatası. Lütfen daha sonra tekrar deneyin."), 500
+
+
+@auth_bp.route('/refresh', methods=['POST'])
+def refresh_tokens():
+    token = request.cookies.get('refreshToken')
+    if not token:
+        return jsonify(error="Refresh token missing"), 401
+    try:
+        payload = jwt.decode(
+            token,
+            current_app.config["REFRESH_TOKEN_SECRET"],
+            algorithms=["HS256"],
+            issuer=current_app.config.get("JWT_ISSUER"),
+            audience=current_app.config.get("JWT_AUDIENCE"),
+        )
+        user_id = int(payload.get("sub"))
+    except jwt.PyJWTError:
+        return jsonify(error="Invalid token"), 401
+
+    session = UserSession.query.filter_by(user_id=user_id, revoked=False).first()
+    if not session or not check_password_hash(session.refresh_token, token):
+        return jsonify(error="Invalid token"), 401
+
+    access, new_refresh, csrf = generate_tokens(user_id, payload.get("username"), payload.get("role"))
+    session.refresh_token = generate_password_hash(new_refresh)
+    session.expires_at = datetime.utcnow() + timedelta(days=current_app.config["REFRESH_TOKEN_EXP_DAYS"])
+    db.session.commit()
+
+    response = jsonify(message="Refreshed")
+    secure = not current_app.debug
+    max_age_access = current_app.config["ACCESS_TOKEN_EXP_MINUTES"] * 60
+    max_age_refresh = current_app.config["REFRESH_TOKEN_EXP_DAYS"] * 86400
+    response.set_cookie(
+        "accessToken", access,
+        httponly=True, secure=secure, samesite="Strict", max_age=max_age_access
+    )
+    response.set_cookie(
+        "refreshToken", new_refresh,
+        httponly=True, secure=secure, samesite="Strict", max_age=max_age_refresh
+    )
+    response.set_cookie(
+        "csrf-token", csrf,
+        httponly=False, secure=secure, samesite="Strict", max_age=max_age_refresh
+    )
+    return response, 200
 
 
 @auth_bp.route('/check-username', methods=['GET'])

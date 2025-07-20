@@ -10,6 +10,7 @@ from backend.limiting import limiter
 from flask_limiter.util import get_remote_address
 from celery import Celery
 from flask_socketio import SocketIO, emit
+from flask.testing import FlaskClient
 from backend.db.models import User, SubscriptionPlan
 from backend.models.plan import Plan
 from backend.utils.usage_limits import check_usage_limit
@@ -135,8 +136,19 @@ celery_app = Celery()
 socketio = SocketIO()
 
 
+class LegacyTestClient(FlaskClient):
+    """Compat shim for Werkzeug 2.x set_cookie signature."""
+
+    def set_cookie(self, *args, **kwargs):
+        if len(args) == 3 and "domain" not in kwargs:
+            domain, key, value = args
+            return super().set_cookie(key, value, domain=domain, **kwargs)
+        return super().set_cookie(*args, **kwargs)
+
+
 def create_app():
     app = Flask(__name__)
+    app.test_client_class = LegacyTestClient
 
     app.config.from_object(Config)
 
