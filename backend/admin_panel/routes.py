@@ -13,7 +13,7 @@ from backend.db.models import (
     UserRole,
     SubscriptionPlanModel,
 )
-from sqlalchemy import func
+from sqlalchemy import func, text
 from loguru import logger
 import os
 import uuid
@@ -402,5 +402,25 @@ def plan_usage():
             ]),
             200,
         )
+
+
+@admin_bp.route('/limit-usage', methods=['GET'])
+@admin_required
+def limit_usage():
+    with current_app.app_context():
+        results = db.session.execute(
+            text(
+                """
+                SELECT usage_log.user_id, users.username, usage_log.action, COUNT(*) AS count
+                FROM usage_log
+                JOIN users ON usage_log.user_id = users.id
+                GROUP BY usage_log.user_id, users.username, usage_log.action
+                ORDER BY count DESC
+                LIMIT 100
+                """
+            )
+        )
+        stats = [dict(row) for row in results]
+        return jsonify({"stats": stats}), 200
 
 
