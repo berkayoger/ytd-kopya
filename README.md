@@ -235,6 +235,8 @@ Ana klasördeki `.html` dosyaları statik sayfalardır: `index.html`, `giris.htm
 
 `static/` klasöründe istemci JavaScript kodları (`api.js`) ve diğer statik varlıklar bulunur.
 
+Ek olarak `admin/promo-codes-advanced.html` dosyası React ve Tailwind kullanılarak hazırlanmış gelişmiş promosyon kodu oluşturma formu örneğini içerir.
+
 ### Diğer Klasörler
 
 - `migrations/` - Alembic tarafından oluşturulacak veritabanı göç dosyaları için yer tutucu.
