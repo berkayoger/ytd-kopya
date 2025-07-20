@@ -61,7 +61,7 @@ export default function PlanLimitEditor() {
                   <label className="block text-sm font-medium">{key}</label>
                   <Input
                     type="number"
-                    value={val}
+                    value={val as any}
                     onChange={e => updateLimit(plan.id, key, Number(e.target.value))}
                   />
                 </div>
