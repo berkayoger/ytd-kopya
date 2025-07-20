@@ -8,10 +8,14 @@ export default function PlanLimitEditor() {
 
   useEffect(() => {
     fetch('/api/admin/plans')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Plan verisi alınamadı');
+        return res.json();
+      })
       .then(data => {
         setPlans(data.plans);
-      });
+      })
+      .catch(() => setResultMsg('Planlar yüklenemedi'));
   }, []);
 
   const updateLimit = (planId: number, field: string, value: any) => {
@@ -27,8 +31,9 @@ export default function PlanLimitEditor() {
       const resp = await fetch(`/api/admin/plans/${planId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ features: plan!.features })
+        body: JSON.stringify({ features: plan?.features })
       });
+      if (!resp.ok) throw new Error('Sunucu hatası');
       const res = await resp.json();
       if (res.ok) setResultMsg('Kaydedildi');
       else setResultMsg('Hata');
