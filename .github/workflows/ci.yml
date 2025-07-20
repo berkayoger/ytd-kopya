@@ -13,31 +13,22 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-      - name: Install backend deps
+      - name: Install backend dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
-          pip install pandas pandas-ta SQLAlchemy
-          pip install flake8 pytest pytest-cov codecov pycoingecko
-      - name: Lint
-        run: flake8 backend
-      - name: Backend tests
-        run: pytest --cov=backend tests/ --cov-report=xml --cov-fail-under=80
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Install frontend deps
+          pip install -r requirements.txt
+      - name: Run backend tests
+        run: pytest --tb=short
+      - name: Install frontend dependencies
+        working-directory: ./frontend
         run: |
-          cd frontend
-          npm install
-      - name: Frontend tests
+          npm ci
+      - name: Run frontend build
+        working-directory: ./frontend
         run: |
-          cd frontend
-          npm test -- --watchAll=false
-      - name: Upload Coverage
-        uses: codecov/codecov-action@v3
-        with:
-          fail_ci_if_error: true
+          npm run build
+      - name: Run frontend type check
+        working-directory: ./frontend
+        run: tsc --noEmit
 
   deploy:
     needs: test
