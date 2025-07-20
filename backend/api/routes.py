@@ -22,7 +22,8 @@ from backend.utils.usage_limits import check_usage_limit
 
 # Yardımcı fonksiyonları import et
 from backend.utils.helpers import serialize_user_for_api, add_audit_log
-from backend.utils.plan_limits import get_user_effective_limits, enforce_plan_limits
+from backend.utils.plan_limits import get_user_effective_limits
+from backend.middleware.plan_limits import enforce_plan_limit
 
 # API Blueprint'i tanımla
 api_bp = Blueprint('api', __name__)
@@ -188,7 +189,7 @@ def llm_analyze():
 # Basit demo tahmin endpoint'i plan limitleri ile korunur
 @api_bp.route('/predict/', methods=['POST'])
 @require_subscription_plan(SubscriptionPlan.TRIAL)
-@enforce_plan_limits("predict_daily")
+@enforce_plan_limit("prediction")
 def predict():
     return jsonify({"result": "ok"}), 200
 

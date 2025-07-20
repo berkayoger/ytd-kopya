@@ -153,6 +153,16 @@ class User(db.Model):
             return datetime.utcnow() < (self.created_at + trial_duration)
         return False
 
+    def get_usage_count(self, key):
+        """Return usage count for the given feature key."""
+        from backend.db.models import UsageLog
+
+        if key == "prediction":
+            return UsageLog.query.filter_by(user_id=self.id, action="prediction").count()
+        elif key == "download":
+            return UsageLog.query.filter_by(user_id=self.id, action="download").count()
+        return UsageLog.query.filter_by(user_id=self.id, action=key).count()
+
     def to_dict(self):
         return {
             "id": self.id,
