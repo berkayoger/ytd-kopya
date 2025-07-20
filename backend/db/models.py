@@ -404,6 +404,49 @@ class PromoCodeUsage(db.Model):
     )
 
 
+class PromotionCode(db.Model):
+    """Advanced promotion codes supporting flexible discount rules."""
+
+    __tablename__ = "promotion_codes"
+
+    id = Column(Integer, primary_key=True)
+    code = Column(String(50), unique=True, nullable=False, index=True)
+    description = Column(String(255), nullable=True)
+    promo_type = Column(String(50), nullable=True)
+    discount_type = Column(String(50), nullable=True)
+    discount_amount = Column(Float, nullable=True)
+    feature = Column(String(100), nullable=True)
+    plans = Column(Text, nullable=True)
+    usage_count = Column(Integer, default=0, nullable=False)
+    usage_limit = Column(Integer, default=1, nullable=True)
+    active_days = Column(Integer, nullable=True)
+    validity_days = Column(Integer, nullable=True)
+    user_segment = Column(String(50), nullable=True)
+    custom_users = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "code": self.code,
+            "description": self.description,
+            "promoType": self.promo_type,
+            "discountType": self.discount_type,
+            "discountAmount": self.discount_amount,
+            "feature": self.feature,
+            "plans": self.plans,
+            "usage": self.usage_count,
+            "usageLimit": self.usage_limit,
+            "activeDays": self.active_days,
+            "validityDays": self.validity_days,
+            "userSegment": self.user_segment,
+            "customUsers": self.custom_users,
+            "createdAt": self.created_at.strftime("%Y-%m-%d"),
+            "isActive": self.is_active,
+        }
+
+
 class PendingAction(db.Model):
     __tablename__ = "pending_actions"
     id = Column(Integer, primary_key=True)
