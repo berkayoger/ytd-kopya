@@ -7,7 +7,11 @@ from backend.db.models import User, Role, UserRole
 from backend.models.plan import Plan
 from flask import g
 import flask_jwt_extended
-from backend.utils.plan_limits import get_user_effective_limits, give_user_boost
+from backend.utils.plan_limits import (
+    get_user_effective_limits,
+    give_user_boost,
+    check_custom_feature,
+)
 from backend.db.models import UsageLog
 
 
@@ -83,3 +87,29 @@ def test_plan_limit_exceeded(monkeypatch):
 
     resp = client.post("/api/predict/", headers={"X-API-KEY": user.api_key})
     assert resp.status_code == 429
+
+
+def test_custom_feature_priority(monkeypatch):
+    app = setup_app(monkeypatch)
+    with app.app_context():
+        role = Role.query.filter_by(name="user").first()
+        p = Plan(name="PriorityPlan", price=0.0, features=json.dumps({"foo": 1}))
+        db.session.add(p)
+        db.session.commit()
+        user = User(
+            username="priorityuser",
+            api_key="prioritykey",
+            role_id=role.id,
+            role=UserRole.USER,
+            plan_id=p.id,
+            boost_features=json.dumps({"foo": 2}),
+            boost_expire_at=datetime.utcnow() + timedelta(days=1),
+            custom_features=json.dumps({"foo": 3, "can_export_csv": True}),
+        )
+        user.set_password("pass")
+        db.session.add(user)
+        db.session.commit()
+
+        limits = get_user_effective_limits(user)
+        assert limits["foo"] == 3
+        assert check_custom_feature(user, "can_export_csv") is True
