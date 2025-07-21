@@ -98,3 +98,4 @@ def test_get_effective_limits_fallback(test_user):
     limits = enforce_limit.__globals__["get_effective_limits"](test_user)
     # should fallback to default plan limits
     assert isinstance(limits, dict)
+    assert limits.get("predict_daily") == 10
