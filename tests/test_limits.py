@@ -2,11 +2,11 @@ import json
 import pytest
 
 from backend import create_app, db
-from backend.db.models import User, UserRole
+from backend.db.models import User, UserRole, SubscriptionPlan
 from backend.models.plan import Plan
 from backend.utils.limits import enforce_limit
 from backend.middleware.plan_limits import enforce_plan_limit
-from flask import jsonify
+from flask import jsonify, g
 
 @pytest.fixture
 def test_app(monkeypatch):
@@ -27,7 +27,7 @@ def test_user(test_app):
         db.session.add(plan)
         db.session.commit()
 
-        user = User(username="limit_user", subscription_level="BASIC", role=UserRole.USER, plan_id=plan.id)
+        user = User(username="limit_user", subscription_level=SubscriptionPlan.BASIC, role=UserRole.USER, plan_id=plan.id)
         user.custom_features = json.dumps({"predict_daily": 3})
         user.set_password("pass")
         user.generate_api_key()
@@ -55,8 +55,8 @@ def test_enforce_plan_limit_decorator_behavior(test_app, test_user):
 
     with app.test_client() as client:
         with app.app_context():
-            from flask import g
-            g.user = test_user
+            user = db.session.merge(test_user)
+            g.user = user
             response = client.post("/test-decorated")
             assert response.status_code == 200
 
@@ -64,9 +64,11 @@ def test_enforce_plan_limit_decorator_behavior(test_app, test_user):
 def test_enforce_plan_limit_blocked_usage(test_app, test_user):
     app = test_app
 
-    # Kullanıcının limiti 3, 3 kullanım ile dolduğunu varsayalım
-    test_user.custom_features = json.dumps({"predict_daily": 3})
-    db.session.commit()
+    # Kullanıcının plan limiti 3, 3 kullanım ile dolduğunu varsayalım
+    with app.app_context():
+        user = db.session.merge(test_user)
+        user.plan.features = json.dumps({"predict_daily": 3})
+        db.session.commit()
 
     @app.route("/test-decorated-block", methods=["POST"])
     @enforce_plan_limit("predict_daily")
@@ -75,14 +77,14 @@ def test_enforce_plan_limit_blocked_usage(test_app, test_user):
 
     with app.test_client() as client:
         with app.app_context():
-            from flask import g
-            g.user = test_user
-            # simulate limit hit by mocking check_usage_count result
+            user = db.session.merge(test_user)
+            g.user = user
             from unittest.mock import patch
-            with patch("backend.middleware.plan_limits.get_usage_count", return_value=3):
+            with patch.object(User, "get_usage_count", return_value=3):
                 response = client.post("/test-decorated-block")
                 assert response.status_code == 429
-                assert b"limit asildi" in response.data
+                data = response.get_json()
+                assert "aşıldı" in data.get("error", "")
 
 
 def test_get_effective_limits_custom_json(test_user):
@@ -96,3 +98,4 @@ def test_get_effective_limits_fallback(test_user):
     limits = enforce_limit.__globals__["get_effective_limits"](test_user)
     # should fallback to default plan limits
     assert isinstance(limits, dict)
+    assert limits.get("predict_daily") == 10
