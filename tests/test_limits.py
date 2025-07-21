@@ -83,3 +83,16 @@ def test_enforce_plan_limit_blocked_usage(test_app, test_user):
                 response = client.post("/test-decorated-block")
                 assert response.status_code == 429
                 assert b"limit asildi" in response.data
+
+
+def test_get_effective_limits_custom_json(test_user):
+    test_user.custom_features = json.dumps({"predict_daily": 99})
+    limits = enforce_limit.__globals__["get_effective_limits"](test_user)
+    assert limits.get("predict_daily") == 99
+
+
+def test_get_effective_limits_fallback(test_user):
+    test_user.custom_features = "{INVALID_JSON}"
+    limits = enforce_limit.__globals__["get_effective_limits"](test_user)
+    # should fallback to default plan limits
+    assert isinstance(limits, dict)
