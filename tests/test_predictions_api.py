@@ -117,7 +117,7 @@ def test_filter_predictions_by_source_model(monkeypatch):
         db.session.add_all([p1, p2])
         db.session.commit()
 
-    resp = client.get("/api/admin/predictions?source_model=TA-Strategy")
+    resp = client.get("/api/admin/predictions/?source_model=TA-Strategy")
     data = resp.get_json()
     assert resp.status_code == 200
     assert data["total"] == 1
