@@ -54,5 +54,32 @@ def test_enforce_plan_limit_decorator_behavior(test_app, test_user):
         return jsonify({"message": "OK"}), 200
 
     with app.test_client() as client:
-        response = client.post("/test-decorated", headers={"X-API-KEY": test_user.api_key})
-        assert response.status_code == 200
+        with app.app_context():
+            from flask import g
+            g.user = test_user
+            response = client.post("/test-decorated")
+            assert response.status_code == 200
+
+
+def test_enforce_plan_limit_blocked_usage(test_app, test_user):
+    app = test_app
+
+    # Kullanıcının limiti 3, 3 kullanım ile dolduğunu varsayalım
+    test_user.custom_features = json.dumps({"predict_daily": 3})
+    db.session.commit()
+
+    @app.route("/test-decorated-block", methods=["POST"])
+    @enforce_plan_limit("predict_daily")
+    def blocked_route():
+        return jsonify({"message": "BLOCKED SHOULD NOT RETURN"}), 200
+
+    with app.test_client() as client:
+        with app.app_context():
+            from flask import g
+            g.user = test_user
+            # simulate limit hit by mocking check_usage_count result
+            from unittest.mock import patch
+            with patch("backend.middleware.plan_limits.get_usage_count", return_value=3):
+                response = client.post("/test-decorated-block")
+                assert response.status_code == 429
+                assert b"limit asildi" in response.data
