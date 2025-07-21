@@ -142,8 +142,8 @@ def refresh_tokens():
             token,
             current_app.config["REFRESH_TOKEN_SECRET"],
             algorithms=["HS256"],
-            issuer=current_app.config.get("JWT_ISSUER"),
-            audience=current_app.config.get("JWT_AUDIENCE"),
+            issuer=current_app.config.get("JWT_ISSUER", "ytdcrypto"),
+            audience=current_app.config.get("JWT_AUDIENCE", "ytdcrypto_users"),
         )
         user_id = int(payload.get("sub"))
     except jwt.PyJWTError:

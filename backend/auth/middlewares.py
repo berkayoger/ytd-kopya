@@ -1,8 +1,9 @@
 # File: backend/auth/middlewares.py
 
 import logging
+import os
 from functools import wraps
-from flask import jsonify
+from flask import jsonify, request, g
 # Flask-JWT-Extended 4.x sürümlerinde `fresh_jwt_required` fonksiyonu
 # mevcut olmayabilir. Geriye dönük uyumluluk için yoksa `jwt_required`
 # fonksiyonunu kullanıyoruz.
@@ -19,7 +20,7 @@ except Exception:  # pragma: no cover - kutuphane eksikse basit stub kullan
 
     def get_jwt_identity():
         return None
-from backend.db.models import User  # Kullanıcı modelini DB'den çekmek için
+from backend.db.models import User, UserRole  # Kullanıcı modelini DB'den çekmek için
 from sqlalchemy.exc import SQLAlchemyError
 
 # Logger yapılandırması uygulama başlangıcında ayarlanmalı.
@@ -39,7 +40,14 @@ def admin_required():
             if admin_key and expected_key and admin_key == expected_key:
                 api_key = request.headers.get("X-API-KEY")
                 user = User.query.filter_by(api_key=api_key).first()
-                if not user or user.role != UserRole.ADMIN:
+                is_admin = (
+                    user
+                    and (
+                        user.role == UserRole.ADMIN
+                        or (user.role_obj and user.role_obj.name == "admin")
+                    )
+                )
+                if not is_admin:
                     return jsonify({"error": "Admin yetkisi gereklidir!"}), 403
                 g.user = user
                 return fn(*args, **kwargs)
