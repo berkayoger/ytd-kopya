@@ -47,3 +47,21 @@ def test_get_usage_count(test_app, test_user):
 
         unknown_count = get_usage_count(test_user, "non_existing")
         assert unknown_count == 0
+
+
+def test_record_usage_log_insert(test_app, test_user):
+    from backend.utils.usage_tracking import record_usage
+
+    with test_app.app_context():
+        record_usage(test_user, "predict_daily")
+        record_usage(test_user, "predict_daily")
+        record_usage(test_user, "export")
+
+        logs = UsageLog.query.filter_by(user_id=test_user.id).all()
+        assert len(logs) == 3
+
+        daily_logs = [log for log in logs if log.action == "predict_daily"]
+        export_logs = [log for log in logs if log.action == "export"]
+
+        assert len(daily_logs) == 2
+        assert len(export_logs) == 1
