@@ -148,10 +148,14 @@ def check_and_downgrade_subscriptions():
     logger.info("Celery: abonelikleri kontrol ediyor.")
     # Mevcut bir Flask uygulama bağlamı yoksa yeni bir uygulama oluştururuz.
     ctx_app = current_app._get_current_object() if current_app else create_app()
-    with ctx_app.app_context():
+
+    def _process():
         now = datetime.utcnow()
         db.session.expire_all()
-        expired_q = User.query.filter(User.subscription_end.isnot(None)).filter(User.subscription_end < now)
+        expired_q = (
+            User.query.filter(User.subscription_end.isnot(None))
+            .filter(User.subscription_end < now)
+        )
         for user in expired_q.all():
             target = User.query.get(user.id)
             if target:
@@ -165,8 +169,13 @@ def check_and_downgrade_subscriptions():
         db.session.commit()
         if os.getenv("FLASK_ENV") == "testing":
             # Testlerde degisikliklerin hemen gorunmesi icin oturumu yenile
-            db.session.expire_all()
             db.session.remove()
+
+    if current_app:
+        _process()
+    else:
+        with ctx_app.app_context():
+            _process()
 
 
 from backend.utils.alarms import send_alarm, AlarmSeverityEnum
