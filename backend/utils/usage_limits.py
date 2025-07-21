@@ -2,7 +2,7 @@ from functools import wraps
 from flask import g, request, jsonify, current_app
 from datetime import datetime
 
-from backend.db.models import UsageLimitModel, SubscriptionPlan
+from backend.db.models import UsageLimitModel, SubscriptionPlan, UsageLog
 
 
 def check_usage_limit(feature_name):
@@ -72,3 +72,14 @@ def check_usage_limit(feature_name):
         return wrapper
 
     return decorator
+
+
+def get_usage_count(user, feature):
+    """Return today's usage count for the given feature."""
+    start_of_day = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    return (
+        UsageLog.query
+        .filter_by(user_id=user.id, action=feature)
+        .filter(UsageLog.timestamp >= start_of_day)
+        .count()
+    )
