@@ -24,6 +24,6 @@ beforeEach(() => {
 
 test('renders limit info after load', async () => {
   render(<PlanLimitCard />);
-  expect(await screen.findByText('İzin: 2 / 5')).toBeInTheDocument();
+  expect(await screen.findByText('Kullanım: 2 / 5')).toBeInTheDocument();
   expect(screen.getByTestId('progress')).toHaveTextContent('40');
 });
