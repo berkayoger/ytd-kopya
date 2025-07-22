@@ -2,6 +2,14 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import '@testing-library/jest-dom';
 import PlanLimitCard from '../react/PlanLimitCard';
+import { toast } from 'sonner';
+
+jest.mock('sonner', () => {
+  const fn = jest.fn();
+  fn.error = jest.fn();
+  fn.warning = jest.fn();
+  return { toast: fn };
+});
 
 beforeEach(() => {
   global.fetch = jest.fn(() =>
@@ -22,7 +30,7 @@ test('renders limit info after load', async () => {
   expect(screen.getByTestId('progress')).toHaveStyle({ width: '40%' });
 });
 
-test('shows warning icon at 90 percent usage', async () => {
+test('triggers warning toast at 90 percent usage', async () => {
   (global.fetch as jest.Mock).mockImplementationOnce(() =>
     Promise.resolve({
       ok: true,
@@ -33,10 +41,11 @@ test('shows warning icon at 90 percent usage', async () => {
     })
   );
   render(<PlanLimitCard />);
-  expect(await screen.findByTitle('%90 kullanım')).toBeInTheDocument();
+  await screen.findByText('Kullanım: 9 / 10');
+  expect((toast as any).warning).toHaveBeenCalled();
 });
 
-test('shows bell ring icon at full usage', async () => {
+test('triggers error toast at full usage', async () => {
   (global.fetch as jest.Mock).mockImplementationOnce(() =>
     Promise.resolve({
       ok: true,
@@ -47,5 +56,6 @@ test('shows bell ring icon at full usage', async () => {
     })
   );
   render(<PlanLimitCard />);
-  expect(await screen.findByTitle('Limit doldu')).toBeInTheDocument();
+  await screen.findByText('Kullanım: 10 / 10');
+  expect((toast as any).error).toHaveBeenCalled();
 });
