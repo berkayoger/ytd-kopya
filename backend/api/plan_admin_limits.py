@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from backend.auth.jwt_utils import require_csrf
-from backend.auth.middlewares import admin_required
+from backend.auth.jwt_utils import require_admin
 from backend import db
 from backend.models.plan import Plan
 import json
@@ -13,7 +13,7 @@ plan_admin_limits_bp = Blueprint('plan_admin_limits', __name__, url_prefix='/api
 @plan_admin_limits_bp.route('/<int:plan_id>/update-limits', methods=['POST'])
 @jwt_required()
 @require_csrf
-@admin_required()
+@require_admin
 def update_plan_limits(plan_id):
     try:
         plan = Plan.query.get(plan_id)
@@ -31,7 +31,15 @@ def update_plan_limits(plan_id):
         plan.features = json.dumps(new_limits)
         db.session.commit()
 
-        return jsonify({"success": True, "message": "Plan limitleri güncellendi."}), 200
+        return jsonify({
+            "success": True,
+            "message": "Plan limitleri güncellendi.",
+            "plan": {
+                "id": plan.id,
+                "name": plan.name,
+                "features": new_limits,
+            },
+        })
     except Exception as e:
         db.session.rollback()
         # TODO: handle logging
