@@ -4,9 +4,10 @@ import '@testing-library/jest-dom';
 import PlanLimitCard from '../react/PlanLimitCard';
 
 jest.mock('reactstrap', () => ({
-  Card: (props: any) => <div {...props} />,
+  Card: (props: any) => <div {...props} />, 
   CardBody: (props: any) => <div {...props} />,
   Progress: ({ value }: any) => <div data-testid="progress">{value}</div>,
+  Spinner: (props: any) => <div data-testid="spinner" {...props} />,
 }));
 
 beforeEach(() => {
@@ -24,6 +25,6 @@ beforeEach(() => {
 
 test('renders limit info after load', async () => {
   render(<PlanLimitCard />);
-  expect(await screen.findByText('İzin: 2 / 5')).toBeInTheDocument();
+  expect(await screen.findByText('Kullanım: 2 / 5')).toBeInTheDocument();
   expect(screen.getByTestId('progress')).toHaveTextContent('40');
 });
