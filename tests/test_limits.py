@@ -87,6 +87,26 @@ def test_enforce_plan_limit_blocked_usage(test_app, test_user):
                 assert "aşıldı" in data.get("error", "")
 
 
+def test_enforce_plan_limit_admin_bypass(test_app, test_user):
+    app = test_app
+
+    @app.route("/admin-bypass", methods=["POST"])
+    @enforce_plan_limit("predict_daily")
+    def bypass_route():
+        return jsonify({"message": "OK"}), 200
+
+    with app.test_client() as client:
+        with app.app_context():
+            user = db.session.merge(test_user)
+            user.role = UserRole.ADMIN
+            db.session.commit()
+            g.user = user
+            from unittest.mock import patch
+            with patch.object(User, "get_usage_count", return_value=999):
+                response = client.post("/admin-bypass")
+                assert response.status_code == 200
+
+
 def test_get_effective_limits_custom_json(test_user):
     test_user.custom_features = json.dumps({"predict_daily": 99})
     limits = enforce_limit.__globals__["get_effective_limits"](test_user)
