@@ -11,7 +11,6 @@ def test_app(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
     monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
     monkeypatch.setattr("backend.auth.jwt_utils.require_csrf", lambda f: f)
-    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
     app = create_app()
     app.config["TESTING"] = True
     with app.app_context():
@@ -31,6 +30,8 @@ def test_update_plan_limits(test_app):
     client = test_app.test_client()
     resp = client.post(f"/api/plans/{pid}/update-limits", json={"predict": 5})
     assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["plan"]["features"]["predict"] == 5
     with test_app.app_context():
         updated = Plan.query.get(pid)
         assert json.loads(updated.features)["predict"] == 5
