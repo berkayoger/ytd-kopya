@@ -192,6 +192,10 @@ def llm_analyze():
 @require_subscription_plan(SubscriptionPlan.TRIAL)
 @enforce_plan_limit("prediction")
 def predict():
+    from backend.utils.usage_tracking import record_usage
+    user = g.get("user")
+    if user:
+        record_usage(user, "predict_daily")
     return jsonify({"result": "ok"}), 200
 
 @api_bp.route('/predict/daily', methods=['POST'])
