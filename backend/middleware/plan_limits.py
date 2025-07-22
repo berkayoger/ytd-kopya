@@ -1,6 +1,6 @@
 from flask import request, jsonify, g
 from functools import wraps
-from backend.db.models import User
+from backend.db.models import User, UserRole
 import json
 
 
@@ -19,6 +19,9 @@ def enforce_plan_limit(limit_key):
                         g.user = user
             if not user or not user.plan or not user.plan.features:
                 return jsonify({"error": "Abonelik planı bulunamadı."}), 403
+
+            if getattr(user, "role", None) == UserRole.ADMIN:
+                return f(*args, **kwargs)
 
             features = user.plan.features
             if isinstance(features, str):
