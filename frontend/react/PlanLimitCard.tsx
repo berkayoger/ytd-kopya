@@ -42,15 +42,15 @@ export default function PlanLimitCard() {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {Object.entries(limits).map(([key, info]) => {
-        const label = limitLabels[key] || key.replace(/_/g, ' ').toUpperCase();
+    <section className="space-y-2">
+      <h3 className="text-base font-semibold text-muted-foreground">Kullanım Limitleri</h3>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {Object.entries(limits).map(([key, info]) => {
+          const label = limitLabels[key] || key.replace(/_/g, ' ').toUpperCase();
         const progressColor =
-          info.percent_used >= 90
-            ? 'bg-destructive'
-            : info.percent_used >= 75
-            ? 'bg-yellow-500'
-            : 'bg-primary';
+          info.percent_used >= 90 ? 'bg-red-500'
+          : info.percent_used >= 75 ? 'bg-yellow-500'
+          : undefined;
 
         return (
           <Card key={key} className="shadow-sm border">
@@ -66,7 +66,8 @@ export default function PlanLimitCard() {
             </CardContent>
           </Card>
         );
-      })}
-    </div>
+        })}
+      </div>
+    </section>
   );
 }
