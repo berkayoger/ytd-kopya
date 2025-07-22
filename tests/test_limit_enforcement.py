@@ -47,6 +47,33 @@ def user_with_limits(test_app):
         db.session.commit()
         return user
 
+@pytest.fixture
+def admin_user_with_limits(test_app):
+    with test_app.app_context():
+        import json
+        plan = Plan(
+            name="basic",
+            price=0.0,
+            features=json.dumps({
+                "predict_daily": 1,
+                "prediction": 1
+            })
+        )
+        db.session.add(plan)
+        db.session.commit()
+
+        admin = User(
+            username="adminlimit",
+            role=UserRole.ADMIN,
+            plan_id=plan.id,
+            subscription_level=SubscriptionPlan.BASIC
+        )
+        admin.set_password("adminpass")
+        admin.generate_api_key()
+        db.session.add(admin)
+        db.session.commit()
+        return admin
+
 
 def test_limit_enforcement_logic(test_app, user_with_limits):
     with test_app.app_context():
@@ -92,4 +119,30 @@ def test_predict_endpoint_respects_limits(test_app, user_with_limits):
 
             assert response.status_code == 429
             assert "limit" in response.get_json().get("error", "").lower()
+
+
+def test_admin_bypass_limits(test_app, admin_user_with_limits):
+    from backend.utils.usage_tracking import record_usage
+    from backend.db.models import UsageLog
+
+    with test_app.test_client() as client:
+        with test_app.app_context():
+            # Limiti doldur
+            record_usage(admin_user_with_limits, "prediction")
+
+            access_token = admin_user_with_limits.generate_access_token()
+            db.session.commit()
+
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "X-API-KEY": admin_user_with_limits.api_key,
+                "X-CSRF-TOKEN": "test",
+                "Content-Type": "application/json"
+            }
+
+            # Limit dolmasına rağmen admin'e izin verilmelidir
+            response = client.post("/api/predict/", json={"coin": "ETH"}, headers=headers)
+
+            assert response.status_code == 200
+            assert "result" in response.get_json()
 
