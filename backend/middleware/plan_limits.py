@@ -20,7 +20,8 @@ def enforce_plan_limit(limit_key):
             if not user or not user.plan or not user.plan.features:
                 return jsonify({"error": "Abonelik planı bulunamadı."}), 403
 
-            if getattr(user, "role", None) == UserRole.ADMIN:
+            user_role = getattr(user, "role", None)
+            if user_role in [UserRole.ADMIN, UserRole.SYSTEM_ADMIN]:
                 return f(*args, **kwargs)
 
             features = user.plan.features
