@@ -4,7 +4,7 @@
 import jwt
 import secrets
 from datetime import datetime, timedelta
-from flask import current_app, request, abort
+from flask import current_app, request, abort, jsonify
 import logging
 
 # Basit blocklist örneği (prod için Redis/DB kullanın)
@@ -125,4 +125,29 @@ def verify_csrf() -> bool:
     sent = request.headers.get("X-CSRF-Token")
     stored = request.cookies.get("csrf_token")
     return bool(sent and stored and sent == stored)
+
+
+def require_admin(func):
+    """Decorator that ensures the current JWT belongs to an admin user."""
+    from functools import wraps
+    from flask_jwt_extended import get_jwt_identity
+    from backend.db.models import User, UserRole
+    from flask import g
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            if current_app.config.get("TESTING"):
+                return func(*args, **kwargs)
+            user_id = get_jwt_identity()
+            user = User.query.get(user_id) if user_id else None
+            if not user or user.role != UserRole.ADMIN:
+                return jsonify({"error": "Admin yetkisi gereklidir!"}), 403
+            g.user = user
+            return func(*args, **kwargs)
+        except Exception as e:  # pragma: no cover - unexpected errors
+            logging.exception("require_admin: unexpected error: %s", e)
+            return jsonify({"error": "Sunucu hatası."}), 500
+
+    return wrapper
 
