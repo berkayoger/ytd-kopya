@@ -45,15 +45,15 @@ def test_update_plan_limits(test_app):
         assert json.loads(updated_plan.features)["predict"] == 10
 
 
-def test_update_plan_limits_unauthorized_access(client):
-    # Plan oluşturalım
-    with client.application.app_context():
-        plan = Plan(name="testplan", price=0.0, features=json.dumps({"predict": 5}))
+def test_update_plan_limits_unauthorized_access(test_app):
+    with test_app.app_context():
+        plan = Plan(name="unauth", price=0.0, features=json.dumps({"predict": 2}))
         db.session.add(plan)
         db.session.commit()
+        pid = plan.id
 
-    # Giriş yapılmadan endpoint'e erişmeye çalış
-    resp = client.post(f"/api/plans/{plan.id}/update-limits", json={"predict": 10})
+    client = test_app.test_client()
+    resp = client.post(f"/api/plans/{pid}/update-limits", json={"predict": 10})
 
     assert resp.status_code in (401, 403)
     data = resp.get_json()
