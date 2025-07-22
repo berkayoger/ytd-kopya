@@ -148,6 +148,17 @@ class User(db.Model):
         self.api_key = str(uuid.uuid4())
         return self.api_key
 
+    def generate_access_token(self):
+        """Return a short-lived JWT access token for this user."""
+        from backend.auth.jwt_utils import generate_tokens
+
+        access, _refresh, _csrf = generate_tokens(
+            self.id,
+            self.username,
+            self.role.value if isinstance(self.role, Enum) else self.role,
+        )
+        return access
+
     def is_subscription_active(self):
         if self.subscription_level in [
             SubscriptionPlan.BASIC,
