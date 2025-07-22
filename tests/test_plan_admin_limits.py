@@ -11,6 +11,7 @@ def test_app(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
     monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
     monkeypatch.setattr("backend.auth.jwt_utils.require_csrf", lambda f: f)
+    monkeypatch.setattr("backend.auth.jwt_utils.require_admin", lambda f: f)
     app = create_app()
     app.config["TESTING"] = True
     with app.app_context():
@@ -22,16 +23,23 @@ def test_app(monkeypatch):
 
 def test_update_plan_limits(test_app):
     with test_app.app_context():
-        plan = Plan(name="basic", price=0.0, features=json.dumps({"predict": 1}))
+        plan = Plan(name="pro", price=0.0, features=json.dumps({"predict": 1}))
         db.session.add(plan)
         db.session.commit()
         pid = plan.id
 
     client = test_app.test_client()
-    resp = client.post(f"/api/plans/{pid}/update-limits", json={"predict": 5})
-    assert resp.status_code == 200
-    data = resp.get_json()
-    assert data["plan"]["features"]["predict"] == 5
+    response = client.post(f"/api/plans/{pid}/update-limits", json={"predict": 10})
+    assert response.status_code == 200
+    data = response.get_json()
+
+    assert data["success"] is True
+    assert data["message"] == "Plan limitleri g\u00fcncellendi."
+    assert "plan" in data
+    assert data["plan"]["id"] == pid
+    assert data["plan"]["name"] == "pro"
+    assert data["plan"]["features"] == {"predict": 10}
+
     with test_app.app_context():
-        updated = Plan.query.get(pid)
-        assert json.loads(updated.features)["predict"] == 5
+        updated_plan = Plan.query.get(pid)
+        assert json.loads(updated_plan.features)["predict"] == 10
