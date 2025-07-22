@@ -1,7 +1,8 @@
 import pytest
 from datetime import datetime, timedelta
 from backend import create_app, db
-from backend.db.models import User, UsageLog, UserRole, SubscriptionPlan, Plan
+from backend.db.models import User, UsageLog, UserRole, SubscriptionPlan
+from backend.models.plan import Plan
 from backend.utils.usage_limits import get_usage_count
 
 
@@ -27,7 +28,8 @@ def user_with_limits(test_app):
             price=0.0,
             features=json.dumps({
                 "predict_daily": 2,
-                "generate_chart": 2
+                "generate_chart": 2,
+                "prediction": 2
             })
         )
         db.session.add(plan)
@@ -63,3 +65,31 @@ def test_limit_enforcement_logic(test_app, user_with_limits):
 
         assert pd_count == 1
         assert gc_count == 2
+
+def test_predict_endpoint_respects_limits(test_app, user_with_limits):
+    from backend.db.models import UsageLog
+    from backend.utils.usage_tracking import record_usage
+
+    with test_app.test_client() as client:
+        with test_app.app_context():
+            # Limiti doldur: 2 çağrı yap
+            record_usage(user_with_limits, "prediction")
+            record_usage(user_with_limits, "prediction")
+
+            access_token = user_with_limits.generate_access_token()
+            db.session.commit()
+
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "X-API-KEY": user_with_limits.api_key,
+                "X-CSRF-TOKEN": "test",  # require_csrf patch'lenmiş olmalı
+                "Content-Type": "application/json"
+            }
+
+            # require_csrf ve jwt_required patch'lenmiş olmalı
+            # Sınırı aşan 3. çağrı
+            response = client.post("/api/predict/", json={"coin": "BTC"}, headers=headers)
+
+            assert response.status_code == 429
+            assert "limit" in response.get_json().get("error", "").lower()
+
