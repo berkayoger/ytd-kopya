@@ -1,0 +1,38 @@
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required
+from backend.auth.jwt_utils import require_csrf
+from backend.auth.middlewares import admin_required
+from backend import db
+from backend.models.plan import Plan
+import json
+import logging
+
+plan_admin_limits_bp = Blueprint('plan_admin_limits', __name__, url_prefix='/api/plans')
+
+
+@plan_admin_limits_bp.route('/<int:plan_id>/update-limits', methods=['POST'])
+@jwt_required()
+@require_csrf
+@admin_required()
+def update_plan_limits(plan_id):
+    try:
+        plan = Plan.query.get(plan_id)
+        if not plan:
+            return jsonify({"error": "Plan bulunamadı."}), 404
+
+        new_limits = request.get_json()
+        if not isinstance(new_limits, dict):
+            return jsonify({"error": "Limit verileri geçersiz."}), 400
+
+        for key, val in new_limits.items():
+            if not isinstance(val, int) or val < 0:
+                return jsonify({"error": f"'{key}' için geçersiz limit değeri."}), 400
+
+        plan.features = json.dumps(new_limits)
+        db.session.commit()
+
+        return jsonify({"success": True, "message": "Plan limitleri güncellendi."}), 200
+    except Exception as e:
+        db.session.rollback()
+        # TODO: handle logging
+        return jsonify({"error": str(e)}), 500
