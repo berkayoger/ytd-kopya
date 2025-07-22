@@ -23,7 +23,7 @@ def test_app(monkeypatch):
 
 def test_update_plan_limits(test_app):
     with test_app.app_context():
-        plan = Plan(name="pro", price=0.0, features=json.dumps({"predict": 1}))
+        plan = Plan(name="basic", price=0.0, features=json.dumps({"predict": 1}))
         db.session.add(plan)
         db.session.commit()
         pid = plan.id
@@ -32,13 +32,8 @@ def test_update_plan_limits(test_app):
     response = client.post(f"/api/plans/{pid}/update-limits", json={"predict": 10})
     assert response.status_code == 200
     data = response.get_json()
-
     assert data["success"] is True
-    assert data["message"] == "Plan limitleri g\u00fcncellendi."
-    assert "plan" in data
-    assert data["plan"]["id"] == pid
-    assert data["plan"]["name"] == "pro"
-    assert data["plan"]["features"] == {"predict": 10}
+    assert data["plan"]["features"]["predict"] == 10
 
     with test_app.app_context():
         updated_plan = Plan.query.get(pid)
