@@ -1,6 +1,7 @@
 import json
 import flask_jwt_extended
 import pytest
+from flask import jsonify
 
 from backend import create_app, db
 from backend.models.plan import Plan
@@ -20,7 +21,36 @@ def test_app(monkeypatch):
         db.drop_all()
 
 
-def test_update_plan_limits(test_app):
+@pytest.fixture
+def unauthorized_app(monkeypatch):
+    monkeypatch.setenv("FLASK_ENV", "testing")
+    monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
+    monkeypatch.setattr("backend.auth.jwt_utils.require_csrf", lambda f: f)
+
+    import sys
+    from backend.auth import jwt_utils
+
+    def deny_decorator(func):
+        def wrapper(*args, **kwargs):
+            return jsonify({"error": "Admin yetkisi gereklidir!"}), 403
+        return wrapper
+
+    monkeypatch.setattr(jwt_utils, "require_admin", deny_decorator)
+    sys.modules.pop("backend.api.plan_admin_limits", None)
+
+    app = create_app()
+    app.config["TESTING"] = True
+    with app.app_context():
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
+
+
+def test_update_plan_limits(test_app, monkeypatch):
+    from backend.auth import jwt_utils
+    # Skip admin check
+    monkeypatch.setattr(jwt_utils, "require_admin", lambda f: f)
     with test_app.app_context():
         plan = Plan(name="basic", price=0.0, features=json.dumps({"predict": 1}))
         from backend.db.models import User, UserRole
@@ -31,9 +61,8 @@ def test_update_plan_limits(test_app):
         pid = plan.id
 
     client = test_app.test_client()
-    headers = {"Authorization": "adminkey"}
     response = client.post(
-        f"/api/plans/{pid}/update-limits", json={"predict": 10}, headers=headers
+        f"/api/plans/{pid}/update-limits", json={"predict": 10}
     )
     assert response.status_code == 200
     data = response.get_json()
@@ -45,14 +74,14 @@ def test_update_plan_limits(test_app):
         assert json.loads(updated_plan.features)["predict"] == 10
 
 
-def test_update_plan_limits_unauthorized_access(test_app):
-    with test_app.app_context():
+def test_update_plan_limits_unauthorized_access(unauthorized_app):
+    with unauthorized_app.app_context():
         plan = Plan(name="unauth", price=0.0, features=json.dumps({"predict": 2}))
         db.session.add(plan)
         db.session.commit()
         pid = plan.id
 
-    client = test_app.test_client()
+    client = unauthorized_app.test_client()
     resp = client.post(f"/api/plans/{pid}/update-limits", json={"predict": 10})
 
     assert resp.status_code in (401, 403)
