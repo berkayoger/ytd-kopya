@@ -80,6 +80,9 @@ def get_all_plans():
 @require_csrf
 @require_admin
 def create_plan():
+
+    """Create a new plan with optional feature limits."""
+
     try:
         data = request.get_json() or {}
         name = data.get("name")
