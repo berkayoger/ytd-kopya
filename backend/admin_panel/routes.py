@@ -52,6 +52,28 @@ def list_users():
         return jsonify(user_list), 200
 
 
+@admin_bp.route('/users/<int:user_id>/custom-features', methods=['GET'])
+@admin_required
+def get_custom_features(user_id):
+    """Belirli bir kullanıcının özel özelliklerini döndürür."""
+    with current_app.app_context():
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "Kullanıcı bulunamadı"}), 404
+
+        try:
+            custom_data = (
+                json.loads(user.custom_features)
+                if isinstance(user.custom_features, str)
+                else user.custom_features or {}
+            )
+            db.session.commit()
+            return jsonify({"custom_features": custom_data}), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+
 @admin_bp.route('/users/<int:user_id>/custom-features', methods=['POST'])
 @admin_required
 def update_custom_features(user_id):
