@@ -27,7 +27,6 @@ def update_plan_limits(plan_id):
             if not isinstance(val, int) or val < 0:
                 return jsonify({"error": f"'{key}' için geçersiz limit değeri."}), 400
 
-        old_limits = json.loads(plan.features or '{}')
         plan.features = json.dumps(new_limits)
         db.session.commit()
 
@@ -42,7 +41,6 @@ def update_plan_limits(plan_id):
         })
     except Exception as e:
         db.session.rollback()
-        # TODO: handle logging
         return jsonify({"error": str(e)}), 500
 
 
