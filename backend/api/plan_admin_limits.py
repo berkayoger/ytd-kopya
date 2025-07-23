@@ -80,6 +80,7 @@ def get_all_plans():
 @require_csrf
 @require_admin
 def create_plan():
+    """Create a new plan with optional feature limits."""
     try:
         data = request.get_json() or {}
         name = data.get("name")
@@ -115,6 +116,7 @@ def create_plan():
 def delete_plan(plan_id):
     try:
         plan = db.session.get(Plan, plan_id)
+
         if not plan:
             return jsonify({"error": "Plan bulunamadı."}), 404
 
@@ -122,5 +124,6 @@ def delete_plan(plan_id):
         db.session.commit()
         return jsonify({"success": True, "message": "Plan silindi."})
     except Exception as e:
+
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
