@@ -27,6 +27,7 @@ def update_plan_limits(plan_id):
             if not isinstance(val, int) or val < 0:
                 return jsonify({"error": f"'{key}' için geçersiz limit değeri."}), 400
 
+        old_limits = json.loads(plan.features or '{}')
         plan.features = json.dumps(new_limits)
         db.session.commit()
 
@@ -41,6 +42,26 @@ def update_plan_limits(plan_id):
         })
     except Exception as e:
         db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@plan_admin_limits_bp.route('/all', methods=['GET'])
+@jwt_required()
+@require_csrf
+@require_admin
+def get_all_plans():
+    try:
+        plans = Plan.query.all()
+        data = [
+            {
+                "id": plan.id,
+                "name": plan.name,
+                "features": json.loads(plan.features or '{}')
+            }
+            for plan in plans
+        ]
+        return jsonify(data)
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
