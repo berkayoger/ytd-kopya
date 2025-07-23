@@ -104,7 +104,7 @@ def create_plan():
                 },
             }
         )
-    except Exception as e:  # pragma: no cover - unexpected errors
+    except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
@@ -114,15 +114,16 @@ def create_plan():
 @require_csrf
 @require_admin
 def delete_plan(plan_id):
-    """Delete a plan by its id."""
     try:
-        plan = Plan.query.get(plan_id)
+        plan = db.session.get(Plan, plan_id)
+
         if not plan:
             return jsonify({"error": "Plan bulunamadı."}), 404
 
         db.session.delete(plan)
         db.session.commit()
         return jsonify({"success": True, "message": "Plan silindi."})
-    except Exception as e:  # pragma: no cover - unexpected errors
+    except Exception as e:
+
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
