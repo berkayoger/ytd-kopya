@@ -5,7 +5,11 @@ from backend import db
 from backend.models.plan import Plan
 import json
 
-plan_admin_limits_bp = Blueprint("plan_admin_limits", __name__, url_prefix="/api/plans")
+plan_admin_limits_bp = Blueprint(
+    "plan_admin_limits",
+    __name__,
+    url_prefix="/api/plans",
+)
 
 
 @plan_admin_limits_bp.route("/<int:plan_id>/update-limits", methods=["POST"])
@@ -25,7 +29,9 @@ def update_plan_limits(plan_id):
         # Sayısal olmayan veya negatif limit değerlerini filtrele
         for key, val in new_limits.items():
             if not isinstance(val, int) or val < 0:
-                return jsonify({"error": f"'{key}' için geçersiz limit değeri."}), 400
+                return jsonify(
+                    {"error": f"'{key}' için geçersiz limit değeri."}
+                ), 400
 
         old_limits = json.loads(plan.features or "{}")
 
