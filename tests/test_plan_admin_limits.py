@@ -22,6 +22,24 @@ def test_app(monkeypatch):
 
 
 @pytest.fixture
+def admin_app(monkeypatch):
+    monkeypatch.setenv("FLASK_ENV", "testing")
+    monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
+    monkeypatch.setattr("backend.auth.jwt_utils.require_csrf", lambda f: f)
+    from backend.auth import jwt_utils
+    monkeypatch.setattr(jwt_utils, "require_admin", lambda f: f)
+    import sys
+    sys.modules.pop("backend.api.plan_admin_limits", None)
+    app = create_app()
+    app.config["TESTING"] = True
+    with app.app_context():
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
+
+
+@pytest.fixture
 def unauthorized_app(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
     monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
@@ -33,6 +51,7 @@ def unauthorized_app(monkeypatch):
     def deny_decorator(func):
         def wrapper(*args, **kwargs):
             return jsonify({"error": "Admin yetkisi gereklidir!"}), 403
+        wrapper.__name__ = func.__name__
         return wrapper
 
     monkeypatch.setattr(jwt_utils, "require_admin", deny_decorator)
@@ -87,3 +106,19 @@ def test_update_plan_limits_unauthorized_access(unauthorized_app):
     assert resp.status_code in (401, 403)
     data = resp.get_json()
     assert "error" in data or "msg" in data
+
+
+def test_get_all_plans(admin_app):
+    with admin_app.app_context():
+        Plan.query.delete()
+        db.session.add_all([
+            Plan(name="basic", price=0.0, features=json.dumps({"predict": 1})),
+            Plan(name="pro", price=1.0, features=json.dumps({"predict": 2})),
+        ])
+        db.session.commit()
+
+    client = admin_app.test_client()
+    resp = client.get("/api/plans/all")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert len(data) == 2
