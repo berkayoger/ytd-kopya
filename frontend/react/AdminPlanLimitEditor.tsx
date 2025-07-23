@@ -1,91 +1,89 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from './components/ui/card';
-import { Input } from './components/ui/input';
-import { Button } from './components/ui/button';
+import { Card, CardBody, Button, Input, Spinner, Alert } from 'reactstrap';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { Plan } from './types'; // Plan türünü tanımlayarak ekleyin.
+import { updatePlanLimits, fetchPlans } from './api'; // API metodlarını oluşturmalısınız.
 
 export default function AdminPlanLimitEditor() {
-  const [plans, setPlans] = useState<any[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchPlans();
+    fetchPlansData();
   }, []);
 
-  const fetchPlans = async () => {
+  const fetchPlansData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/plans/all');
-      const data = await res.json();
-      setPlans(data);
-    } catch (err) {
-      toast.error('Planlar yüklenemedi.');
+      const plansData = await fetchPlans();
+      setPlans(plansData);
+    } catch (error) {
+      setError('Plans could not be loaded.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (planIndex: number, key: string, value: string) => {
-    const newPlans = [...plans];
-    newPlans[planIndex].features[key] = parseInt(value) || 0;
-    setPlans(newPlans);
+  const handleInputChange = (planId: number, key: string, value: string) => {
+    setPlans((prevPlans) =>
+      prevPlans.map((plan) =>
+        plan.id === planId ? { ...plan, features: { ...plan.features, [key]: value } } : plan
+      )
+    );
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await Promise.all(
-        plans.map((plan) =>
-          fetch(`/api/plans/${plan.id}/update-limits`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(plan.features),
-          })
-        )
-      );
-      toast.success('Plan limitleri güncellendi.');
-    } catch {
-      toast.error('Güncelleme sırasında hata oluştu.');
+      for (const plan of plans) {
+        await updatePlanLimits(plan.id, plan.features);
+      }
+      toast.success('Limits updated successfully');
+    } catch (error) {
+      toast.error('Failed to update limits');
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="flex items-center text-muted-foreground text-sm">
-        <Loader2 className="w-4 h-4 animate-spin mr-2" /> Planlar yükleniyor...
+      <div className="d-flex align-items-center">
+        <Spinner size="sm" className="mr-2" />
+        <span>Loading...</span>
       </div>
     );
+  }
 
   return (
-    <section className="space-y-4">
-      <h3 className="text-base font-semibold text-muted-foreground">Plan Limitlerini Düzenle</h3>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {plans.map((plan, i) => (
-          <Card key={plan.id} className="shadow-sm">
-            <CardContent className="space-y-2 py-4">
-              <h4 className="text-sm font-medium">{plan.name.toUpperCase()}</h4>
+    <div>
+      {error && <Alert color="danger">{error}</Alert>}
+      <h2>Plan Limit Editor</h2>
+      <div className="row">
+        {plans.map((plan) => (
+          <Card key={plan.id} className="col-md-4">
+            <CardBody>
+              <h3>{plan.name}</h3>
               {Object.entries(plan.features).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between gap-2">
-                  <label className="text-xs text-muted-foreground w-1/2">{key}</label>
+                <div key={key} className="mb-3">
+                  <label>{key}</label>
                   <Input
                     type="number"
-                    value={value as any}
-                    onChange={(e) => handleChange(i, key, e.target.value)}
-                    className="w-24 text-right"
+                    value={value}
+                    onChange={(e) => handleInputChange(plan.id, key, e.target.value)}
                   />
                 </div>
               ))}
-            </CardContent>
+            </CardBody>
           </Card>
         ))}
       </div>
       <Button onClick={handleSave} disabled={saving}>
-        {saving ? 'Kaydediliyor...' : 'Tümünü Kaydet'}
+        {saving ? <Loader2 className="animate-spin" size={20} /> : 'Save Changes'}
       </Button>
-    </section>
+    </div>
   );
 }
