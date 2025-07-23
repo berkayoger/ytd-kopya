@@ -134,3 +134,48 @@ def test_get_all_plans(admin_app):
     assert resp.status_code == 200
     data = resp.get_json()
     assert len(data) == 2
+
+
+def test_create_plan_success(admin_app):
+    client = admin_app.test_client()
+    resp = client.post(
+        "/api/plans/create",
+        json={"name": "new", "price": 5.0, "features": {"predict": 3}},
+    )
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["success"] is True
+    assert data["plan"]["name"] == "new"
+    assert data["plan"]["features"]["predict"] == 3
+
+    with admin_app.app_context():
+        created = Plan.query.filter_by(name="new").first()
+        assert created is not None
+        assert json.loads(created.features)["predict"] == 3
+
+
+def test_create_plan_missing_name(admin_app):
+    client = admin_app.test_client()
+    resp = client.post("/api/plans/create", json={"price": 1})
+    assert resp.status_code == 400
+
+
+def test_delete_plan_success(admin_app):
+    with admin_app.app_context():
+        plan = Plan(name="temp", price=0, features=json.dumps({}))
+        db.session.add(plan)
+        db.session.commit()
+        pid = plan.id
+
+    client = admin_app.test_client()
+    resp = client.delete(f"/api/plans/{pid}/delete")
+    assert resp.status_code == 200
+    assert resp.get_json()["success"] is True
+    with admin_app.app_context():
+        assert Plan.query.get(pid) is None
+
+
+def test_delete_plan_not_found(admin_app):
+    client = admin_app.test_client()
+    resp = client.delete("/api/plans/999/delete")
+    assert resp.status_code == 404
