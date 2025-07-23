@@ -73,3 +73,54 @@ def get_all_plans():
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@plan_admin_limits_bp.route("/create", methods=["POST"])
+@jwt_required()
+@require_csrf
+@require_admin
+def create_plan():
+    try:
+        data = request.get_json() or {}
+        name = data.get("name")
+        price = data.get("price", 0)
+        features = data.get("features", {})
+
+        if not name:
+            return jsonify({"error": "Plan adı gereklidir."}), 400
+
+        plan = Plan(name=name, price=price, features=json.dumps(features))
+        db.session.add(plan)
+        db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "plan": {
+                    "id": plan.id,
+                    "name": plan.name,
+                    "features": features,
+                },
+            }
+        )
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@plan_admin_limits_bp.route("/<int:plan_id>/delete", methods=["DELETE"])
+@jwt_required()
+@require_csrf
+@require_admin
+def delete_plan(plan_id):
+    try:
+        plan = db.session.get(Plan, plan_id)
+        if not plan:
+            return jsonify({"error": "Plan bulunamadı."}), 404
+
+        db.session.delete(plan)
+        db.session.commit()
+        return jsonify({"success": True, "message": "Plan silindi."})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
