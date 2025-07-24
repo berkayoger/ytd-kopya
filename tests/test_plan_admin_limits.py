@@ -136,17 +136,43 @@ def test_get_all_plans(admin_app):
     assert len(data) == 2
 
 
+def test_create_and_delete_plan(admin_app):
+    client = admin_app.test_client()
+
+    payload = {
+        "name": "enterprise",
+        "price": 99.99,
+        "features": {
+            "predict": 1000,
+            "reports": 50,
+        },
+    }
+
+    create_resp = client.post("/api/plans/create", json=payload)
+    assert create_resp.status_code == 201
+    created = create_resp.get_json()
+    assert created["name"] == "enterprise"
+    assert created["features"]["predict"] == 1000
+
+    plan_id = created["id"]
+
+    delete_resp = client.delete(f"/api/plans/{plan_id}")
+    assert delete_resp.status_code == 200
+    delete_data = delete_resp.get_json()
+    assert delete_data["success"] is True
+    assert "silindi" in delete_data["message"]
+
+
 def test_create_plan_success(admin_app):
     client = admin_app.test_client()
     resp = client.post(
         "/api/plans/create",
         json={"name": "new", "price": 5.0, "features": {"predict": 3}},
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     data = resp.get_json()
-    assert data["success"] is True
-    assert data["plan"]["name"] == "new"
-    assert data["plan"]["features"]["predict"] == 3
+    assert data["name"] == "new"
+    assert data["features"]["predict"] == 3
 
     with admin_app.app_context():
         created = Plan.query.filter_by(name="new").first()
