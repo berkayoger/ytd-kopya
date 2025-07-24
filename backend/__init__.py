@@ -258,9 +258,9 @@ def create_app():
  
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(plan_admin_limits_bp)
     app.register_blueprint(plan_bp, url_prefix='/api')
     app.register_blueprint(plan_admin_bp, url_prefix='/api')
-    app.register_blueprint(plan_admin_limits_bp)
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(admin_usage_bp)
     app.register_blueprint(admin_promo_bp)
