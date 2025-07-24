@@ -3,6 +3,7 @@ import pytest
 from backend import create_app, db
 from backend.models.plan import Plan
 from backend.auth import jwt_utils
+from flask import jsonify
 import flask_jwt_extended
 
 @pytest.fixture
@@ -11,6 +12,8 @@ def admin_client(monkeypatch):
     monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
     monkeypatch.setattr("backend.auth.jwt_utils.require_admin", lambda f: f)
     monkeypatch.setattr("backend.auth.jwt_utils.require_csrf", lambda f: f)
+    import sys
+    sys.modules.pop("backend.api.plan_admin_limits", None)
 
     app = create_app()
     app.config["TESTING"] = True
@@ -58,3 +61,69 @@ def test_full_plan_crud_flow(admin_client):
     resp_check = admin_client.get("/api/plans/all")
     plans_after = resp_check.get_json()
     assert not any(p["id"] == pid for p in plans_after)
+
+
+def test_unauthorized_plan_access(monkeypatch):
+    monkeypatch.setenv("FLASK_ENV", "testing")
+    import flask_jwt_extended
+    monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
+    monkeypatch.setattr("backend.auth.jwt_utils.require_csrf", lambda f: f)
+
+    from backend.auth import jwt_utils
+
+    import sys
+    sys.modules.pop("backend.api.plan_admin_limits", None)
+
+    def deny_admin(fn):
+        def wrapper(*args, **kwargs):
+            return jsonify({"error": "Admin yetkisi gereklidir!"}), 403
+
+        wrapper.__name__ = fn.__name__
+        return wrapper
+
+    monkeypatch.setattr(jwt_utils, "require_admin", deny_admin)
+
+    app = create_app()
+    app.config["TESTING"] = True
+    client = app.test_client()
+
+    resp = client.get("/api/plans/all")
+    assert resp.status_code in (401, 403)
+
+    resp = client.post("/api/plans/create", json={"name": "x", "features": {"predict": 1}})
+    assert resp.status_code in (401, 403)
+
+    resp = client.delete("/api/plans/1")
+    assert resp.status_code in (401, 403)
+
+
+def test_create_plan_invalid_input(admin_client):
+    # Missing name
+    resp = admin_client.post("/api/plans/create", json={"price": 10})
+    assert resp.status_code == 400
+
+    # Invalid features
+    resp2 = admin_client.post(
+        "/api/plans/create", json={"name": "invalid", "features": "not-dict"}
+    )
+    assert resp2.status_code == 400
+
+
+def test_update_plan_invalid_features(admin_client):
+    # Create a valid plan first
+    create = admin_client.post(
+        "/api/plans/create", json={"name": "silver", "features": {"predict": 10}}
+    )
+    pid = create.get_json()["id"]
+
+    # Try invalid update (string instead of int)
+    update = admin_client.post(f"/api/plans/{pid}/update-limits", json={"predict": "abc"})
+    assert update.status_code == 400
+
+    # Try negative number
+    update2 = admin_client.post(f"/api/plans/{pid}/update-limits", json={"predict": -5})
+    assert update2.status_code == 400
+
+    # Valid update
+    valid = admin_client.post(f"/api/plans/{pid}/update-limits", json={"predict": 999})
+    assert valid.status_code == 200
