@@ -93,16 +93,7 @@ def create_plan():
         db.session.add(plan)
         db.session.commit()
 
-        return jsonify(
-            {
-                "success": True,
-                "plan": {
-                    "id": plan.id,
-                    "name": plan.name,
-                    "features": features,
-                },
-            }
-        )
+        return jsonify(plan.to_dict()), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
