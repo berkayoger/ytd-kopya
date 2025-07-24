@@ -18,7 +18,7 @@ plan_admin_limits_bp = Blueprint(
 @require_admin
 def update_plan_limits(plan_id):
     try:
-        plan = db.session.get(Plan, plan_id)
+        plan = Plan.query.get(plan_id)
         if not plan:
             return jsonify({"error": "Plan bulunamadı."}), 404
 
@@ -26,12 +26,9 @@ def update_plan_limits(plan_id):
         if not isinstance(new_limits, dict):
             return jsonify({"error": "Limit verileri geçersiz."}), 400
 
-        # Sayısal olmayan veya negatif limit değerlerini filtrele
         for key, val in new_limits.items():
             if not isinstance(val, int) or val < 0:
-                return jsonify(
-                    {"error": f"'{key}' için geçersiz limit değeri."}
-                ), 400
+                return jsonify({"error": f"'{key}' için geçersiz limit değeri."}), 400
 
         old_limits = json.loads(plan.features or "{}")
 
@@ -84,13 +81,13 @@ def create_plan():
     """Create a new plan with optional feature limits."""
 
     try:
-        data = request.get_json() or {}
-        name = data.get("name")
-        price = data.get("price", 0)
-        features = data.get("features", {})
+        payload = request.get_json()
+        name = payload.get("name") if payload else None
+        price = payload.get("price", 0.0) if payload else 0.0
+        features = payload.get("features", {}) if payload else {}
 
-        if not name:
-            return jsonify({"error": "Plan adı gereklidir."}), 400
+        if not name or not isinstance(features, dict):
+            return jsonify({"error": "Geçersiz plan verileri"}), 400
 
         plan = Plan(name=name, price=price, features=json.dumps(features))
         db.session.add(plan)
@@ -111,13 +108,13 @@ def create_plan():
         return jsonify({"error": str(e)}), 500
 
 
-@plan_admin_limits_bp.route("/<int:plan_id>/delete", methods=["DELETE"])
+@plan_admin_limits_bp.route("/<int:plan_id>", methods=["DELETE"])
 @jwt_required()
 @require_csrf
 @require_admin
 def delete_plan(plan_id):
     try:
-        plan = db.session.get(Plan, plan_id)
+        plan = Plan.query.get(plan_id)
         if not plan:
             return jsonify({"error": "Plan bulunamadı."}), 404
 
