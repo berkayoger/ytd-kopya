@@ -168,7 +168,7 @@ def test_delete_plan_success(admin_app):
         pid = plan.id
 
     client = admin_app.test_client()
-    resp = client.delete(f"/api/plans/{pid}/delete")
+    resp = client.delete(f"/api/plans/{pid}")
     assert resp.status_code == 200
     assert resp.get_json()["success"] is True
     with admin_app.app_context():
@@ -177,5 +177,5 @@ def test_delete_plan_success(admin_app):
 
 def test_delete_plan_not_found(admin_app):
     client = admin_app.test_client()
-    resp = client.delete("/api/plans/999/delete")
+    resp = client.delete("/api/plans/999")
     assert resp.status_code == 404
