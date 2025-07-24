@@ -63,6 +63,82 @@ def test_full_plan_crud_flow(admin_client):
     assert not any(p["id"] == pid for p in plans_after)
 
 
+def test_create_plan_unauthorized(monkeypatch):
+    from backend import create_app
+    import flask_jwt_extended
+    import sys
+
+    monkeypatch.setenv("FLASK_ENV", "testing")
+    sys.modules.pop("backend.api.plan_admin_limits", None)
+
+    def unauthorized_decorator(func):
+        def wrapper(*args, **kwargs):
+            return jsonify({"error": "Missing Authorization Header"}), 401
+
+        wrapper.__name__ = func.__name__
+        return wrapper
+
+    monkeypatch.setattr(
+        flask_jwt_extended, "jwt_required", lambda *a, **kw: (lambda f: unauthorized_decorator(f))
+    )
+
+    app = create_app()
+    app.config["TESTING"] = True
+    with app.test_client() as client:
+        res = client.post("/api/plans/create", json={"name": "unauth"})
+        assert res.status_code == 401
+
+
+def test_create_plan_forbidden_without_admin(monkeypatch):
+    from backend import create_app
+    from backend.auth import jwt_utils
+    import flask_jwt_extended
+    import sys
+
+    monkeypatch.setenv("FLASK_ENV", "testing")
+    sys.modules.pop("backend.api.plan_admin_limits", None)
+
+    def forbid_admin(func):
+        def wrapper(*args, **kwargs):
+            return jsonify({"error": "Admin değil"}), 403
+
+        wrapper.__name__ = func.__name__
+        return wrapper
+
+    monkeypatch.setattr(jwt_utils, "require_admin", forbid_admin)
+    monkeypatch.setattr(jwt_utils, "require_csrf", lambda f: f)
+    monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **kw: (lambda f: f))
+
+    app = create_app()
+    app.config["TESTING"] = True
+    with app.test_client() as client:
+        res = client.post("/api/plans/create", json={"name": "forbidden"})
+        assert res.status_code in (403, 500)
+        assert "Admin değil" in res.get_json().get("error", "")
+
+
+def test_update_nonexistent_plan(admin_client):
+    res = admin_client.post("/api/plans/999999/update-limits", json={"predict": 100})
+    assert res.status_code == 404
+    assert "Plan bulunamadı" in res.get_json().get("error", "")
+
+
+def test_create_plan_invalid_payload(admin_client):
+    res = admin_client.post("/api/plans/create", json={"name": "x", "features": "invalid"})
+    assert res.status_code == 400
+    assert "Geçersiz plan verileri" in res.get_json().get("error", "")
+
+
+def test_update_plan_invalid_limit_type(admin_client):
+    payload = {"name": "trial", "price": 0.0, "features": {"predict": 10}}
+    created = admin_client.post("/api/plans/create", json=payload).get_json()
+    pid = created["id"]
+
+    res = admin_client.post(f"/api/plans/{pid}/update-limits", json={"predict": "abc"})
+    assert res.status_code == 400
+    assert "geçersiz limit değeri" in res.get_json().get("error", "")
+
+
 def test_unauthorized_plan_access(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
     import flask_jwt_extended
