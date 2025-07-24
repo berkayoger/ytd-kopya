@@ -13,6 +13,9 @@ export default function AdminPlanManager() {
     price: 0,
     features: { predict: 0 },
   });
+  const [newFeatureKeys, setNewFeatureKeys] = useState<Record<number, { key: string; value: number }>>({});
+  const [newFeatureKey, setNewFeatureKey] = useState('');
+  const [newFeatureValue, setNewFeatureValue] = useState(0);
 
   const handleInputChange = (
     planId: number,
@@ -110,6 +113,52 @@ export default function AdminPlanManager() {
                   />
                 </div>
               ))}
+              {/* Yeni özellik ekleme alanı */}
+              <div className="mt-3">
+                <Input
+                  type="text"
+                  placeholder="Yeni özellik adı"
+                  value={newFeatureKeys[plan.id]?.key || ''}
+                  onChange={(e) =>
+                    setNewFeatureKeys((prev) => ({
+                      ...prev,
+                      [plan.id]: {
+                        ...prev[plan.id],
+                        key: e.target.value,
+                      },
+                    }))
+                  }
+                />
+                <Input
+                  type="number"
+                  placeholder="Başlangıç değeri"
+                  value={newFeatureKeys[plan.id]?.value || 0}
+                  onChange={(e) =>
+                    setNewFeatureKeys((prev) => ({
+                      ...prev,
+                      [plan.id]: {
+                        ...prev[plan.id],
+                        value: parseInt(e.target.value) || 0,
+                      },
+                    }))
+                  }
+                />
+                <Button
+                  size="sm"
+                  color="success"
+                  onClick={() => {
+                    const { key, value } = newFeatureKeys[plan.id] || {};
+                    if (!key) return toast.error('Özellik adı boş olamaz.');
+                    handleInputChange(plan.id, key, value || 0);
+                    setNewFeatureKeys((prev) => ({
+                      ...prev,
+                      [plan.id]: { key: '', value: 0 },
+                    }));
+                  }}
+                >
+                  Özellik Ekle
+                </Button>
+              </div>
             </CardBody>
           </Card>
         ))}
@@ -143,13 +192,37 @@ export default function AdminPlanManager() {
         </div>
         <div className="col-md-2">
           <Input
-            type="number"
-            placeholder="predict"
-            value={newPlan.features.predict}
-            onChange={(e) =>
-              handleNewPlanChange('features.predict', e.target.value)
-            }
+            type="text"
+            placeholder="Özellik adı"
+            value={newFeatureKey}
+            onChange={(e) => setNewFeatureKey(e.target.value)}
           />
+        </div>
+        <div className="col-md-2">
+          <Input
+            type="number"
+            placeholder="Değer"
+            value={newFeatureValue}
+            onChange={(e) => setNewFeatureValue(parseInt(e.target.value))}
+          />
+        </div>
+        <div className="col-md-2">
+          <Button
+            onClick={() => {
+              if (!newFeatureKey) return toast.error('Özellik adı boş olamaz.');
+              setNewPlan((prev) => ({
+                ...prev,
+                features: {
+                  ...prev.features,
+                  [newFeatureKey]: newFeatureValue,
+                },
+              }));
+              setNewFeatureKey('');
+              setNewFeatureValue(0);
+            }}
+          >
+            Özellik Ekle
+          </Button>
         </div>
         <div className="col-md-2">
           <Button onClick={handleCreatePlan}>Oluştur</Button>
