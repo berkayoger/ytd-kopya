@@ -127,3 +127,58 @@ def test_update_plan_invalid_features(admin_client):
     # Valid update
     valid = admin_client.post(f"/api/plans/{pid}/update-limits", json={"predict": 999})
     assert valid.status_code == 200
+
+
+def test_create_plan_unauthorized(monkeypatch):
+    monkeypatch.setenv("FLASK_ENV", "testing")
+    import sys
+    sys.modules.pop("backend.api.plan_admin_limits", None)
+    app = create_app()
+    from flask_jwt_extended.exceptions import NoAuthorizationError
+    with app.test_client() as client:
+        with pytest.raises(NoAuthorizationError):
+            client.post("/api/plans/create", json={"name": "unauth"})
+
+
+def test_create_plan_forbidden_without_admin(monkeypatch):
+    monkeypatch.setenv("FLASK_ENV", "testing")
+    monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **kw: (lambda f: f))
+    def deny_admin(fn):
+        def wrapper(*args, **kwargs):
+            return jsonify({"error": "Admin değil"}), 403
+
+        wrapper.__name__ = fn.__name__
+        return wrapper
+
+    monkeypatch.setattr(jwt_utils, "require_admin", deny_admin)
+    import sys
+    sys.modules.pop("backend.api.plan_admin_limits", None)
+
+    app = create_app()
+    with app.test_client() as client:
+        res = client.post("/api/plans/create", json={"name": "forbidden"})
+        assert res.status_code in (403, 500)
+        data = res.get_json()
+        assert "Admin değil" in data.get("error", "")
+
+
+def test_update_nonexistent_plan(admin_client):
+    res = admin_client.post("/api/plans/999999/update-limits", json={"predict": 100})
+    assert res.status_code == 404
+    assert "Plan bulunamadı" in res.get_json().get("error", "")
+
+
+def test_create_plan_invalid_payload(admin_client):
+    res = admin_client.post("/api/plans/create", json={"name": "x", "features": "invalid"})
+    assert res.status_code == 400
+    assert "Geçersiz plan verileri" in res.get_json().get("error", "")
+
+
+def test_update_plan_invalid_limit_type(admin_client):
+    payload = {"name": "trial", "price": 0.0, "features": {"predict": 10}}
+    created = admin_client.post("/api/plans/create", json=payload).get_json()
+    pid = created["id"]
+
+    res = admin_client.post(f"/api/plans/{pid}/update-limits", json={"predict": "abc"})
+    assert res.status_code == 400
+    assert "geçersiz limit değeri" in res.get_json().get("error", "")
