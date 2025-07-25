@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import useAdminPlans from './hooks/useAdminPlans';
 import { NewPlan } from './types';
 import { Trash2, Plus, Save, XCircle } from 'lucide-react';
+import withAdminGuard from './auth/withAdminGuard';
 
 export default function AdminPlanManager() {
   const { plans, setPlans, loading, error, load, saveAll, addPlan, removePlan } =
@@ -252,3 +253,6 @@ export default function AdminPlanManager() {
     </div>
   );
 }
+\nexport const ProtectedAdminPlanManager = withAdminGuard(AdminPlanManager);
+
+
