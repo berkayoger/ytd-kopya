@@ -3,6 +3,8 @@
 
 import jwt
 import secrets
+import os
+from flask_jwt_extended import jwt_required
 from datetime import datetime, timedelta
 from flask import current_app, request, abort, jsonify
 import logging
@@ -150,6 +152,7 @@ def require_admin(func):
             return jsonify({"error": "Sunucu hatası."}), 500
 
     return wrapper
+
 
 
 def jwt_required_if_not_testing(*dargs, **dkwargs):
