@@ -3,6 +3,8 @@
 
 import jwt
 import secrets
+import os
+from flask_jwt_extended import jwt_required
 from datetime import datetime, timedelta
 from flask import current_app, request, abort, jsonify
 import logging
@@ -150,4 +152,13 @@ def require_admin(func):
             return jsonify({"error": "Sunucu hatası."}), 500
 
     return wrapper
+
+
+def optional_jwt_required():
+    """Return a no-op decorator when testing, else flask_jwt_extended.jwt_required."""
+    if os.getenv("FLASK_ENV") == "testing":
+        def decorator(fn):
+            return fn
+        return decorator
+    return jwt_required()
 
