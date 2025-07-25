@@ -1,13 +1,28 @@
 import React, { useState } from 'react';
-import { Card, CardBody, Button, Input, Spinner, Alert } from 'reactstrap';
+import {
+  Card,
+  CardBody,
+  Button,
+  Input,
+  Spinner,
+  Alert,
+  Modal,
+  ModalBody,
+  ModalFooter,
+} from 'reactstrap';
 import { toast } from 'sonner';
 import useAdminPlans from './hooks/useAdminPlans';
 import { NewPlan } from './types';
+import { Trash2, Plus, Save, XCircle } from 'lucide-react';
 
 export default function AdminPlanManager() {
   const { plans, setPlans, loading, error, load, saveAll, addPlan, removePlan } =
     useAdminPlans();
   const [saving, setSaving] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{ visible: boolean; planId: number | null }>({
+    visible: false,
+    planId: null,
+  });
   const [newPlan, setNewPlan] = useState<NewPlan>({
     name: '',
     price: 0,
@@ -56,10 +71,19 @@ export default function AdminPlanManager() {
   };
 
   const handleCreatePlan = async () => {
+    const planData = { ...newPlan };
+    if (newFeatureKey) {
+      planData.features = {
+        ...planData.features,
+        [newFeatureKey]: newFeatureValue,
+      };
+    }
     try {
-      const created = await addPlan(newPlan);
+      const created = await addPlan(planData);
       toast.success(`${created.name} başarıyla oluşturuldu.`);
       setNewPlan({ name: '', price: 0, features: { predict: 0 } });
+      setNewFeatureKey('');
+      setNewFeatureValue(0);
     } catch {
       toast.error('Plan oluşturulamadı.');
     }
@@ -89,18 +113,14 @@ export default function AdminPlanManager() {
 
       <div className="row">
         {plans.map((plan) => (
-          <Card key={plan.id} className="col-md-4 mb-4">
+          <Card key={plan.id} className="col-md-4 mb-4 shadow-sm border">
             <CardBody>
-              <h5>
-                {plan.name}{' '}
-                <Button
-                  size="sm"
-                  color="danger"
-                  onClick={() => handleDeletePlan(plan.id)}
-                >
-                  Sil
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <h5 className="mb-0 fw-bold">{plan.name}</h5>
+                <Button size="sm" color="danger" onClick={() => setDeleteModal({ visible: true, planId: plan.id })}>
+                  <Trash2 size={16} />
                 </Button>
-              </h5>
+              </div>
               {Object.entries(plan.features).map(([key, value]) => (
                 <div key={key} className="mb-2">
                   <label>{key}</label>
@@ -114,10 +134,12 @@ export default function AdminPlanManager() {
                 </div>
               ))}
               {/* Yeni özellik ekleme alanı */}
-              <div className="mt-3">
+              <div className="mt-3 d-flex gap-2 align-items-end">
                 <Input
                   type="text"
-                  placeholder="Yeni özellik adı"
+                  bsSize="sm"
+                  placeholder="Yeni özellik"
+                  className="w-50"
                   value={newFeatureKeys[plan.id]?.key || ''}
                   onChange={(e) =>
                     setNewFeatureKeys((prev) => ({
@@ -131,7 +153,9 @@ export default function AdminPlanManager() {
                 />
                 <Input
                   type="number"
-                  placeholder="Başlangıç değeri"
+                  bsSize="sm"
+                  placeholder="Başlangıç"
+                  className="w-25"
                   value={newFeatureKeys[plan.id]?.value || 0}
                   onChange={(e) =>
                     setNewFeatureKeys((prev) => ({
@@ -156,7 +180,7 @@ export default function AdminPlanManager() {
                     }));
                   }}
                 >
-                  Özellik Ekle
+                  <Plus size={16} />
                 </Button>
               </div>
             </CardBody>
@@ -170,62 +194,59 @@ export default function AdminPlanManager() {
         color="primary"
         className="mb-4"
       >
-        {saving ? 'Kaydediliyor...' : 'Tümünü Kaydet'}
+        {saving ? 'Kaydediliyor...' : (
+          <>
+            <Save size={16} className="me-1" /> Tümünü Kaydet
+          </>
+        )}
       </Button>
 
-      <h4>Yeni Plan Oluştur</h4>
-      <div className="row">
-        <div className="col-md-3">
-          <Input
-            placeholder="Plan Adı"
-            value={newPlan.name}
-            onChange={(e) => handleNewPlanChange('name', e.target.value)}
-          />
-        </div>
-        <div className="col-md-2">
-          <Input
-            type="number"
-            placeholder="Fiyat"
-            value={newPlan.price}
-            onChange={(e) => handleNewPlanChange('price', e.target.value)}
-          />
-        </div>
-        <div className="col-md-2">
-          <Input
-            type="text"
-            placeholder="Özellik adı"
-            value={newFeatureKey}
-            onChange={(e) => setNewFeatureKey(e.target.value)}
-          />
-        </div>
-        <div className="col-md-2">
-          <Input
-            type="number"
-            placeholder="Değer"
-            value={newFeatureValue}
-            onChange={(e) => setNewFeatureValue(parseInt(e.target.value))}
-          />
-        </div>
-        <div className="col-md-2">
+      <Modal
+        isOpen={deleteModal.visible}
+        toggle={() => setDeleteModal({ visible: false, planId: null })}
+      >
+        <ModalBody>Bu planı silmek istediğinize emin misiniz?</ModalBody>
+        <ModalFooter>
           <Button
+            color="danger"
             onClick={() => {
-              if (!newFeatureKey) return toast.error('Özellik adı boş olamaz.');
-              setNewPlan((prev) => ({
-                ...prev,
-                features: {
-                  ...prev.features,
-                  [newFeatureKey]: newFeatureValue,
-                },
-              }));
-              setNewFeatureKey('');
-              setNewFeatureValue(0);
+              if (deleteModal.planId) handleDeletePlan(deleteModal.planId);
+              setDeleteModal({ visible: false, planId: null });
             }}
           >
-            Özellik Ekle
+            Sil
           </Button>
+          <Button
+            color="secondary"
+            onClick={() => setDeleteModal({ visible: false, planId: null })}
+          >
+            <XCircle size={16} className="me-1" /> Vazgeç
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      <h4>Yeni Plan Oluştur</h4>
+      <div className="row g-2 align-items-end mt-4">
+        <div className="col-md-3">
+          <label className="form-label">Plan Adı</label>
+          <Input value={newPlan.name} onChange={(e) => handleNewPlanChange('name', e.target.value)} />
         </div>
         <div className="col-md-2">
-          <Button onClick={handleCreatePlan}>Oluştur</Button>
+          <label className="form-label">Fiyat</label>
+          <Input type="number" value={newPlan.price} onChange={(e) => handleNewPlanChange('price', e.target.value)} />
+        </div>
+        <div className="col-md-2">
+          <label className="form-label">Özellik</label>
+          <Input type="text" value={newFeatureKey} onChange={(e) => setNewFeatureKey(e.target.value)} />
+        </div>
+        <div className="col-md-2">
+          <label className="form-label">Değer</label>
+          <Input type="number" value={newFeatureValue} onChange={(e) => setNewFeatureValue(parseInt(e.target.value))} />
+        </div>
+        <div className="col-md-2">
+          <Button onClick={handleCreatePlan}>
+            <Plus size={16} className="me-1" /> Oluştur
+          </Button>
         </div>
       </div>
     </div>
