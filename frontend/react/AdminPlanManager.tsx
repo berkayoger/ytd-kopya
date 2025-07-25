@@ -257,6 +257,6 @@ export default function AdminPlanManager() {
   );
 }
 
-\nexport const ProtectedAdminPlanManager = withAdminGuard(AdminPlanManager);
+export const ProtectedAdminPlanManager = withAdminGuard(AdminPlanManager);
 
 
