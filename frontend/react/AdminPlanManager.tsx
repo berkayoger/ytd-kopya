@@ -14,7 +14,9 @@ import { toast } from 'sonner';
 import useAdminPlans from './hooks/useAdminPlans';
 import { NewPlan } from './types';
 import { Trash2, Plus, Save, XCircle } from 'lucide-react';
+
 import { ProtectedRoute } from './ProtectedRoute';
+
 
 export default function AdminPlanManager() {
   const { plans, setPlans, loading, error, load, saveAll, addPlan, removePlan } =
@@ -254,6 +256,7 @@ export default function AdminPlanManager() {
   );
 }
 
+
 export function ProtectedAdminPlanManager() {
   return (
     <ProtectedRoute isAdmin={true}>
@@ -261,3 +264,4 @@ export function ProtectedAdminPlanManager() {
     </ProtectedRoute>
   );
 }
+
