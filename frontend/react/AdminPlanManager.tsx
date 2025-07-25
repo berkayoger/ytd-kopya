@@ -16,6 +16,9 @@ import { NewPlan } from './types';
 import { Trash2, Plus, Save, XCircle } from 'lucide-react';
 import withAdminGuard from './auth/withAdminGuard';
 
+import { ProtectedRoute } from './ProtectedRoute';
+
+
 export default function AdminPlanManager() {
   const { plans, setPlans, loading, error, load, saveAll, addPlan, removePlan } =
     useAdminPlans();
@@ -253,6 +256,7 @@ export default function AdminPlanManager() {
     </div>
   );
 }
+
 \nexport const ProtectedAdminPlanManager = withAdminGuard(AdminPlanManager);
 
 
