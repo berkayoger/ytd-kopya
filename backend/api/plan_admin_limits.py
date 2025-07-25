@@ -28,7 +28,9 @@ def update_plan_limits(plan_id):
 
         for key, val in new_limits.items():
             if not isinstance(val, int) or val < 0:
-                return jsonify({"error": f"'{key}' için geçersiz limit değeri."}), 400
+                return jsonify(
+                    {"error": f"'{key}' için geçersiz limit değeri."}
+                ), 400
 
         old_limits = json.loads(plan.features or "{}")
 
