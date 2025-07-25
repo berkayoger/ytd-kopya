@@ -10,6 +10,9 @@ jest.mock('reactstrap', () => ({
   Input: (p: any) => <input {...p} />,
   Spinner: (p: any) => <div {...p} />,
   Alert: (p: any) => <div {...p} />,
+  Modal: (p: any) => <div {...p} />,
+  ModalBody: (p: any) => <div {...p} />,
+  ModalFooter: (p: any) => <div {...p} />,
 }));
 jest.mock('../react/api', () => ({
   fetchPlans: jest.fn(() =>
