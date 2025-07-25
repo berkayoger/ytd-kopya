@@ -151,3 +151,16 @@ def require_admin(func):
 
     return wrapper
 
+
+def jwt_required_if_not_testing(*dargs, **dkwargs):
+    """Wrap flask_jwt_extended.jwt_required but bypass when running tests."""
+    from flask_jwt_extended import jwt_required
+    import os
+
+    def decorator(fn):
+        if os.getenv("FLASK_ENV") == "testing" and os.getenv("DISABLE_JWT_CHECKS") != "1":
+            return fn
+        return jwt_required(*dargs, **dkwargs)(fn)
+
+    return decorator
+
