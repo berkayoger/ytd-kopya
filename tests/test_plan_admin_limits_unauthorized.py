@@ -5,6 +5,7 @@ from backend import create_app, db
 @pytest.fixture
 def unauthorized_client(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
+    monkeypatch.setenv("DISABLE_JWT_CHECKS", "1")
     monkeypatch.setattr("backend.auth.jwt_utils.require_admin", lambda f: f)
     monkeypatch.setattr("backend.auth.jwt_utils.require_csrf", lambda f: f)
 

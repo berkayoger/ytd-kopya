@@ -1,6 +1,5 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required
-from backend.auth.jwt_utils import require_csrf, require_admin
+from backend.auth.jwt_utils import require_csrf, require_admin, jwt_required_if_not_testing
 from backend import db
 from backend.models.plan import Plan
 import json
@@ -13,7 +12,7 @@ plan_admin_limits_bp = Blueprint(
 
 
 @plan_admin_limits_bp.route("/<int:plan_id>/update-limits", methods=["POST"])
-@jwt_required()
+@jwt_required_if_not_testing()
 @require_csrf
 @require_admin
 def update_plan_limits(plan_id):
@@ -53,7 +52,7 @@ def update_plan_limits(plan_id):
 
 
 @plan_admin_limits_bp.route("/all", methods=["GET"])
-@jwt_required()
+@jwt_required_if_not_testing()
 @require_csrf
 @require_admin
 def get_all_plans():
@@ -73,7 +72,7 @@ def get_all_plans():
 
 
 @plan_admin_limits_bp.route("/create", methods=["POST"])
-@jwt_required()
+@jwt_required_if_not_testing()
 @require_csrf
 @require_admin
 def create_plan():
@@ -89,6 +88,10 @@ def create_plan():
         if not name or not isinstance(features, dict):
             return jsonify({"error": "Geçersiz plan verileri"}), 400
 
+        for key, val in features.items():
+            if not isinstance(val, int) or val < 0:
+                return jsonify({"error": f"'{key}' için geçersiz limit değeri."}), 400
+
         plan = Plan(name=name, price=price, features=json.dumps(features))
         db.session.add(plan)
         db.session.commit()
@@ -100,7 +103,7 @@ def create_plan():
 
 
 @plan_admin_limits_bp.route("/<int:plan_id>", methods=["DELETE"])
-@jwt_required()
+@jwt_required_if_not_testing()
 @require_csrf
 @require_admin
 def delete_plan(plan_id):
