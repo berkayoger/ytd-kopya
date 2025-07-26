@@ -1,33 +1,31 @@
 from flask import Blueprint, request, jsonify
-from backend.decision_engine.feature_extraction import extract_features
+
+from backend.decision_engine import extract_features
 from backend.decision_engine.score_calculator import calculate_score
-from backend.engine.decision_maker import build_prediction
+from backend.engine.strategic_decision_engine import advanced_decision_logic
 
-# Blueprint with url_prefix '/api/decision'
-decision_bp = Blueprint("decision", __name__, url_prefix="/api/decision")
+# Blueprint for lightweight decision endpoints
+decision_bp = Blueprint('decision', __name__, url_prefix='/api/decision')
 
-@decision_bp.route("/predict", methods=["POST"])
-def predict_decision():
-    """Calculate decision engine output based on posted indicators."""
-    try:
-        data = request.get_json() or {}
-        coin = data.get("coin", "UNKNOWN")
-        features = extract_features(data)
-        score = calculate_score(features)
-        # convert to decision using existing build_prediction or simple mapping
-        decision = {
-            "coin": coin,
-            "score": score,
-        }
-        # Use build_prediction if needed for additional info
-        try:
-            decision.update(build_prediction(
-                # expect df-like placeholder; pass features for minimal stub
-                features,
-                {"signal": "buy" if score > 50 else "avoid", "confidence": score/100}
-            ))
-        except Exception:
-            pass
-        return jsonify(decision), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
+
+@decision_bp.route('/evaluate', methods=['POST'])
+def evaluate_decision():
+    """Return decision signal and weighted score for provided indicators."""
+    data = request.get_json() or {}
+
+    # Extract normalized features and calculate weighted score
+    features = extract_features(data)
+    score = calculate_score(features)
+
+    # Map data to inputs expected by advanced_decision_logic
+    indicators = {
+        'rsi': data.get('rsi'),
+        'macd': data.get('macd'),
+        'macd_signal': data.get('macd_signal'),
+        'price': data.get('price'),
+        'sma_10': data.get('sma_10'),
+        'prev_predictions_success_rate': data.get('prev_predictions_success_rate', 0),
+    }
+    decision = advanced_decision_logic(indicators)
+
+    return jsonify({'decision': decision, 'score': score, 'features': features})
