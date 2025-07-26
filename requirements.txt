@@ -130,3 +130,4 @@ celery==5.3.6
 flask_socketio==5.3.6
 loguru==0.7.2
 redis==5.0.4
+python-dotenv==1.0.1
