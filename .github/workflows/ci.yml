@@ -29,13 +29,13 @@ jobs:
           files: ./coverage.xml
 
       - name: Install frontend dependencies
-        working-directory: ./frontend
         run: |
+          cd frontend
           npm install
 
-      - name: Run frontend build
-        working-directory: ./frontend
+      - name: Build frontend
         run: |
+          cd frontend
           npm run build
 
       - name: Run frontend type check
