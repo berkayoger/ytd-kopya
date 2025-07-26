@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hızlı Tahmin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 p-6">
+  <div class="max-w-md mx-auto">
+    <h1 class="text-2xl font-bold mb-4">Hızlı Tahmin</h1>
+    <input id="coin-input" type="text" placeholder="Coin (örn. BTC)" class="border px-3 py-2 rounded w-full mb-4">
+    <button onclick="getDecision()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Tahmin Al</button>
+    <pre id="decision-output" class="mt-4 p-4 bg-white rounded shadow"></pre>
+    <canvas id="scoreChart" width="300" height="300" class="mx-auto mt-8"></canvas>
+  </div>
+<script>
+  let chartInstance = null;
+
+  function drawChart(score) {
+    const ctx = document.getElementById('scoreChart').getContext('2d');
+    if (chartInstance) {
+      chartInstance.destroy(); // Eski grafik varsa sil
+    }
+    chartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Skor', 'Kalan'],
+        datasets: [{
+          label: 'Skor',
+          data: [score, 100 - score],
+          backgroundColor: ['#22c55e', '#e5e7eb'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        plugins: {
+          tooltip: { enabled: false },
+          legend: { display: false }
+        },
+        cutout: '70%',
+      }
+    });
+  }
+
+  async function getDecision() {
+    const coin = document.getElementById("coin-input").value.trim();
+    const response = await fetch('/api/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ coin })
+    });
+    const result = await response.json();
+    document.getElementById("decision-output").textContent = JSON.stringify(result, null, 2);
+
+    if (result.score !== undefined) {
+      drawChart(result.score);
+    }
+  }
+</script>
+</body>
+</html>
