@@ -9,33 +9,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
+
       - name: Install backend + test dependencies
         run: |
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
+
       - name: Run backend tests
         run: pytest --tb=short
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
           files: ./coverage.xml
-- name: Install frontend dependencies
-  working-directory: ./frontend
-  run: |
-    npm install
+
+      - name: Install frontend dependencies
+        run: |
+          npm install
+
       - name: Run frontend build
-        working-directory: ./frontend
         run: |
           npm run build
+
       - name: Run frontend type check
-        working-directory: ./frontend
         run: tsc --noEmit
+
       - name: Run frontend tests
-        working-directory: ./frontend
         run: |
           npm test -- --watchAll=false --coverage
 
@@ -45,15 +49,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Backup database
         run: ./scripts/backup_db.sh
+
       - name: Deploy to production
         run: ./scripts/deploy_prod.sh
+
       - name: Notify Slack
         run: |
           if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
             curl -X POST -H 'Content-type: application/json' --data '{"text":"Deploy completed"}' ${{ secrets.SLACK_WEBHOOK_URL }}
           fi
+
       - name: Rollback on failure
         if: failure()
         run: ./scripts/rollback_prod.sh
