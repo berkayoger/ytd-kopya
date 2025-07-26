@@ -127,3 +127,4 @@ flask-cors==4.0.0
 flask-limiter==3.5.0
 celery==5.3.6
 celery==5.3.6
+flask_socketio==5.3.6
