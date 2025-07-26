@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skor Grafiği</title>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 p-6">
+  <canvas id="scoreChart" width="300" height="300" class="mx-auto mt-8"></canvas>
+
+  <script>
+    let chartInstance;
+
+    function drawChart(score) {
+      const ctx = document.getElementById('scoreChart').getContext('2d');
+
+      if (chartInstance) {
+        chartInstance.destroy(); // Eski grafik varsa sil
+      }
+
+      // Renk belirleme
+      let color = '#22c55e'; // yeşil (al)
+      if (score < 50) {
+        color = '#ef4444'; // kırmızı (sat)
+      } else if (score < 75) {
+        color = '#eab308'; // sarı (tut)
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Skor', 'Kalan'],
+          datasets: [{
+            label: 'Skor',
+            data: [score, 100 - score],
+            backgroundColor: [color, '#e5e7eb'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          plugins: {
+            tooltip: { enabled: false },
+            legend: { display: false },
+            doughnutLabel: {
+              labels: [
+                {
+                  text: `${score.toFixed(1)} / 100`,
+                  font: {
+                    size: '20'
+                  },
+                  color: '#111827'
+                }
+              ]
+            }
+          },
+          cutout: '70%',
+        },
+        plugins: [ChartDataLabels]
+      });
+    }
+
+    // Örnek kullanım
+    drawChart(85);
+  </script>
+</body>
+</html>
