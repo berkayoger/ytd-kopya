@@ -275,6 +275,7 @@ def create_app():
     app.register_blueprint(analytics_bp)
     app.register_blueprint(ta_bp)
     app.register_blueprint(technical_bp)
+    app.register_blueprint(decision_bp)
     app.register_blueprint(subscriptions_bp)
     app.register_blueprint(decision_bp)
     app.register_blueprint(limits_bp)
