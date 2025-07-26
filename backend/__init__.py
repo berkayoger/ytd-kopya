@@ -277,7 +277,6 @@ def create_app():
     app.register_blueprint(technical_bp)
     app.register_blueprint(decision_bp)
     app.register_blueprint(subscriptions_bp)
-    app.register_blueprint(decision_bp)
     app.register_blueprint(limits_bp)
 
     # Sağlık Kontrol Endpoint'i
