@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Karar Motoru Testi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-900">
+  <div class="max-w-xl mx-auto my-8 p-4 bg-white shadow rounded">
+    <h2 class="text-xl font-bold mb-4">Karar Motoru</h2>
+    <input id="coin-input" type="text" placeholder="Coin adı (örn: BTC)" class="w-full mb-2 p-2 border rounded" />
+    <textarea id="feature-json" placeholder='Örnek veri (JSON)' class="w-full p-2 border rounded h-32">{
+  "rsi": 42,
+  "macd": 1.2,
+  "macd_signal": 0.8,
+  "sma_7": 105,
+  "sma_30": 100,
+  "prev_success_rate": 0.67,
+  "sentiment_score": 0.21,
+  "news_count": 14
+}</textarea>
+    <button onclick="getDecision()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Karar Al</button>
+    <pre id="decision-output" class="mt-4 bg-gray-100 p-2 rounded text-sm whitespace-pre-wrap"></pre>
+  </div>
+
+  <script>
+    async function getDecision() {
+      const coin = document.getElementById("coin-input").value.trim();
+      let input;
+      try {
+        input = JSON.parse(document.getElementById("feature-json").value);
+        input.coin = coin;
+      } catch (e) {
+        document.getElementById("decision-output").textContent = "Geçersiz JSON formatı.";
+        return;
+      }
+
+      const response = await fetch("/api/decision/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input)
+      });
+
+      const result = await response.json();
+      document.getElementById("decision-output").textContent = JSON.stringify(result, null, 2);
+    }
+  </script>
+</body>
+</html>
