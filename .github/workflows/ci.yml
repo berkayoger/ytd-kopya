@@ -29,17 +29,22 @@ jobs:
           files: ./coverage.xml
 
       - name: Install frontend dependencies
+        working-directory: ./frontend
         run: |
           npm install
 
       - name: Run frontend build
+        working-directory: ./frontend
         run: |
           npm run build
 
       - name: Run frontend type check
-        run: tsc --noEmit
+        working-directory: ./frontend
+        run: |
+          npx tsc --noEmit
 
       - name: Run frontend tests
+        working-directory: ./frontend
         run: |
           npm test -- --watchAll=false --coverage
 
@@ -59,7 +64,9 @@ jobs:
       - name: Notify Slack
         run: |
           if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
-            curl -X POST -H 'Content-type: application/json' --data '{"text":"Deploy completed"}' ${{ secrets.SLACK_WEBHOOK_URL }}
+            curl -X POST -H 'Content-type: application/json' \
+              --data '{"text":"Deploy completed"}' \
+              ${{ secrets.SLACK_WEBHOOK_URL }}
           fi
 
       - name: Rollback on failure
