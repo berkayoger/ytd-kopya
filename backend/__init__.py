@@ -250,6 +250,7 @@ def create_app():
     from backend.api.ta_routes import bp as ta_bp
     from backend.api.public.technical import technical_bp
     from backend.api.public.subscriptions import subscriptions_bp
+    from backend.api.decision import decision_bp
 
     # APScheduler tabanli gorevleri istege bagli olarak baslat
     if os.getenv("ENABLE_SCHEDULER", "0") == "1":
@@ -274,7 +275,9 @@ def create_app():
     app.register_blueprint(analytics_bp)
     app.register_blueprint(ta_bp)
     app.register_blueprint(technical_bp)
+    app.register_blueprint(decision_bp)
     app.register_blueprint(subscriptions_bp)
+    app.register_blueprint(decision_bp)
     app.register_blueprint(limits_bp)
 
     # Sağlık Kontrol Endpoint'i
