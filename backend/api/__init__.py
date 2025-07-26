@@ -11,3 +11,4 @@ api_bp = Blueprint('api', __name__)
 # Bu satırın çalışması için aynı dizinde route'ları tanımladığınız bir dosya olmalı.
 from backend.api import routes
 from backend.api import plan_routes
+from backend.api.decision import decision_bp
