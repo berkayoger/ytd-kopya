@@ -1,0 +1,32 @@
+name: Run Tests & Coverage
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Kodu indir
+        uses: actions/checkout@v3
+
+      - name: Python ortamını hazırla
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Sanal ortamı oluştur ve aktif et
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Pytest çalıştır (coverage ile)
+        run: |
+          source .venv/bin/activate
+          pytest --cov=backend --cov-report=term-missing
