@@ -28,11 +28,17 @@ export default function AdminPlanLimitEditor() {
   };
 
   const handleInputChange = (planId: number, key: string, value: string) => {
-    setPlans((prevPlans) =>
-      prevPlans.map((plan) =>
-        plan.id === planId ? { ...plan, features: { ...plan.features, [key]: value } } : plan
-      )
-    );
+    setPlans((prevPlans: Plan[]) => {
+      const updated = prevPlans.map((plan) =>
+        plan.id === planId
+          ? {
+              ...plan,
+              features: { ...plan.features, [key]: Number(value) } as Record<string, number>,
+            }
+          : plan
+      );
+      return updated;
+    });
   };
 
   const handleSave = async () => {

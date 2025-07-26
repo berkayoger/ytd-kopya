@@ -4,11 +4,14 @@ import '@testing-library/jest-dom';
 import PlanLimitCard from '../react/PlanLimitCard';
 import { toast } from 'sonner';
 
+type ExtendedMock = jest.Mock & { error?: jest.Mock; warning?: jest.Mock };
+var mockFn: ExtendedMock;
+
 jest.mock('sonner', () => {
-  const fn = jest.fn();
-  fn.error = jest.fn();
-  fn.warning = jest.fn();
-  return { toast: fn };
+  mockFn = jest.fn() as ExtendedMock;
+  mockFn.error = jest.fn();
+  mockFn.warning = jest.fn();
+  return { toast: mockFn };
 });
 
 beforeEach(() => {
@@ -42,7 +45,7 @@ test('triggers warning toast at 90 percent usage', async () => {
   );
   render(<PlanLimitCard />);
   await screen.findByText('Kullanım: 9 / 10');
-  expect((toast as any).warning).toHaveBeenCalled();
+  expect(mockFn.warning).toHaveBeenCalled();
 });
 
 test('triggers error toast at full usage', async () => {
@@ -57,5 +60,5 @@ test('triggers error toast at full usage', async () => {
   );
   render(<PlanLimitCard />);
   await screen.findByText('Kullanım: 10 / 10');
-  expect((toast as any).error).toHaveBeenCalled();
+  expect(mockFn.error).toHaveBeenCalled();
 });
