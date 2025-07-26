@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 
-from backend.decision_engine import extract_features
+from backend.decision_engine import extract_features, make_decision
 from backend.decision_engine.score_calculator import calculate_score
 from backend.engine.strategic_decision_engine import advanced_decision_logic
 
@@ -29,3 +29,17 @@ def evaluate_decision():
     decision = advanced_decision_logic(indicators)
 
     return jsonify({'decision': decision, 'score': score, 'features': features})
+
+
+@decision_bp.route('/predict', methods=['POST'])
+def predict_decision():
+    """Return a recommendation based on provided market indicators."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    features = extract_features(data)
+    score = calculate_score(features)
+    coin = data.get("coin", "UNKNOWN")
+    result = make_decision(coin, score)
+    return jsonify(result)
