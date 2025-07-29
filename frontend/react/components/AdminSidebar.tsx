@@ -1,34 +1,7 @@
-import { NavLink } from 'react-router-dom';
+import React from "react";
 
 const AdminSidebar = () => {
-  const navItems = [
-    { name: 'Dashboard', path: '/admin' },
-    { name: 'Kullan\u0131c\u0131lar', path: '/admin/users' },
-    { name: 'Promosyonlar', path: '/admin/promos' },
-    { name: 'Tahminler', path: '/admin/predictions' },
-    { name: 'Plan Y\u00f6netimi', path: '/admin/plans' },
-    { name: 'Kullan\u0131m Limitleri', path: '/admin/limits' },
-    { name: '\u0130\u00e7erik Y\u00f6netimi', path: '/admin/content' },
-    { name: 'Sistem \u0130zleme', path: '/admin/monitoring' },
-  ];
-
-  return (
-    <div className="sidebar">
-      <ul>
-        {navItems.map((item) => (
-          <li key={item.path}>
-            <NavLink
-              to={item.path}
-              className={({ isActive }) =>
-                isActive ? 'text-blue-600 font-bold' : 'text-gray-700 hover:text-blue-500'}
-            >
-              {item.name}
-            </NavLink>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+  return <aside>Sidebar</aside>;
 };
 
 export default AdminSidebar;
