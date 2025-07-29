@@ -17,7 +17,11 @@ const AdminSidebar = () => {
       <ul>
         {navItems.map((item) => (
           <li key={item.path}>
-            <NavLink to={item.path} className={({ isActive }) => (isActive ? 'active' : undefined)}>
+            <NavLink
+              to={item.path}
+              className={({ isActive }) =>
+                isActive ? 'text-blue-600 font-bold' : 'text-gray-700 hover:text-blue-500'}
+            >
               {item.name}
             </NavLink>
           </li>
