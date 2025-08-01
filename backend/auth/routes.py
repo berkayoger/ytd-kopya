@@ -79,6 +79,9 @@ def login_user():
     username = data.get('username', '').strip()
     password = data.get('password', '')
 
+    user_agent = request.headers.get("User-Agent", "")
+    ip_address = request.remote_addr or "unknown"
+
     if not username or not password:
         return jsonify(error="Kullanıcı adı ve şifre gerekli."), 400
 
@@ -126,14 +129,17 @@ def login_user():
 
         logger.info(f"Kullanıcı girişi başarılı: {username}")
         log_action(user, action="login")
-        create_log(
-            user_id=str(user.id),
-            username=user.username,
-            ip_address=request.remote_addr,
-            action="login",
-            description="Kullanıcı giriş yaptı",
-            target="/login",
-            user_agent=request.headers.get("User-Agent", ""),
+create_log(
+    user_id=str(user.id),
+    username=user.username,
+    ip_address=ip_address,
+    action="login",
+    target="/login",
+    description="Kullanıcı başarılı şekilde giriş yaptı.",
+    status="success",
+    user_agent=user_agent,
+)
+
         )
         return response
 
