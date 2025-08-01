@@ -246,6 +246,7 @@ def create_app():
     from backend.api.admin.backup import backup_bp
     from backend.api.admin.system_events import events_bp
     from backend.api.admin.analytics import analytics_bp
+    from backend.api.logs import logs_bp
     from backend.limits.routes import limits_bp
     from backend.api.ta_routes import bp as ta_bp
     from backend.api.public.technical import technical_bp
@@ -273,6 +274,7 @@ def create_app():
     app.register_blueprint(backup_bp)
     app.register_blueprint(events_bp)
     app.register_blueprint(analytics_bp)
+    app.register_blueprint(logs_bp)
     app.register_blueprint(ta_bp)
     app.register_blueprint(technical_bp)
     app.register_blueprint(decision_bp)
