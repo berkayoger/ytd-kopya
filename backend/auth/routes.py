@@ -129,15 +129,17 @@ def login_user():
 
         logger.info(f"Kullanıcı girişi başarılı: {username}")
         log_action(user, action="login")
-        create_log(
-            user_id=str(user.id),
-            username=user.username,
-            ip_address=ip_address,
-            action="login",
-            target="/login",
-            description="Kullanıcı başarılı şekilde giriş yaptı.",
-            status="success",
-            user_agent=user_agent,
+create_log(
+    user_id=str(user.id),
+    username=user.username,
+    ip_address=ip_address,
+    action="login",
+    target="/login",
+    description="Kullanıcı başarılı şekilde giriş yaptı.",
+    status="success",
+    user_agent=user_agent,
+)
+
         )
         return response
 
