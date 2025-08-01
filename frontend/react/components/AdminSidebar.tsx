@@ -3,31 +3,36 @@ import { NavLink } from 'react-router-dom';
 const AdminSidebar = () => {
   const navItems = [
     { name: 'Dashboard', path: '/admin' },
-    { name: 'Kullan\u0131c\u0131lar', path: '/admin/users' },
+    { name: 'Kullanıcılar', path: '/admin/users' },
     { name: 'Promosyonlar', path: '/admin/promos' },
     { name: 'Tahminler', path: '/admin/predictions' },
-    { name: 'Plan Y\u00f6netimi', path: '/admin/plans' },
-    { name: 'Kullan\u0131m Limitleri', path: '/admin/limits' },
-    { name: '\u0130\u00e7erik Y\u00f6netimi', path: '/admin/content' },
-    { name: 'Sistem \u0130zleme', path: '/admin/monitoring' },
+    { name: 'Plan Yönetimi', path: '/admin/plans' },
+    { name: 'Kullanım Limitleri', path: '/admin/limits' },
+    { name: 'İçerik Yönetimi', path: '/admin/content' },
+    { name: 'Sistem İzleme', path: '/admin/monitoring' },
+    { name: 'Loglar', path: '/admin/logs' },
   ];
 
   return (
-    <div className="sidebar">
-      <ul>
-        {navItems.map((item) => (
-          <li key={item.path}>
-            <NavLink
-              to={item.path}
-              className={({ isActive }) =>
-                isActive ? 'text-blue-600 font-bold' : 'text-gray-700 hover:text-blue-500'}
-            >
-              {item.name}
-            </NavLink>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <aside className="w-64 h-screen p-4 bg-gray-100 border-r">
+      <nav>
+        <ul className="space-y-2">
+          {navItems.map((item) => (
+            <li key={item.path}>
+              <NavLink
+                to={item.path}
+                className={({ isActive }) =>
+                  isActive
+                    ? 'block px-4 py-2 rounded bg-blue-100 text-blue-700 font-semibold'
+                    : 'block px-4 py-2 rounded hover:bg-gray-200 text-gray-800'}
+              >
+                {item.name}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </aside>
   );
 };
 
