@@ -135,7 +135,7 @@ def login_user():
     ip_address=ip_address,
     action="login",
     target="login",
-    description="Kullanıcı giriş yaptı .",
+    description="Kullanıcı giriş yaptı",
     status="success",
     user_agent=user_agent
 )  
