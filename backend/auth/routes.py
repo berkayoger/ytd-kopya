@@ -16,6 +16,7 @@ from backend import limiter
 from backend.utils.token_helper import generate_reset_token, verify_reset_token
 from backend.utils.email import send_password_reset_email
 from backend.utils.audit import log_action
+from backend.utils.logger import create_log
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 import uuid
@@ -125,6 +126,15 @@ def login_user():
 
         logger.info(f"Kullanıcı girişi başarılı: {username}")
         log_action(user, action="login")
+        create_log(
+            user_id=str(user.id),
+            username=user.username,
+            ip_address=request.remote_addr,
+            action="login",
+            description="Kullanıcı giriş yaptı",
+            target="/login",
+            user_agent=request.headers.get("User-Agent", ""),
+        )
         return response
 
     except Exception:
