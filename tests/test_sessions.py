@@ -5,6 +5,7 @@ from http.cookies import SimpleCookie
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from backend import create_app, db
 from backend.db.models import User, Role, UserSession
+from backend.models.log import Log
 
 
 def test_login_creates_session_and_refresh(monkeypatch):
@@ -17,6 +18,7 @@ def test_login_creates_session_and_refresh(monkeypatch):
         user.set_password("pass")
         db.session.add(user)
         db.session.commit()
+        user_id = user.id
 
     response = client.post(
         "/api/auth/login",
@@ -30,6 +32,9 @@ def test_login_creates_session_and_refresh(monkeypatch):
     with app.app_context():
         session_count = UserSession.query.count()
         assert session_count == 1
+        log = Log.query.filter_by(user_id=str(user_id), action="login").first()
+        assert log is not None
+        assert log.description == "Kullanıcı giriş yaptı"
 
     # Use refresh token to obtain new tokens
     client.set_cookie("localhost", "refreshToken", refresh.value)
