@@ -238,6 +238,23 @@ def forecast_coin(coin_id):
 
     days = max(1, min(days, 30))
 
+    # Loglama
+    ip_address = request.remote_addr or "unknown"
+    user_agent = request.headers.get("User-Agent", "")
+    try:
+        create_log(
+            user_id=str(user.id),
+            username=user.username,
+            ip_address=ip_address,
+            action="forecast",
+            target=f"/api/forecast/{coin_id}",
+            description=f"{coin_id.upper()} için {days} günlük tahmin istendi.",
+            status="success",
+            user_agent=user_agent,
+        )
+    except Exception as e:
+        logger.warning(f"Forecast log oluşturulamadı: {e}")
+
     system = current_app.ytd_system_instance
     price_data = system.collector.collect_price_data(coin_id)
     (
