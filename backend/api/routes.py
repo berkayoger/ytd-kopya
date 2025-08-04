@@ -6,6 +6,7 @@ from flask import Blueprint, request, jsonify, current_app, g
 from backend import limiter
 from backend.limiting import get_plan_rate_limit
 from loguru import logger
+from backend.utils.logger import create_log
 from flask_limiter.errors import RateLimitExceeded
 from datetime import datetime, date, timedelta
 from sqlalchemy.exc import IntegrityError
@@ -24,7 +25,6 @@ from backend.utils.usage_limits import check_usage_limit
 from backend.utils.helpers import serialize_user_for_api, add_audit_log
 from backend.utils.plan_limits import get_user_effective_limits
 from backend.middleware.plan_limits import enforce_plan_limit
-from backend.utils.logger import create_log
 from flask_jwt_extended import jwt_required
 
 # API Blueprint'i tanımla
@@ -92,6 +92,23 @@ def analyze_coin_api(coin_id):
         )
         logger.info(f"Celery: {coin_id.upper()} analizi görevi kuyruğa eklendi. Task ID: {task.id}. Kullanıcı: {user.username}")
 
+        if user:
+            ip_address = request.remote_addr or "unknown"
+            user_agent = request.headers.get("User-Agent", "")
+            try:
+                create_log(
+                    user_id=str(user.id),
+                    username=user.username,
+                    ip_address=ip_address,
+                    action="analyze_coin",
+                    target=f"/api/analyze_coin/{coin_id}",
+                    description=f"{coin_id.upper()} için analiz başlatıldı.",
+                    status="success",
+                    user_agent=user_agent,
+                )
+            except Exception as e:
+                logger.warning(f"analyze_coin log oluşturulamadı: {e}")
+
         # Günlük kullanım kotasını atomik olarak artır
         with current_app.app_context(): # Ensure context for DB operations
             try: # Transaction başlat
@@ -153,6 +170,23 @@ def llm_analyze():
     
     simulated_result = f"LLM danışmanı yanıtı (PREMIUM erişim): '{prompt}' için piyasa çok olumlu görünüyor."
     logger.info(f"LLM analizi yapıldı. Kullanıcı: {user.username}")
+
+    if user:
+        ip_address = request.remote_addr or "unknown"
+        user_agent = request.headers.get("User-Agent", "")
+        try:
+            create_log(
+                user_id=str(user.id),
+                username=user.username,
+                ip_address=ip_address,
+                action="llm_analyze",
+                target="/api/llm/analyze",
+                description="LLM ile analiz talebi yapıldı.",
+                status="success",
+                user_agent=user_agent,
+            )
+        except Exception as e:
+            logger.warning(f"llm_analyze log oluşturulamadı: {e}")
     
     with current_app.app_context():
         try:
@@ -220,6 +254,25 @@ def predict():
 @enforce_plan_limit("predict_daily")
 def daily_prediction():
     data = request.json
+
+    user = g.get("user")
+    if user:
+        ip_address = request.remote_addr or "unknown"
+        user_agent = request.headers.get("User-Agent", "")
+        try:
+            create_log(
+                user_id=str(user.id),
+                username=user.username,
+                ip_address=ip_address,
+                action="predict_daily",
+                target="/api/predict/daily",
+                description="Günlük tahmin talebi yapıldı.",
+                status="success",
+                user_agent=user_agent,
+            )
+        except Exception as e:
+            logger.warning(f"predict_daily log oluşturulamadı: {e}")
+
     return jsonify({"result": "daily"}), 200
 
 # Basit çok günlü fiyat tahmini endpoint'i
