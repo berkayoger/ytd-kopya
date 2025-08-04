@@ -252,6 +252,7 @@ def create_app():
     from backend.api.public.technical import technical_bp
     from backend.api.public.subscriptions import subscriptions_bp
     from backend.api.decision import decision_bp
+    from backend.routes.predict_routes import predict_bp
 
     # APScheduler tabanli gorevleri istege bagli olarak baslat
     if os.getenv("ENABLE_SCHEDULER", "0") == "1":
@@ -260,6 +261,7 @@ def create_app():
  
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(predict_bp, url_prefix='/api')
     app.register_blueprint(plan_admin_limits_bp)
     app.register_blueprint(plan_bp, url_prefix='/api')
     app.register_blueprint(plan_admin_bp, url_prefix='/api')
