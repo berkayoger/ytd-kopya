@@ -24,6 +24,7 @@ from backend.utils.usage_limits import check_usage_limit
 from backend.utils.helpers import serialize_user_for_api, add_audit_log
 from backend.utils.plan_limits import get_user_effective_limits
 from backend.middleware.plan_limits import enforce_plan_limit
+from backend.utils.logger import create_log
 from flask_jwt_extended import jwt_required
 
 # API Blueprint'i tanımla
@@ -194,8 +195,24 @@ def llm_analyze():
 def predict():
     from backend.utils.usage_tracking import record_usage
     user = g.get("user")
+    symbol = (request.get_json(silent=True) or {}).get("coin")
     if user:
         record_usage(user, "predict_daily")
+
+        ip_address = request.remote_addr or "unknown"
+        user_agent = request.headers.get("User-Agent", "")
+
+        create_log(
+            user_id=str(user.id),
+            username=user.username,
+            ip_address=ip_address,
+            action="predict",
+            target="/api/predict",
+            description=f"'{symbol}' için tahmin üretildi." if symbol else "Tahmin üretildi.",
+            status="success",
+            user_agent=user_agent,
+        )
+
     return jsonify({"result": "ok"}), 200
 
 @api_bp.route('/predict/daily', methods=['POST'])
