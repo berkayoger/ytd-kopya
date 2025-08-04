@@ -248,6 +248,7 @@ def create_app():
     from backend.api.admin.analytics import analytics_bp
     from backend.api.logs import logs_bp
     from backend.api.admin.logs import admin_logs_bp
+    from backend.api.admin.feature_flags import feature_flags_bp
     from backend.limits.routes import limits_bp
     from backend.api.ta_routes import bp as ta_bp
     from backend.api.public.technical import technical_bp
@@ -281,6 +282,7 @@ def create_app():
     app.register_blueprint(admin_logs_bp, url_prefix='/api/admin')
     app.register_blueprint(ta_bp)
     app.register_blueprint(technical_bp)
+    app.register_blueprint(feature_flags_bp, url_prefix="/api/admin")
     app.register_blueprint(decision_bp)
     app.register_blueprint(subscriptions_bp)
     app.register_blueprint(limits_bp)
