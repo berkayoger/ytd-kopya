@@ -81,6 +81,12 @@ class DummyRedis:
     def hgetall(self, key):
         return self.hstore.get(key, {})
 
+    def sadd(self, key, value):
+        self.store.setdefault(key, set()).add(value)
+
+    def smembers(self, key):
+        return self.store.get(key, set())
+
 
 def test_create_flag_in_memory(test_app, monkeypatch):
     monkeypatch.setattr(feature_flags, "USE_REDIS", False)
