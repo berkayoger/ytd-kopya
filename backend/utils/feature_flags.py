@@ -3,17 +3,24 @@
 İleride Redis veya DB destekli yapıya taşınabilir.
 """
 
-from typing import Dict
+from typing import Dict, Optional
 import os
+import json
 import redis
 
 USE_REDIS = os.getenv("USE_REDIS_FEATURE_FLAGS", "1") == "1"
 
+redis_client: Optional[redis.Redis]
 try:
     redis_client = redis.Redis.from_url(
         os.getenv("REDIS_URL", "redis://localhost:6379"), decode_responses=True
     )
     redis_client.ping()
+    redis_client.json = redis_client  # mock json client if redis-py json is not enabled
+    if hasattr(redis_client, "json"):
+        redis_client.json.get = (
+            lambda key, path=None: json.loads(redis_client.get(key) or "null")
+        )
 except Exception:
     redis_client = None
     USE_REDIS = False
@@ -29,6 +36,8 @@ _default_flags: Dict[str, bool] = {
 _default_flag_meta: Dict[str, Dict[str, str]] = {
     flag: {"description": "", "category": "general"} for flag in _default_flags
 }
+
+_flag_groups: Dict[str, list] = {}
 
 
 def feature_flag_enabled(flag_name: str) -> bool:
@@ -70,6 +79,7 @@ def create_feature_flag(
             f"feature_flag_meta:{flag_name}",
             mapping={"description": description, "category": category},
         )
+        redis_client.sadd(f"feature_flags:category:{category}", flag_name)
     _default_flags[flag_name] = enabled
     _default_flag_meta[flag_name] = {
         "description": description,
@@ -84,3 +94,30 @@ def get_feature_flag_metadata(flag_name: str) -> Dict[str, str]:
     return _default_flag_meta.get(
         flag_name, {"description": "", "category": "general"}
     )
+
+
+def get_flags_by_category(category: str) -> Dict[str, bool]:
+    """Get all flags in a specific category."""
+    if USE_REDIS and redis_client:
+        keys = redis_client.smembers(f"feature_flags:category:{category}")
+        return {k: feature_flag_enabled(k) for k in keys}
+    return {
+        k: v
+        for k, v in _default_flags.items()
+        if _default_flag_meta.get(k, {}).get("category") == category
+    }
+
+
+def export_all_flags() -> str:
+    return json.dumps({
+        "flags": _default_flags,
+        "meta": _default_flag_meta,
+    })
+
+
+def import_flags_from_json(data: str) -> None:
+    parsed = json.loads(data)
+    for k, v in parsed.get("flags", {}).items():
+        desc = parsed.get("meta", {}).get(k, {}).get("description", "")
+        cat = parsed.get("meta", {}).get(k, {}).get("category", "general")
+        create_feature_flag(k, v, desc, cat)
