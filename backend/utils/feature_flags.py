@@ -19,7 +19,7 @@ except Exception:
     USE_REDIS = False
 
 # Fallback in-memory store
-_default_flags = {
+_default_flags: Dict[str, bool] = {
     "recommendation_enabled": True,
     "next_generation_model": False,
     "advanced_forecast": False,
