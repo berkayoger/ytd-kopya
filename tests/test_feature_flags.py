@@ -35,3 +35,20 @@ def test_get_feature_flags(test_app):
     data = res.get_json()
     assert "recommendation_enabled" in data
 
+
+def test_update_feature_flag(test_app):
+    res = test_app.put("/api/admin/feature-flags", json={
+        "recommendation_enabled": False,
+        "next_generation_model": True
+    })
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["updated"]["recommendation_enabled"] is False
+    assert data["updated"]["next_generation_model"] is True
+
+
+def test_invalid_update_payload(test_app):
+    res = test_app.put("/api/admin/feature-flags", json=["not", "a", "dict"])
+    assert res.status_code == 400
+    assert "error" in res.get_json()
+
