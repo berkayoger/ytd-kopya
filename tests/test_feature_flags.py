@@ -98,6 +98,16 @@ def test_export_feature_flags(test_app):
     assert "flags" in data and "meta" in data
 
 
+def test_export_feature_flags_error(test_app, monkeypatch):
+    def _raise():
+        raise ValueError("boom")
+
+    monkeypatch.setattr(feature_flags, "export_all_flags", _raise)
+    res = test_app.get("/api/admin/feature-flags/export")
+    assert res.status_code == 500
+    assert "error" in res.get_json()
+
+
 def test_import_feature_flags(test_app, monkeypatch):
     monkeypatch.setattr(feature_flags, "_default_flags", {})
     monkeypatch.setattr(feature_flags, "_default_flag_meta", {})
@@ -111,6 +121,12 @@ def test_import_feature_flags(test_app, monkeypatch):
     data = res.get_json()
     assert data["new_flag"]["enabled"] is True
     assert data["new_flag"]["category"] == "cat"
+
+
+def test_import_feature_flags_invalid_payload(test_app):
+    res = test_app.post("/api/admin/feature-flags/import", json="invalid")
+    assert res.status_code == 400
+    assert "error" in res.get_json()
 
 
 def test_get_flags_by_category(test_app, monkeypatch):
@@ -128,6 +144,12 @@ def test_get_flags_by_category(test_app, monkeypatch):
     assert res.status_code == 200
     data = res.get_json()
     assert list(data.keys()) == ["a"]
+
+
+def test_get_flags_by_category_unknown(test_app):
+    res = test_app.get("/api/admin/feature-flags/category/unknown")
+    assert res.status_code == 200
+    assert res.get_json() == {}
 
 
 def test_create_flag_in_memory(test_app, monkeypatch):
