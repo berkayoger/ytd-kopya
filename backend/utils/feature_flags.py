@@ -19,7 +19,7 @@ except Exception:
     USE_REDIS = False
 
 # Fallback in-memory store
-_flags: Dict[str, bool] = {
+_default_flags: Dict[str, bool] = {
     "recommendation_enabled": True,
     "next_generation_model": False,
     "advanced_forecast": False,
@@ -33,7 +33,7 @@ def feature_flag_enabled(flag_name: str) -> bool:
         if value is None:
             return False
         return value == "true"
-    return _flags.get(flag_name, False)
+    return _default_flags.get(flag_name, False)
 
 
 def set_feature_flag(flag_name: str, value: bool) -> None:
@@ -41,15 +41,12 @@ def set_feature_flag(flag_name: str, value: bool) -> None:
     if USE_REDIS and redis_client:
         redis_client.set(f"feature_flag:{flag_name}", str(value).lower())
     else:
-        if flag_name in _flags:
-            _flags[flag_name] = value
+        if flag_name in _default_flags:
+            _default_flags[flag_name] = value
 
 
-def all_feature_flags() -> dict:
+def all_feature_flags() -> Dict[str, bool]:
     """Return a mapping of all feature flags and their states."""
     if USE_REDIS and redis_client:
-        result: Dict[str, bool] = {}
-        for flag in _flags:
-            result[flag] = feature_flag_enabled(flag)
-        return result
-    return {flag: _flags[flag] for flag in _flags}
+        return {flag: feature_flag_enabled(flag) for flag in _default_flags}
+    return {flag: _default_flags[flag] for flag in _default_flags}

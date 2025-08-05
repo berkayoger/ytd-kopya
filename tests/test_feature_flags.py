@@ -4,7 +4,7 @@ import pytest
 from flask import Flask
 
 from backend.api.admin.feature_flags import feature_flags_bp
-from backend.utils.feature_flags import feature_flag_enabled, all_feature_flags
+from backend.utils.feature_flags import all_feature_flags, feature_flag_enabled
 
 
 def test_feature_flag_enabled_true():
@@ -37,18 +37,28 @@ def test_get_feature_flags(test_app):
 
 
 def test_update_feature_flag(test_app):
-    res = test_app.put("/api/admin/feature-flags", json={
-        "recommendation_enabled": False,
-        "next_generation_model": True
-    })
+    res = test_app.post(
+        "/api/admin/feature-flags/recommendation_enabled",
+        json={"enabled": False},
+    )
     assert res.status_code == 200
     data = res.get_json()
-    assert data["updated"]["recommendation_enabled"] is False
-    assert data["updated"]["next_generation_model"] is True
+    assert data["recommendation_enabled"] is False
+
+    # Restore to True for consistency
+    res = test_app.post(
+        "/api/admin/feature-flags/recommendation_enabled",
+        json={"enabled": True},
+    )
+    assert res.status_code == 200
+    assert res.get_json()["recommendation_enabled"] is True
 
 
-def test_invalid_update_payload(test_app):
-    res = test_app.put("/api/admin/feature-flags", json=["not", "a", "dict"])
+def test_invalid_update_request(test_app):
+    res = test_app.post(
+        "/api/admin/feature-flags/recommendation_enabled",
+        json={},
+    )
     assert res.status_code == 400
     assert "error" in res.get_json()
 
