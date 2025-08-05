@@ -68,7 +68,10 @@ def update_feature_flag(flag_name):
 
 
 @feature_flags_bp.route("/feature-flags/create", methods=["POST"])
+<<<<<<< HEAD
 @jwt_required_if_not_testing()
+=======
+>>>>>>> 7ff5221 (Add tests for feature flag creation metadata)
 def create_flag():
     data = request.get_json()
     required_fields = ["name", "enabled"]
@@ -80,6 +83,7 @@ def create_flag():
         description=data.get("description", ""),
         category=data.get("category", "general"),
     )
+<<<<<<< HEAD
     _log_flag_action("feature_flag_create", f"Yeni flag: {data['name']}")
     return jsonify({"status": "created", "flag": data["name"]})
 
@@ -131,3 +135,6 @@ def get_flags_by_category(category):
         }
     _log_flag_action("feature_flags_list_category", f"Kategori: {category}")
     return jsonify(enriched)
+=======
+    return jsonify({"status": "created", "flag": data["name"]})
+>>>>>>> 7ff5221 (Add tests for feature flag creation metadata)

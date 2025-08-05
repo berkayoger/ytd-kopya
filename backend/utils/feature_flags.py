@@ -43,6 +43,7 @@ _default_flag_meta: Dict[str, Dict[str, str]] = {
     flag: {"description": "", "category": "general"} for flag in _default_flags
 }
 
+<<<<<<< HEAD
 _flag_groups: Dict[str, list] = {}
 
 
@@ -75,6 +76,8 @@ def _redis_get_bool(n: str) -> Optional[bool]:
                 return bool(val)
     return None
 
+=======
+>>>>>>> 7ff5221 (Add tests for feature flag creation metadata)
 
 def feature_flag_enabled(flag_name: str) -> bool:
     """Flag açık mı? (alias'lar: name ve name_enabled). Redis yoksa in-memory fallback."""
@@ -111,6 +114,7 @@ def create_feature_flag(
     enabled: bool,
     description: str = "",
     category: str = "general",
+<<<<<<< HEAD
     meta: Optional[Dict[str, str]] = None,
 ) -> bool:
     """Create a new feature flag and optionally store metadata"""
@@ -132,6 +136,21 @@ def create_feature_flag(
     # flag değeri ve alias'ları güncelle
     set_feature_flag(flag_name, enabled)
     return True
+=======
+):
+    """Create a new feature flag and optionally store metadata"""
+    if USE_REDIS and redis_client:
+        redis_client.set(f"feature_flag:{flag_name}", str(enabled).lower())
+        redis_client.hset(
+            f"feature_flag_meta:{flag_name}",
+            mapping={"description": description, "category": category},
+        )
+    _default_flags[flag_name] = enabled
+    _default_flag_meta[flag_name] = {
+        "description": description,
+        "category": category,
+    }
+>>>>>>> 7ff5221 (Add tests for feature flag creation metadata)
 
 
 def get_feature_flag_metadata(flag_name: str) -> Dict[str, str]:
@@ -141,6 +160,7 @@ def get_feature_flag_metadata(flag_name: str) -> Dict[str, str]:
     return _default_flag_meta.get(
         flag_name, {"description": "", "category": "general"}
     )
+<<<<<<< HEAD
 
 
 def get_flags_by_category(category: str) -> Dict[str, bool]:
@@ -168,3 +188,5 @@ def import_flags_from_json(data: str) -> None:
         desc = parsed.get("meta", {}).get(k, {}).get("description", "")
         cat = parsed.get("meta", {}).get(k, {}).get("category", "general")
         create_feature_flag(k, v, desc, cat)
+=======
+>>>>>>> 7ff5221 (Add tests for feature flag creation metadata)

@@ -84,6 +84,7 @@ class DummyRedis:
     def hgetall(self, key):
         return self.hstore.get(key, {})
 
+<<<<<<< HEAD
     def sadd(self, key, value):
         self.store.setdefault(key, set()).add(value)
 
@@ -162,6 +163,8 @@ def test_get_flags_by_category_unknown(test_app):
     assert res.status_code == 200
     assert res.get_json() == {}
 
+=======
+>>>>>>> 7ff5221 (Add tests for feature flag creation metadata)
 
 def test_create_flag_in_memory(test_app, monkeypatch):
     monkeypatch.setattr(feature_flags, "USE_REDIS", False)
