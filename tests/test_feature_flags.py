@@ -1,5 +1,7 @@
 """Tests for feature flag system."""
 
+import os
+os.environ["FLASK_ENV"] = "testing"
 import pytest
 from flask import Flask
 
@@ -24,6 +26,7 @@ def test_all_feature_flags():
 
 @pytest.fixture
 def test_app():
+    os.environ["FLASK_ENV"] = "testing"
     app = Flask(__name__)
     app.register_blueprint(feature_flags_bp, url_prefix="/api/admin")
     app.config["TESTING"] = True
@@ -86,6 +89,45 @@ class DummyRedis:
 
     def smembers(self, key):
         return self.store.get(key, set())
+
+
+def test_export_feature_flags(test_app):
+    res = test_app.get("/api/admin/feature-flags/export")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert "flags" in data and "meta" in data
+
+
+def test_import_feature_flags(test_app, monkeypatch):
+    monkeypatch.setattr(feature_flags, "_default_flags", {})
+    monkeypatch.setattr(feature_flags, "_default_flag_meta", {})
+    payload = {
+        "flags": {"new_flag": True},
+        "meta": {"new_flag": {"description": "desc", "category": "cat"}},
+    }
+    res = test_app.post("/api/admin/feature-flags/import", json=payload)
+    assert res.status_code == 200
+    res = test_app.get("/api/admin/feature-flags")
+    data = res.get_json()
+    assert data["new_flag"]["enabled"] is True
+    assert data["new_flag"]["category"] == "cat"
+
+
+def test_get_flags_by_category(test_app, monkeypatch):
+    monkeypatch.setattr(feature_flags, "_default_flags", {})
+    monkeypatch.setattr(feature_flags, "_default_flag_meta", {})
+    payload = {
+        "flags": {"a": True, "b": False},
+        "meta": {
+            "a": {"description": "", "category": "cat1"},
+            "b": {"description": "", "category": "cat2"},
+        },
+    }
+    test_app.post("/api/admin/feature-flags/import", json=payload)
+    res = test_app.get("/api/admin/feature-flags/category/cat1")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert list(data.keys()) == ["a"]
 
 
 def test_create_flag_in_memory(test_app, monkeypatch):
