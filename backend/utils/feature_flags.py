@@ -25,6 +25,11 @@ _default_flags: Dict[str, bool] = {
     "advanced_forecast": False,
 }
 
+# In-memory metadata store for feature flags
+_default_flag_meta: Dict[str, Dict[str, str]] = {
+    flag: {"description": "", "category": "general"} for flag in _default_flags
+}
+
 
 def feature_flag_enabled(flag_name: str) -> bool:
     """Return ``True`` if the feature flag is enabled."""
@@ -50,3 +55,32 @@ def all_feature_flags() -> Dict[str, bool]:
     if USE_REDIS and redis_client:
         return {flag: feature_flag_enabled(flag) for flag in _default_flags}
     return {flag: _default_flags[flag] for flag in _default_flags}
+
+
+def create_feature_flag(
+    flag_name: str,
+    enabled: bool,
+    description: str = "",
+    category: str = "general",
+):
+    """Create a new feature flag and optionally store metadata"""
+    if USE_REDIS and redis_client:
+        redis_client.set(f"feature_flag:{flag_name}", str(enabled).lower())
+        redis_client.hset(
+            f"feature_flag_meta:{flag_name}",
+            mapping={"description": description, "category": category},
+        )
+    _default_flags[flag_name] = enabled
+    _default_flag_meta[flag_name] = {
+        "description": description,
+        "category": category,
+    }
+
+
+def get_feature_flag_metadata(flag_name: str) -> Dict[str, str]:
+    """Get metadata for a feature flag (description, category)"""
+    if USE_REDIS and redis_client:
+        return redis_client.hgetall(f"feature_flag_meta:{flag_name}")
+    return _default_flag_meta.get(
+        flag_name, {"description": "", "category": "general"}
+    )
