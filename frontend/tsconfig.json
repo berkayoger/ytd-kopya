@@ -9,7 +9,11 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "types": ["jest", "node"],
-    "outDir": "dist"
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["react/*"]
+    }
   },
   "exclude": ["node_modules", "dist", "__mocks__"]
 }
