@@ -8,6 +8,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        // Karanlık tema uyumlu buton stili
+        dark: "dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700",
         // Varsayılan buton stili
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
         // Yıkıcı eylemler için buton stili
@@ -56,5 +58,22 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   }
 )
 Button.displayName = "Button"
+
+// Storybook ve test senaryolarında kullanılacak ikon destekli buton
+export interface ButtonIconProps extends ButtonProps {
+  iconLeft?: React.ReactNode
+  iconRight?: React.ReactNode
+}
+
+export const IconButton = React.forwardRef<HTMLButtonElement, ButtonIconProps>(
+  ({ iconLeft, iconRight, children, className, ...props }, ref) => (
+    <Button ref={ref} className={cn("gap-2", className)} {...props}>
+      {iconLeft}
+      {children}
+      {iconRight}
+    </Button>
+  )
+)
+IconButton.displayName = "IconButton"
 
 export { Button, buttonVariants }
