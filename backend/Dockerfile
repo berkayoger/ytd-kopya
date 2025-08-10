@@ -4,6 +4,8 @@ WORKDIR /app
 # Install dependencies
 COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
+# CI’da sürpriz çıkmasın diye açıkça ekle
+RUN pip install --no-cache-dir PyYAML
 
 # Copy backend and frontend code
 COPY backend ./backend
