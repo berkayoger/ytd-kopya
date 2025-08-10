@@ -1,31 +1,45 @@
 # backend/__init__.py
+from __future__ import annotations
+
 import os
 import sys
 from datetime import timedelta, datetime
+from typing import Optional
+
 from flask import Flask, jsonify, request, g
+from flask.testing import FlaskClient
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+from sqlalchemy import text
 from celery import Celery
 from flask_socketio import SocketIO, emit
-from flask.testing import FlaskClient
-from sqlalchemy import text
 from redis import Redis
 from dotenv import load_dotenv
 from loguru import logger
 
+# Proje içi
 from backend.db import db as base_db
 from backend.limiting import limiter
 from backend.db.models import User, SubscriptionPlan
-from backend.models.plan import Plan
+from backend.models.plan import Plan  # noqa: F401 (kullanıldığı modüller olabilir)
 from backend.utils.usage_limits import check_usage_limit
 
 load_dotenv()
 
-# Redis default URL
+# -----------------------------------------------------------------------------
+# Ortak yardımcılar / config
+# -----------------------------------------------------------------------------
+def _bool_env(name: str, default: bool = False) -> bool:
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return val.strip().lower() in {"1", "true", "yes", "on"}
+
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 
 class Config:
+    # DB
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///ytd_crypto.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_SESSION_OPTIONS = {"expire_on_commit": False}
@@ -36,24 +50,35 @@ class Config:
         "pool_recycle": 1800,
     }
 
+    # Redis & Celery
     REDIS_URL = REDIS_URL
     CELERY_BROKER_URL = REDIS_URL
     CELERY_RESULT_BACKEND = REDIS_URL
     CELERY_TIMEZONE = "Europe/Istanbul"
 
-    JWT_SECRET_KEY = os.getenv(
-        "JWT_SECRET_KEY", "super-secret-jwt-key-change-this-in-prod!"
-    )
+    # Auth/JWT
+    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-jwt-key-change-this-in-prod!")
     ACCESS_TOKEN_SECRET = os.getenv("ACCESS_TOKEN_SECRET", "change_me_access")
     REFRESH_TOKEN_SECRET = os.getenv("REFRESH_TOKEN_SECRET", "change_me_refresh")
     ACCESS_TOKEN_EXP_MINUTES = int(os.getenv("ACCESS_TOKEN_EXP_MINUTES", "15"))
     REFRESH_TOKEN_EXP_DAYS = int(os.getenv("REFRESH_TOKEN_EXP_DAYS", "7"))
-
-    PRICE_CACHE_TTL = int(os.getenv("PRICE_CACHE_TTL", "300"))
     JWT_TOKEN_LOCATION = ["headers"]
     JWT_HEADER_NAME = "Authorization"
     JWT_HEADER_TYPE = "Bearer"
 
+    # Cache ve flags
+    PRICE_CACHE_TTL = int(os.getenv("PRICE_CACHE_TTL", "300"))
+
+    # CORS
+    CORS_ORIGINS = os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:80,http://localhost:5500,http://127.0.0.1:5500",
+    ).split(",")
+
+    # Ortam
+    ENV = os.getenv("FLASK_ENV", "development")
+
+    # Celery beat örnek işleri
     CELERY_BEAT_SCHEDULE = {
         "auto-analyze-bitcoin-every-15-minutes": {
             "task": "backend.tasks.celery_tasks.analyze_coin_task",
@@ -84,42 +109,30 @@ class Config:
         },
     }
 
-    CORS_ORIGINS = os.getenv(
-        "CORS_ORIGINS",
-        "http://localhost:80,http://localhost:5500,http://127.0.0.1:5500",
-    ).split(",")
-
-    ENV = os.getenv("FLASK_ENV", "development")
-
+    # Prod güvenlik doğrulamaları
     @staticmethod
-    def assert_production_jwt_key():
+    def assert_production_jwt_key() -> None:
         if Config.ENV == "production" and (
-            not Config.JWT_SECRET_KEY
-            or Config.JWT_SECRET_KEY.startswith("super-secret")
+            not Config.JWT_SECRET_KEY or Config.JWT_SECRET_KEY.startswith("super-secret")
         ):
-            logger.critical(
-                "🚨 KRİTİK HATA: Üretim ortamında geçersiz JWT_SECRET_KEY kullanılamaz!"
-            )
+            logger.critical("🚨 Üretimde güçlü bir JWT_SECRET_KEY zorunlu!")
             sys.exit(1)
 
     @staticmethod
-    def assert_production_cors_origins():
-        if Config.ENV == "production" and (
-            "*" in Config.CORS_ORIGINS or len(Config.CORS_ORIGINS) == 0
-        ):
-            logger.critical(
-                "🚨 KRİTİK HATA: Üretim ortamında CORS origins '*' içeremez!"
-            )
+    def assert_production_cors_origins() -> None:
+        if Config.ENV == "production" and ("*" in Config.CORS_ORIGINS or not Config.CORS_ORIGINS):
+            logger.critical("🚨 Üretimde CORS origins '*' olamaz veya boş bırakılamaz!")
             sys.exit(1)
 
 
 # Global extension instances
-db = base_db
-celery_app = Celery()
-socketio = SocketIO()
+db: SQLAlchemy = base_db
+celery_app: Celery = Celery()
+socketio: SocketIO = SocketIO()
 
 
 class LegacyTestClient(FlaskClient):
+    """Werkzeug 2.x cookie imzası için uyumluluk."""
     def set_cookie(self, *args, **kwargs):
         if len(args) == 3 and "domain" not in kwargs:
             domain, key, value = args
@@ -127,25 +140,26 @@ class LegacyTestClient(FlaskClient):
         return super().set_cookie(*args, **kwargs)
 
 
-def create_app():
+# -----------------------------------------------------------------------------
+# App Factory
+# -----------------------------------------------------------------------------
+def create_app() -> Flask:
     app = Flask(__name__)
     app.test_client_class = LegacyTestClient
     app.config.from_object(Config)
 
-    # Test env adjustments
+    # Test ortamı ayarları
     if os.getenv("FLASK_ENV") == "testing":
         app.config["TESTING"] = True
         app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-            "connect_args": {"check_same_thread": False}
-        }
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"connect_args": {"check_same_thread": False}}
         app.config["PRICE_CACHE_TTL"] = 0
 
-    # Prod safety checks
+    # Prod güvenlik kontrolleri
     Config.assert_production_jwt_key()
     Config.assert_production_cors_origins()
 
-    # Init extensions
+    # Uzantıları başlat
     CORS(app, supports_credentials=True, origins=Config.CORS_ORIGINS)
     db.init_app(app)
     limiter.init_app(app)
@@ -156,11 +170,11 @@ def create_app():
         cors_allowed_origins=Config.CORS_ORIGINS,
     )
 
-    # DB setup for non-prod
+    # Dev/Test için otomatik tablo oluşturma (Prod’da migration kullanın)
     with app.app_context():
         if app.config["ENV"].lower() != "production":
             db.create_all()
-            from backend.db.models import Role, Permission
+            from backend.db.models import Role, Permission  # lazy import
             if not Role.query.filter_by(name="user").first():
                 db.session.add_all([Role(name="user"), Role(name="admin")])
                 db.session.commit()
@@ -172,32 +186,41 @@ def create_app():
                 admin_role.permissions.append(perm)
                 db.session.commit()
         else:
-            logger.info("Üretim ortamı: Otomatik tablo oluşturma atlandı.")
+            logger.info("Prod: db.create_all() atlandı; migration kullanın.")
 
-    # Attach extensions
+    # Extensions kayıt
     app.extensions["db"] = db
     app.extensions["limiter"] = limiter
     app.extensions["celery"] = celery_app
     app.extensions["socketio"] = socketio
-    app.extensions["redis_client"] = Redis.from_url(app.config.get("REDIS_URL"))
+    app.extensions["redis_client"] = Redis.from_url(app.config.get("REDIS_URL", REDIS_URL))
 
-    # YTD system init
+    # Ağır servis (model/analiz) import & instance – CI/Smoke’ta opsiyonel
+    def _is_skip_heavy() -> bool:
+        return _bool_env("SKIP_HEAVY_IMPORTS", False)
+
     if os.getenv("FLASK_ENV") == "testing":
         from types import SimpleNamespace
         app.ytd_system_instance = SimpleNamespace(collector=None, ai=None, engine=None)
     else:
+        YTDCryptoSystem: Optional[type] = None
+        if not _is_skip_heavy():
+            try:
+                from backend.core.services import YTDCryptoSystem as _YT
+                YTDCryptoSystem = _YT
+            except Exception as exc:
+                logger.warning(f"YTDCryptoSystem import atlandı: {exc}")
         try:
-            from backend.core.services import YTDCryptoSystem
-            app.ytd_system_instance = YTDCryptoSystem()
-        except ImportError as e:
-            logger.warning(f"YTDCryptoSystem yüklenemedi: {e}")
+            app.ytd_system_instance = (YTDCryptoSystem() if YTDCryptoSystem else None)  # type: ignore[call-arg]
+        except Exception as exc:
+            logger.warning(f"YTDCryptoSystem instance oluşturulamadı: {exc}")
             app.ytd_system_instance = None
 
-    # Blueprint registration
+    # Blueprint’ler
     from backend.auth.routes import auth_bp
     from backend.api.routes import api_bp
     from backend.admin_panel.routes import admin_bp
-    from backend.api.plan_routes import plan_bp
+    from backend.api.plan import plan_bp
     from backend.api.admin.plans import plan_admin_bp
     from backend.api.plan_admin_limits import plan_admin_limits_bp
     from backend.api.admin.usage_limits import admin_usage_bp
@@ -217,38 +240,50 @@ def create_app():
     from backend.api.public.technical import technical_bp
     from backend.api.public.subscriptions import subscriptions_bp
     from backend.api.decision import decision_bp
-    from backend.routes.predict_routes import predict_bp
 
-    blueprints = [
-        (auth_bp, "/api/auth"),
-        (api_bp, "/api"),
-        (predict_bp, "/api"),
-        (plan_admin_limits_bp, None),
-        (plan_bp, "/api"),
-        (plan_admin_bp, "/api"),
-        (admin_bp, "/api/admin"),
-        (admin_usage_bp, None),
-        (admin_promo_bp, None),
-        (admin_promotion_bp, None),
-        (stats_bp, None),
-        (predictions_bp, None),
-        (user_admin_bp, None),
-        (audit_bp, "/api"),
-        (backup_bp, None),
-        (events_bp, None),
-        (analytics_bp, None),
-        (admin_logs_bp, "/api/admin"),
-        (ta_bp, None),
-        (technical_bp, None),
-        (feature_flags_bp, "/api/admin"),
-        (decision_bp, None),
-        (subscriptions_bp, None),
-        (limits_bp, None),
-    ]
-    for bp, prefix in blueprints:
-        app.register_blueprint(bp, url_prefix=prefix)
+    # predict_routes ağır bağımlılıklara (pandas/numpy/pandas_ta/…)
+    # dayanıyorsa CI/Smoke’ta import etmeyelim:
+    def _maybe_import_predict_bp():
+        if _is_skip_heavy():
+            logger.info("SKIP_HEAVY_IMPORTS aktif; predict_routes yüklenmiyor.")
+            return None
+        try:
+            from backend.routes.predict_routes import predict_bp  # pandas vb. gerektirebilir
+            return predict_bp
+        except Exception as exc:
+            logger.warning(f"predict_routes yüklenemedi: {exc}")
+            return None
 
-    # Health check
+    predict_bp = _maybe_import_predict_bp()
+
+    # Kayıt
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    app.register_blueprint(api_bp, url_prefix="/api")
+    if predict_bp:
+        app.register_blueprint(predict_bp, url_prefix="/api")
+    app.register_blueprint(plan_admin_limits_bp)
+    app.register_blueprint(plan_bp, url_prefix="/api")
+    app.register_blueprint(plan_admin_bp, url_prefix="/api")
+    app.register_blueprint(admin_bp, url_prefix="/api/admin")
+    app.register_blueprint(admin_usage_bp)
+    app.register_blueprint(admin_promo_bp)
+    app.register_blueprint(admin_promotion_bp)
+    app.register_blueprint(stats_bp)
+    app.register_blueprint(predictions_bp)
+    app.register_blueprint(user_admin_bp)
+    app.register_blueprint(audit_bp, url_prefix="/api")
+    app.register_blueprint(backup_bp)
+    app.register_blueprint(events_bp)
+    app.register_blueprint(analytics_bp)
+    app.register_blueprint(admin_logs_bp, url_prefix="/api/admin")
+    app.register_blueprint(ta_bp)
+    app.register_blueprint(technical_bp)
+    app.register_blueprint(feature_flags_bp, url_prefix="/api/admin")
+    app.register_blueprint(decision_bp)
+    app.register_blueprint(subscriptions_bp)
+    app.register_blueprint(limits_bp)
+
+    # Health
     @app.route("/health", methods=["GET"])
     def health_check():
         db_status, redis_status = "ok", "ok"
@@ -256,24 +291,26 @@ def create_app():
             db.session.execute(text("SELECT 1"))
         except Exception as e:
             db_status = f"error: {e}"
-            logger.error(f"DB health check failed: {e}")
+            logger.error(f"Health DB: {e}")
         try:
             app.extensions["redis_client"].ping()
         except Exception as e:
             redis_status = f"error: {e}"
-            logger.error(f"Redis health check failed: {e}")
-        overall_status = "ok" if db_status == "ok" and redis_status == "ok" else "degraded"
-        return jsonify({
-            "status": overall_status,
-            "database": db_status,
-            "redis": redis_status,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-        }), 200
+            logger.error(f"Health Redis: {e}")
+        overall = "ok" if db_status == "ok" and redis_status == "ok" else "degraded"
+        return jsonify(
+            {
+                "status": overall,
+                "database": db_status,
+                "redis": redis_status,
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+            }
+        ), 200
 
     # Error handlers
     @app.errorhandler(500)
     def internal_error(error):
-        logger.exception(f"Internal Server Error: {error}")
+        logger.exception("Internal Server Error: %s", error)
         return jsonify({"error": "Sunucu hatası"}), 500
 
     @app.errorhandler(404)
@@ -284,7 +321,7 @@ def create_app():
     def forbidden_error(error):
         return jsonify({"error": "Erişim engellendi."}), 403
 
-    # WebSocket events
+    # Socket.IO events
     @socketio.on("connect", namespace="/")
     def handle_connect():
         logger.info("WS connected")
@@ -299,6 +336,7 @@ def create_app():
             logger.warning("Unauthorized WS alerts connection")
             return False
         g.user = user
+        logger.info(f"Alerts WS connected: {user.username}")
 
     @socketio.on("disconnect", namespace="/")
     def handle_disconnect():
@@ -306,6 +344,13 @@ def create_app():
 
     @socketio.on("disconnect", namespace="/alerts")
     def handle_alerts_disconnect():
-        logger.info("WS alerts disconnected")
+        logger.info("Alerts WS disconnected")
+
+    # Opsiyonel: scheduler tetikleyicisi (ENV ile aç/kapat)
+    if os.getenv("ENABLE_SCHEDULER", "0") == "1":
+        try:
+            from backend.api.admin import prediction_scheduler  # noqa: F401
+        except Exception as exc:
+            logger.warning(f"Scheduler yüklenemedi: {exc}")
 
     return app
