@@ -3,10 +3,15 @@ from __future__ import annotations
 from flask import Blueprint, jsonify, g, request
 import time
 import logging
+import os
 
-from backend.auth.jwt_utils import jwt_required_if_not_testing
 from backend.utils.feature_flags import feature_flag_enabled
 from backend.utils.logger import create_log
+
+try:
+    from backend.auth.jwt_utils import jwt_required_if_not_testing  # opsiyonel kullanım
+except Exception:  # pragma: no cover
+    jwt_required_if_not_testing = None
 
 bp = Blueprint("health", __name__)
 _started_at = time.time()
@@ -32,8 +37,15 @@ def _log_health(action: str) -> None:
         logging.getLogger(__name__).warning("health log başarısız: %s", exc)
 
 
+def _maybe_auth(func):
+    """REQUIRE_AUTH_FOR_HEALTH=true ise auth uygula."""
+    if os.getenv("REQUIRE_AUTH_FOR_HEALTH", "false").lower() in {"1", "true", "yes"} and jwt_required_if_not_testing:
+        return jwt_required_if_not_testing()(func)
+    return func
+
+
 @bp.get("/health")
-@jwt_required_if_not_testing()
+@_maybe_auth
 def health() -> tuple:
     """Servis ayakta mı?"""
     if not feature_flag_enabled("health_check"):
@@ -44,7 +56,7 @@ def health() -> tuple:
 
 
 @bp.get("/ready")
-@jwt_required_if_not_testing()
+@_maybe_auth
 def ready() -> tuple:
     """Kritik bağımlılıklar hazır mı?"""
     if not feature_flag_enabled("health_check"):
