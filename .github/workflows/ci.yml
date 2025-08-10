@@ -27,7 +27,11 @@ jobs:
         run: docker build -t ytd-kopya:ci -f backend/Dockerfile .
       - name: Smoke test (health)
         run: |
-          docker run -d -p 5000:5000 --name ytd-ci ytd-kopya:ci
+          # Health endpoint'ini CI'da garanti olarak aç ve auth'u kapat
+          docker run -d -p 5000:5000 --name ytd-ci \
+            -e FF_HEALTH_CHECK=true \
+            -e REQUIRE_AUTH_FOR_HEALTH=false \
+            ytd-kopya:ci
           for i in {1..20}; do
             sleep 2
             curl -fsS http://127.0.0.1:5000/health && exit 0 || true
