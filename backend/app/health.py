@@ -4,7 +4,6 @@ from flask import Blueprint, jsonify, g, request
 import time
 import logging
 
-from backend.auth.jwt_utils import jwt_required_if_not_testing
 from backend.utils.feature_flags import feature_flag_enabled
 from backend.utils.logger import create_log
 
@@ -33,7 +32,6 @@ def _log_health(action: str) -> None:
 
 
 @bp.get("/health")
-@jwt_required_if_not_testing()
 def health() -> tuple:
     """Servis ayakta mı?"""
     if not feature_flag_enabled("health_check"):
@@ -44,7 +42,6 @@ def health() -> tuple:
 
 
 @bp.get("/ready")
-@jwt_required_if_not_testing()
 def ready() -> tuple:
     """Kritik bağımlılıklar hazır mı?"""
     if not feature_flag_enabled("health_check"):
