@@ -22,13 +22,13 @@ from datetime import datetime, timedelta
 import uuid
 import jwt
 
-# Limiter instance from application factory
 
 # Basit kayıt formu sayfası
 @auth_bp.route('/register', methods=['GET'], endpoint='register')
 def register_page():
     """Render the registration page."""
     return render_template('register.html')
+
 
 @auth_bp.route('/register', methods=['POST'])
 @limiter.limit("5/minute")
@@ -112,8 +112,7 @@ def login_user():
         max_age_access = current_app.config["ACCESS_TOKEN_EXP_MINUTES"] * 60
         max_age_refresh = current_app.config["REFRESH_TOKEN_EXP_DAYS"] * 86400
 
-        # refreshToken ilk sırada yazılır ki testlerde headers.get('Set-Cookie')
-        # çağrısı bu değeri yakalayabilsin
+        # refreshToken önce yazılır; testlerde headers.get('Set-Cookie') bunu yakalar
         response.set_cookie(
             "refreshToken", refresh,
             httponly=True, secure=secure, samesite="Strict", max_age=max_age_refresh
@@ -130,17 +129,16 @@ def login_user():
         logger.info(f"Kullanıcı girişi başarılı: {username}")
         log_action(user, action="login")
         create_log(
-    user_id=str(user.id),
-    username=user.username,
-    ip_address=ip_address,
-    action="login",
-    target="login",
-    description="Kullanıcı giriş yaptı",
-    status="success",
-    user_agent=user_agent
-)  
+            user_id=str(user.id),
+            username=user.username,
+            ip_address=ip_address,
+            action="login",
+            target="/login",
+            description="Kullanıcı başarılı şekilde giriş yaptı.",
+            status="success",
+            user_agent=user_agent,
+        )
 
-        
         return response
 
     except Exception:
@@ -178,8 +176,6 @@ def refresh_tokens():
     secure = not current_app.debug
     max_age_access = current_app.config["ACCESS_TOKEN_EXP_MINUTES"] * 60
     max_age_refresh = current_app.config["REFRESH_TOKEN_EXP_DAYS"] * 86400
-    # refreshToken once yazilmazsa testler ilk header'i okuyunca bu degeri
-    # kacirabiliyor
     response.set_cookie(
         "refreshToken", new_refresh,
         httponly=True, secure=secure, samesite="Strict", max_age=max_age_refresh
@@ -234,7 +230,6 @@ def request_password_reset():
         db.session.add(reset)
         db.session.commit()
 
-        # E-posta işini Celery'ye devret
         current_app.extensions['celery'].send_task(
             'backend.tasks.send_reset_email', args=[user.email, token]
         )
