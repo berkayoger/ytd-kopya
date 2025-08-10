@@ -12,4 +12,11 @@ COPY backend ./backend
 COPY frontend ./frontend
 COPY wsgi.py ./wsgi.py
 
+# Varsayılan servis portu
+EXPOSE 5000
+# Konteyner içinden dışarıya dinleme adresi/portu
+ENV HOST=0.0.0.0
+ENV PORT=5000
+
+# Giriş noktası: wsgi.py (socketio.run host/port'u env'den okur)
 CMD ["python", "wsgi.py"]
