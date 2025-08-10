@@ -1,10 +1,20 @@
+import logging
 from loguru import logger
 
 from backend import create_app, socketio
-from backend.core.services import YTDCryptoSystem
+
+try:
+    from backend.core.services import YTDCryptoSystem  # noqa: F401
+except Exception as exc:  # pragma: no cover
+    logging.getLogger(__name__).warning(
+        "YTDCryptoSystem import atlandı: %s", exc
+    )
+    YTDCryptoSystem = None
 
 app = create_app()
-app.ytd_system_instance = YTDCryptoSystem()
+
+if YTDCryptoSystem:
+    app.ytd_system_instance = YTDCryptoSystem()
 
 
 if __name__ == '__main__':

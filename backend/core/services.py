@@ -2,13 +2,21 @@
 
 import os
 import json
-import yaml
 import base64
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
-import numpy as np
+try:
+    import yaml  # YAML konfigleri
+except Exception:  # pragma: no cover
+    yaml = None
+
+try:
+    import numpy as np  # sayısal işlemler
+except Exception:  # pragma: no cover
+    np = None
+
 import pandas as pd
 import requests
 import redis
@@ -39,7 +47,7 @@ from backend.tasks import run_full_analysis  # Celery task
 # Karar kurallarını yükle (YAML veya Flask config içinden)
 RULES_CONFIG: Dict[str, Any] = {}
 _config_path = current_app.config.get("DECISION_RULES_PATH")
-if _config_path and os.path.exists(_config_path):
+if yaml and _config_path and os.path.exists(_config_path):
     with open(_config_path) as f:
         RULES_CONFIG = yaml.safe_load(f)
 else:
