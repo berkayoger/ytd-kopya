@@ -1,4 +1,5 @@
 import logging
+import os
 from loguru import logger
 
 from backend import create_app, socketio
@@ -19,4 +20,11 @@ if YTDCryptoSystem:
 
 if __name__ == '__main__':
     logger.info("Flask uygulaması başlatılıyor.")
-    socketio.run(app, debug=app.config.get("DEBUG", False), port=5000, allow_unsafe_werkzeug=True)
+    # CI ve container için varsayılan host'u 0.0.0.0 yap
+    socketio.run(
+        app,
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", 5000)),
+        debug=app.config.get("DEBUG", False),
+        allow_unsafe_werkzeug=True,
+    )
