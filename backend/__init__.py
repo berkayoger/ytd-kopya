@@ -220,6 +220,7 @@ def create_app() -> Flask:
     from backend.auth.routes import auth_bp
     from backend.api.routes import api_bp
     from backend.admin_panel.routes import admin_bp
+    # plan_bp importunu proxy üzerinden yap (backend/api/plan.py)
     from backend.api.plan import plan_bp
     from backend.api.admin.plans import plan_admin_bp
     from backend.api.plan_admin_limits import plan_admin_limits_bp
@@ -241,16 +242,16 @@ def create_app() -> Flask:
     from backend.api.public.subscriptions import subscriptions_bp
     from backend.api.decision import decision_bp
 
-    # predict_routes ağır bağımlılıklara (pandas/numpy/pandas_ta/…)
-    # dayanıyorsa CI/Smoke’ta import etmeyelim:
+    # Ağır bağımlılıkları gerektiren blueprint'i CI/Smoke ortamında yükleme
     def _maybe_import_predict_bp():
-        if _is_skip_heavy():
-            logger.info("SKIP_HEAVY_IMPORTS aktif; predict_routes yüklenmiyor.")
+        val = os.getenv("SKIP_HEAVY_IMPORTS", "false").strip().lower()
+        if val in {"1", "true", "yes", "on"}:
+            logger.info("SKIP_HEAVY_IMPORTS aktif, predict_routes yüklenmiyor.")
             return None
         try:
-            from backend.routes.predict_routes import predict_bp  # pandas vb. gerektirebilir
+            from backend.routes.predict_routes import predict_bp
             return predict_bp
-        except Exception as exc:
+        except Exception as exc:  # pragma: no cover
             logger.warning(f"predict_routes yüklenemedi: {exc}")
             return None
 
