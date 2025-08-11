@@ -1,29 +1,38 @@
+import importlib
 import os
-import logging
-from loguru import logger
+from typing import Callable, Any
 
-from backend import create_app, socketio
-try:
-    from backend.core.services import YTDCryptoSystem  # noqa: F401
-except Exception as exc:  # pragma: no cover
-    logging.getLogger(__name__).warning("YTDCryptoSystem import atlandı: %s", exc)
-    YTDCryptoSystem = None
-
-app = create_app()
-if YTDCryptoSystem:
-    app.ytd_system_instance = YTDCryptoSystem()
-
-if __name__ == '__main__':
-    host = os.getenv("HOST", "0.0.0.0")
+def _try_load(cand: str):
+    mod, _, attr = cand.partition(":")
     try:
-        port = int(os.getenv("PORT", "5000"))
+        m = importlib.import_module(mod)
+        obj = getattr(m, attr)
+        return obj() if callable(obj) else obj
     except Exception:
-        port = 5000
-    logger.info("Flask uygulaması başlatılıyor. %s:%s", host, port)
-    socketio.run(
-        app,
-        debug=app.config.get("DEBUG", False),
-        host=host,
-        port=port,
-        allow_unsafe_werkzeug=True
-    )
+        return None
+
+def load_app() -> Any:
+    candidates = os.getenv(
+        "APP_IMPORT_CANDIDATES",
+        "backend.app:create_app,backend.app:app,app:create_app,app:app"
+    ).split(",")
+    for c in [x.strip() for x in candidates if x.strip()]:
+        app = _try_load(c)
+        if app is not None:
+            return app
+    # Fallback: minimal app ki health endpoint'leri çalışsın
+    from flask import Flask, jsonify
+    app = Flask("fallback")
+
+    @app.get("/healthz")
+    def healthz():
+        return jsonify(status="ok")
+
+    @app.get("/readiness")
+    def readiness():
+        # Gerçek app bulunamadıysa readiness'ı 503 döndürelim
+        return jsonify(status="degraded", detail="app import failed"), 503
+
+    return app
+
+app = load_app()
