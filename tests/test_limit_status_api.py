@@ -1,6 +1,7 @@
 import json
 import flask_jwt_extended
 import pytest
+from datetime import datetime
 
 from backend import create_app, db
 from flask import g
@@ -81,6 +82,9 @@ def test_limit_status_endpoint(test_app, test_user):
     assert data["plan"] == "basic"
     assert data["limits"]["daily_requests"]["used"] >= 1
     assert data["limits"]["daily_requests"]["max"] == 100
+    assert "reset_at" in data
+    reset_at = datetime.fromisoformat(data["reset_at"])
+    assert reset_at > datetime.utcnow()
     log = Log.query.filter_by(action="limit_status").first()
     assert log is not None
     assert log.user_id == str(test_user.id)
