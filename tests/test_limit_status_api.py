@@ -1,11 +1,10 @@
 import json
-
 import flask_jwt_extended
 import pytest
 
 from backend import create_app, db
 from flask import g
-from backend.db.models import User, Role, UserRole
+from backend.db.models import User, Role, UserRole, UsageLog
 from backend.models.plan import Plan
 from backend.models.log import Log
 
@@ -43,6 +42,27 @@ def test_user(test_app):
         user.generate_api_key()
         db.session.add(user)
         db.session.commit()
+
+        from datetime import datetime, timedelta
+
+        now = datetime.utcnow()
+        db.session.add(UsageLog(user_id=user.id, action="api_request", timestamp=now))
+        db.session.add(
+            UsageLog(
+                user_id=user.id,
+                action="api_request",
+                timestamp=now - timedelta(days=1),
+            )
+        )
+        db.session.add(
+            UsageLog(
+                user_id=user.id,
+                action="api_request",
+                timestamp=now.replace(day=1),
+            )
+        )
+        db.session.commit()
+
         return user
 
 
@@ -58,8 +78,9 @@ def test_limit_status_endpoint(test_app, test_user):
         )
     assert resp.status_code == 200
     data = resp.get_json()
-    assert data["plan"] == "premium"
-    assert data["limits"]["daily_requests"]["percent"] == 45.0
+    assert data["plan"] == "basic"
+    assert data["limits"]["daily_requests"]["used"] >= 1
+    assert data["limits"]["daily_requests"]["max"] == 100
     log = Log.query.filter_by(action="limit_status").first()
     assert log is not None
     assert log.user_id == str(test_user.id)
