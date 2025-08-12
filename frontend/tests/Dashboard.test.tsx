@@ -9,7 +9,8 @@ beforeEach(() => {
       ok: true,
       json: () =>
         Promise.resolve({
-          limits: { test_feature: { limit: 5, used: 2, remaining: 3, percent_used: 40 } },
+          plan: null,
+          limits: { test_feature: { used: 2, max: 5 } },
         }),
     })
   ) as any;
@@ -18,5 +19,6 @@ beforeEach(() => {
 
 test('renders limit info inside dashboard', async () => {
   render(<Dashboard />);
-  expect(await screen.findByText('Kullanım: 2 / 5')).toBeInTheDocument();
+  const els = await screen.findAllByText('2 / 5 (40%)');
+  expect(els.length).toBeGreaterThan(0);
 });

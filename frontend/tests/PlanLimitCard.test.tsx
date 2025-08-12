@@ -2,17 +2,6 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import '@testing-library/jest-dom';
 import PlanLimitCard from '../react/PlanLimitCard';
-import { toast } from 'sonner';
-
-type ExtendedMock = jest.Mock & { error?: jest.Mock; warning?: jest.Mock };
-var mockFn: ExtendedMock;
-
-jest.mock('sonner', () => {
-  mockFn = jest.fn() as ExtendedMock;
-  mockFn.error = jest.fn();
-  mockFn.warning = jest.fn();
-  return { toast: mockFn };
-});
 
 beforeEach(() => {
   global.fetch = jest.fn(() =>
@@ -20,7 +9,8 @@ beforeEach(() => {
       ok: true,
       json: () =>
         Promise.resolve({
-          limits: { test_feature: { limit: 5, used: 2, remaining: 3, percent_used: 40 } },
+          plan: null,
+          limits: { test_feature: { used: 2, max: 5 } },
         }),
     })
   ) as any;
@@ -29,36 +19,38 @@ beforeEach(() => {
 
 test('renders limit info after load', async () => {
   render(<PlanLimitCard />);
-  expect(await screen.findByText('Kullanım: 2 / 5')).toBeInTheDocument();
+  expect(await screen.findByText('2 / 5 (40%)')).toBeInTheDocument();
   expect(screen.getByTestId('progress')).toHaveStyle({ width: '40%' });
 });
 
-test('triggers warning toast at 90 percent usage', async () => {
+test('shows warning text at 90 percent usage', async () => {
   (global.fetch as jest.Mock).mockImplementationOnce(() =>
     Promise.resolve({
       ok: true,
       json: () =>
         Promise.resolve({
-          limits: { warn: { limit: 10, used: 9, remaining: 1, percent_used: 90 } },
+          plan: null,
+          limits: { warn: { used: 9, max: 10 } },
         }),
     })
   );
   render(<PlanLimitCard />);
-  await screen.findByText('Kullanım: 9 / 10');
-  expect(mockFn.warning).toHaveBeenCalled();
+  await screen.findByText('9 / 10 (90%)');
+  expect(screen.getByText('%90 üzerine çıktınız')).toBeInTheDocument();
 });
 
-test('triggers error toast at full usage', async () => {
+test('shows error text at full usage', async () => {
   (global.fetch as jest.Mock).mockImplementationOnce(() =>
     Promise.resolve({
       ok: true,
       json: () =>
         Promise.resolve({
-          limits: { full: { limit: 10, used: 10, remaining: 0, percent_used: 100 } },
+          plan: null,
+          limits: { full: { used: 10, max: 10 } },
         }),
     })
   );
   render(<PlanLimitCard />);
-  await screen.findByText('Kullanım: 10 / 10');
-  expect(mockFn.error).toHaveBeenCalled();
+  await screen.findByText('10 / 10 (100%)');
+  expect(screen.getByText('Limit doldu (%100)')).toBeInTheDocument();
 });
