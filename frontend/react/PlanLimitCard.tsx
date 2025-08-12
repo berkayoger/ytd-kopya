@@ -1,88 +1,130 @@
-import React, { useEffect } from 'react';
-import useLimitStatus from './hooks/useLimitStatus';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from './components/ui/card';
-import { Progress } from './components/ui/progress';
-import { Loader2, AlertTriangle, ShieldCheck } from 'lucide-react';
-import { toast } from 'sonner';
 
-const limitLabels: Record<string, string> = {
-  predict_daily: 'Günlük Tahmin',
-  generate_chart: 'Grafik Üretme',
-  export: 'Veri Dışa Aktarma',
-  forecast: 'Tahmin Analizi',
-  prediction: 'Model Tahmini',
-};
+interface LimitInfo {
+  used: number;
+  max: number;
+}
+
+interface LimitData {
+  plan: string | null;
+  limits: Record<string, LimitInfo>;
+}
+
+interface LimitItem {
+  key: string;
+  label: string;
+  used: number;
+  max: number;
+  pct: number;
+}
 
 export default function PlanLimitCard() {
-  const { limits, loading, error } = useLimitStatus();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<LimitData | null>(null);
 
   useEffect(() => {
-    if (!limits) return;
-    Object.entries(limits).forEach(([key, info]) => {
-      if (info.percent_used >= 100) {
-        toast.error(`${limitLabels[key] || key} limiti tamamen doldu!`);
-      } else if (info.percent_used >= 90) {
-        toast.warning(`${limitLabels[key] || key} limiti %90’a ulaştı.`);
-      } else if (info.percent_used >= 75) {
-        toast(`${limitLabels[key] || key} limiti %75’e ulaştı.`);
+    let isMounted = true;
+    async function run() {
+      setLoading(true);
+      setError(null);
+      try {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': 'test',
+        };
+        const token = localStorage.getItem('access_token');
+        const apiKey = localStorage.getItem('api_key');
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        if (apiKey) headers['X-API-KEY'] = apiKey;
+
+        const resp = await fetch('/api/limits/status', {
+          method: 'GET',
+          headers,
+          credentials: 'include',
+        });
+        if (!resp.ok) {
+          const txt = await resp.text();
+          throw new Error(`HTTP ${resp.status} ${txt || ''}`.trim());
+        }
+        const json = (await resp.json()) as LimitData;
+        if (isMounted) setData(json);
+      } catch (e: any) {
+        if (isMounted) setError(e?.message || 'İstek başarısız oldu.');
+      } finally {
+        if (isMounted) setLoading(false);
       }
+    }
+    run();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const items = useMemo<LimitItem[]>(() => {
+    if (!data?.limits) return [];
+    return Object.entries(data.limits).map(([key, v]) => {
+      const used = Number(v?.used || 0);
+      const max = Number(v?.max || 0);
+      const pct = max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;
+      return { key, label: key, used, max, pct };
     });
-  }, [limits]);
+  }, [data]);
 
-  if (loading)
-    return (
-      <div className="flex items-center space-x-2 text-muted-foreground text-sm">
-        <Loader2 className="w-4 h-4 animate-spin" />
-        <span>Limit bilgileri yükleniyor...</span>
-      </div>
-    );
+  function badgeColor(pct: number) {
+    if (pct >= 100) return 'bg-red-700';
+    if (pct >= 90) return 'bg-red-500';
+    if (pct >= 75) return 'bg-yellow-500';
+    return 'bg-green-500';
+  }
 
-  if (error || !limits)
-    return (
-      <div className="flex items-center space-x-2 text-red-500 text-sm">
-        <AlertTriangle className="w-4 h-4" />
-        <span>Limit bilgileri alınamadı</span>
-      </div>
-    );
-
-  const keys = Object.keys(limits);
-  if (keys.length === 0) {
-    return (
-      <div className="flex items-center space-x-2 text-green-600 text-sm">
-        <ShieldCheck className="w-4 h-4" />
-        <span>Bu kullanıcı limitsizdir</span>
-      </div>
-    );
+  function Warning({ pct }: { pct: number }) {
+    if (pct >= 100) return <span className="text-red-700">Limit doldu (%100)</span>;
+    if (pct >= 90) return <span className="text-red-500">%90 üzerine çıktınız</span>;
+    if (pct >= 75) return <span className="text-yellow-500">%75’e yaklaşıyorsunuz</span>;
+    return null;
   }
 
   return (
-    <section className="space-y-2">
-      <h3 className="text-base font-semibold text-muted-foreground">Kullanım Limitleri</h3>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {Object.entries(limits).map(([key, info]) => {
-          const label = limitLabels[key] || key.replace(/_/g, ' ').toUpperCase();
-          const progressColor =
-            info.percent_used >= 100 ? 'bg-red-700'
-            : info.percent_used >= 90 ? 'bg-red-500'
-            : info.percent_used >= 75 ? 'bg-yellow-500'
-            : undefined;
-
-          return (
-            <Card key={key} className="shadow-sm border">
-              <CardContent className="py-4">
-                <div className="text-sm text-muted-foreground font-medium mb-1">
-                  {label}
+    <Card>
+      <CardContent className="p-6">
+        <div className="text-sm text-muted-foreground">Plan Limitleri</div>
+        {loading && <div>Yükleniyor…</div>}
+        {error && <div className="text-red-700">Hata: {error}</div>}
+        {!loading && !error && data && (
+          <>
+            <div className="text-xl font-semibold">{data.plan || '-'}</div>
+            <div className="space-y-3 mt-3">
+              {items.map((it) => (
+                <div key={it.key} className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold text-sm">{labelize(it.label)}</div>
+                    <div className="text-xs opacity-70">
+                      {it.used} / {it.max} ({it.pct}%)
+                    </div>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      data-testid="progress"
+                      className={`h-full rounded-full transition-all ${badgeColor(it.pct)}`}
+                      style={{ width: `${it.pct}%` }}
+                    />
+                  </div>
+                  <div className="mt-1 text-xs">
+                    <Warning pct={it.pct} />
+                  </div>
                 </div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span>Kullanım: {info.used} / {info.limit}</span>
-                  <span>{info.remaining} kaldı</span>
-                </div>
-                <Progress value={info.percent_used} className={progressColor} />
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    </section>
+              ))}
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
+}
+
+function labelize(raw: string) {
+  const s = String(raw || '').replace(/_/g, ' ').trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
