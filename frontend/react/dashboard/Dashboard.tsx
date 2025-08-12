@@ -2,7 +2,6 @@ import React from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { BarChart } from 'lucide-react';
 import PlanLimitCard from '../PlanLimitCard';
-import LimitStatus from '../components/LimitStatus';
 
 export default function Dashboard() {
   return (
@@ -12,8 +11,6 @@ export default function Dashboard() {
       {/* Kullanım limitleri */}
       <PlanLimitCard />
 
-      {/* Kullanım limitleri bileşeni */}
-      <LimitStatus />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
