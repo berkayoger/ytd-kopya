@@ -236,7 +236,7 @@ def create_app() -> Flask:
     from backend.api.admin.analytics import analytics_bp
     from backend.api.admin.logs import admin_logs_bp
     from backend.api.admin.feature_flags import feature_flags_bp
-    from backend.limits.routes import limits_bp
+    from backend.api.limits import bp as limits_bp
     from backend.api.ta_routes import bp as ta_bp
     from backend.api.public.technical import technical_bp
     from backend.api.public.subscriptions import subscriptions_bp
