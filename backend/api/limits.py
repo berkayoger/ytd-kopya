@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, g, request
 from flask_jwt_extended import jwt_required
+from datetime import datetime, timedelta
 
 from backend.middleware.plan_limits import enforce_plan_limit
 from backend.utils.feature_flags import feature_flag_enabled
@@ -49,6 +50,19 @@ def get_limits_status():
             user_agent=request.headers.get("User-Agent", ""),
         )
         return jsonify({"error": "Limitler alınamadı."}), 500
+
+    # Limitlerin resetleneceği zamanı hesapla
+    plan_name = limits_data.get("plan")
+    now = datetime.utcnow()
+    if plan_name and plan_name.lower() in ("pro", "premium", "basic"):
+        # Basit örnek: her ayın 1'inde reset
+        next_month = now.month + 1 if now.month < 12 else 1
+        year = now.year if now.month < 12 else now.year + 1
+        reset_at = datetime(year, next_month, 1)
+    else:
+        # Varsayılan olarak 30 gün sonra reset
+        reset_at = now + timedelta(days=30)
+    limits_data["reset_at"] = reset_at.isoformat()
 
     # Kullanım yüzdelerini hesapla
     for key, val in limits_data.get("limits", {}).items():
