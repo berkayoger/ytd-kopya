@@ -1,0 +1,24 @@
+name: CI Smoke
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  smoke-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run backend smoke test (healthz)
+        env:
+          FLASK_ENV: production
+          PORT: 8000
+          HOST: 127.0.0.1
+          # Projede create_app/ app farklı bir modülde ise buraya ekleyin:
+          APP_IMPORT_CANDIDATES: backend.app:create_app,backend.app:app,app:create_app,app:app
+        run: |
+          bash .github/scripts/smoke_backend.sh
