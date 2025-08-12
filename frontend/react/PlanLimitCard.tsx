@@ -9,6 +9,7 @@ interface LimitInfo {
 interface LimitData {
   plan: string | null;
   limits: Record<string, LimitInfo>;
+  reset_at?: string | null; // ISO tarih formatında limit reset zamanı
 }
 
 interface LimitItem {
@@ -72,6 +73,27 @@ export default function PlanLimitCard() {
     });
   }, [data]);
 
+  const resetInfo = useMemo(() => {
+    if (!data?.reset_at) return null;
+    try {
+      const resetDate = new Date(data.reset_at);
+      const now = new Date();
+      const diffMs = resetDate.getTime() - now.getTime();
+      const diffDays = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      return {
+        date: resetDate,
+        diffDays,
+        formatted: resetDate.toLocaleDateString('tr-TR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        }),
+      };
+    } catch {
+      return null;
+    }
+  }, [data?.reset_at]);
+
   function badgeColor(pct: number) {
     if (pct >= 100) return 'bg-red-700';
     if (pct >= 90) return 'bg-red-500';
@@ -95,6 +117,16 @@ export default function PlanLimitCard() {
         {!loading && !error && data && (
           <>
             <div className="text-xl font-semibold">{data.plan || '-'}</div>
+
+            {resetInfo && (
+              <div className="text-xs text-muted-foreground mt-1">
+                Yenilenme tarihi: <b>{resetInfo.formatted}</b>
+                {resetInfo.diffDays > 0 && (
+                  <> ({resetInfo.diffDays} gün kaldı)</>
+                )}
+              </div>
+            )}
+
             <div className="space-y-3 mt-3">
               {items.map((it) => (
                 <div key={it.key} className="flex flex-col gap-1">
