@@ -9,8 +9,13 @@ beforeEach(() => {
       ok: true,
       json: () =>
         Promise.resolve({
-          plan: null,
+          plan: "basic",
+          reset_at: "2099-01-01T00:00:00Z",
           limits: { test_feature: { used: 2, max: 5 } },
+          custom_features: {
+            beta_mode: true,
+            extra_quota: 50
+          },
         }),
     })
   ) as any;
@@ -21,6 +26,10 @@ test('renders limit info after load', async () => {
   render(<PlanLimitCard />);
   expect(await screen.findByText('2 / 5 (40%)')).toBeInTheDocument();
   expect(screen.getByTestId('progress')).toHaveStyle({ width: '40%' });
+  // custom_features görünür olmalı
+  expect(await screen.findByText('Özel Özellikler')).toBeInTheDocument();
+  expect(screen.getByText('Beta mode')).toBeInTheDocument();
+  expect(screen.getByText('Açık')).toBeInTheDocument();
 });
 
 test('shows warning text at 90 percent usage', async () => {
@@ -29,8 +38,9 @@ test('shows warning text at 90 percent usage', async () => {
       ok: true,
       json: () =>
         Promise.resolve({
-          plan: null,
+          plan: "basic",
           limits: { warn: { used: 9, max: 10 } },
+          custom_features: {}
         }),
     })
   );
@@ -45,8 +55,9 @@ test('shows error text at full usage', async () => {
       ok: true,
       json: () =>
         Promise.resolve({
-          plan: null,
+          plan: "basic",
           limits: { full: { used: 10, max: 10 } },
+          custom_features: {}
         }),
     })
   );
