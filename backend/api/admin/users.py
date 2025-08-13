@@ -14,6 +14,49 @@ import secrets
 user_admin_bp = Blueprint("user_admin", __name__, url_prefix="/api/admin/users")
 
 
+@user_admin_bp.route("/", methods=["GET"])
+@jwt_required()
+@admin_required()
+def list_users():
+    """Tüm kullanıcıları (admin) listeler."""
+    users = User.query.order_by(User.id.asc()).all()
+
+    def _as_row(u: User) -> dict:
+        # subscription_level enum veya string olabilir
+        sub = None
+        if getattr(u, "subscription_level", None) is not None:
+            try:
+                sub = (
+                    u.subscription_level.name
+                    if hasattr(u.subscription_level, "name")
+                    else str(u.subscription_level)
+                )
+            except Exception:
+                sub = str(u.subscription_level)
+        return {
+            "id": u.id,
+            "username": u.username,
+            "email": getattr(u, "email", None),
+            "subscription_level": sub,
+        }
+
+    rows = [_as_row(u) for u in users]
+
+    current = getattr(g, "user", None)
+    create_log(
+        user_id=str(current.id) if current else "unknown",
+        username=current.username if current else "unknown",
+        ip_address=request.remote_addr or "unknown",
+        action="admin_list_users",
+        target="/api/admin/users/",
+        description="list users",
+        status="success",
+        user_agent=request.headers.get("User-Agent", ""),
+    )
+
+    return jsonify(rows), 200
+
+
 @user_admin_bp.route("/", methods=["POST"])
 @jwt_required()
 @admin_required()
@@ -57,27 +100,6 @@ def create_user():
     db.session.commit()
 
     return jsonify(user.to_dict()), 201
-
-
-@user_admin_bp.route("/", methods=["GET"])
-@jwt_required()
-@admin_required()
-def list_users():
-    email = request.args.get("email")
-    role = request.args.get("role")
-    plan = request.args.get("subscription_level")
-
-    query = User.query
-
-    if email:
-        query = query.filter(User.email.ilike(f"%{email}%"))
-    if role:
-        query = query.filter(User.role == role)
-    if plan:
-        query = query.filter(User.subscription_level == plan)
-
-    users = query.all()
-    return jsonify([u.to_dict() for u in users])
 
 
 @user_admin_bp.route("/<int:user_id>", methods=["PUT"])
