@@ -2,11 +2,13 @@ from flask import Blueprint, jsonify, g, request
 from flask_jwt_extended import jwt_required
 from datetime import datetime, timedelta
 import os
+import json
 
 from backend.middleware.plan_limits import enforce_plan_limit
 from backend.utils.feature_flags import feature_flag_enabled
 from backend.utils.logger import create_log
 from backend.services.limit_service import get_user_limits
+from backend.db.models import User  # custom_features alanı için
 
 # Limit sorgu uç noktası için blueprint
 bp = Blueprint("limits", __name__, url_prefix="/api/limits")
@@ -38,6 +40,20 @@ def get_limits_status():
 
     try:
         limits_data = get_user_limits(user.id)
+        # Kullanıcıya tanımlı özel özellikleri ekle
+        user_obj = User.query.get(user.id)
+        if user_obj and getattr(user_obj, "custom_features", None):
+            try:
+                features = (
+                    json.loads(user_obj.custom_features)
+                    if isinstance(user_obj.custom_features, str)
+                    else user_obj.custom_features
+                )
+            except json.JSONDecodeError:
+                features = {}
+            limits_data["custom_features"] = features or {}
+        else:
+            limits_data["custom_features"] = {}
     except Exception as exc:  # pragma: no cover
         # Hata durumunu logla
         create_log(
