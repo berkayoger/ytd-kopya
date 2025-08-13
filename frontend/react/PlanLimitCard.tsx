@@ -10,6 +10,7 @@ interface LimitData {
   plan: string | null;
   limits: Record<string, LimitInfo>;
   reset_at?: string | null; // ISO tarih formatında limit reset zamanı
+  custom_features?: Record<string, unknown>;
 }
 
 interface LimitItem {
@@ -72,6 +73,13 @@ export default function PlanLimitCard() {
       return { key, label: key, used, max, pct };
     });
   }, [data]);
+
+  const customEntries = useMemo(() => {
+    if (!data?.custom_features) return [];
+    try {
+      return Object.entries(data.custom_features);
+    } catch { return []; }
+  }, [data?.custom_features]);
 
   const resetInfo = useMemo(() => {
     if (!data?.reset_at) return null;
@@ -149,6 +157,23 @@ export default function PlanLimitCard() {
                 </div>
               ))}
             </div>
+
+            {/* Özel özellikler (custom_features) */}
+            <div className="mt-5">
+              <div className="text-sm text-muted-foreground">Özel Özellikler</div>
+              {customEntries.length === 0 ? (
+                <div className="text-xs opacity-70 mt-1">Tanımlı özel özellik yok.</div>
+              ) : (
+                <ul className="mt-2 grid gap-2 md:grid-cols-2">
+                  {customEntries.map(([k, v]) => (
+                    <li key={String(k)} className="flex items-center justify-between text-xs">
+                      <span className="font-medium">{labelize(String(k))}</span>
+                      <span className="opacity-80">{formatValue(v)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </>
         )}
       </CardContent>
@@ -159,4 +184,13 @@ export default function PlanLimitCard() {
 function labelize(raw: string) {
   const s = String(raw || '').replace(/_/g, ' ').trim();
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formatValue(v: unknown): string {
+  if (v === null || v === undefined) return '-';
+  if (typeof v === 'boolean') return v ? 'Açık' : 'Kapalı';
+  if (typeof v === 'object') {
+    try { return JSON.stringify(v); } catch { return '[obj]'; }
+  }
+  return String(v);
 }

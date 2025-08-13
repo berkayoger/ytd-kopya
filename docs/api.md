@@ -16,13 +16,20 @@ Returns the current user's subscription plan and usage limits.
     "daily_requests": {"used": 45, "max": 100, "percent": 45},
     "monthly_requests": {"used": 1200, "max": 3000, "percent": 40}
   },
-  "reset_at": "2025-02-01T00:00:00"
+  "reset_at": "2025-02-01T00:00:00",
+
+  "custom_features": {
+    "beta_mode": true,
+    "extra_quota": 250
+  }
 }
 ```
 ### Notes
 - `reset_at`: ISO-8601 UTC timestamp for when monthly limits reset.
-- Reset day is configurable via environment variable `LIMITS_RESET_DAY` (1–28).  
+- Reset day is configurable via environment variable `LIMITS_RESET_DAY` (1–28).
   If not set, it defaults to the 1st day of each month.
+- `custom_features`: Optional per-user overrides/feature flags (object). Values may be booleans,
+  numbers or strings. Clients should display them as read-only hints.
 
 ### Error Responses
 - **401 Unauthorized**: `{ "error": "Kullanıcı bulunamadı." }`
