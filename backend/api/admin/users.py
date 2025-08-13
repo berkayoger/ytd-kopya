@@ -1,9 +1,11 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, g
 from flask_jwt_extended import jwt_required
 
 from backend.auth.middlewares import admin_required
 from backend.db import db
 from backend.db.models import User, SubscriptionPlan, UserRole
+from backend.utils.logger import create_log
+from sqlalchemy.exc import SQLAlchemyError
 import json
 from werkzeug.security import generate_password_hash
 import secrets
@@ -116,12 +118,45 @@ def delete_user(user_id):
     return jsonify({"message": "Kullanıcı silindi"})
 
 
-@user_admin_bp.route("/<int:user_id>/custom-features", methods=["PUT"])
+@user_admin_bp.route("/<int:user_id>/custom_features", methods=["GET", "PUT"])
 @jwt_required()
-@admin_required()
-def set_custom_features(user_id):
-    user = User.query.get_or_404(user_id)
-    data = request.get_json() or {}
-    user.custom_features = json.dumps(data.get("custom_features", {}))
-    db.session.commit()
-    return jsonify(user.to_dict())
+def manage_custom_features(user_id):
+    """Belirli bir kullanıcının custom_features alanını getirir veya günceller."""
+    current_user = getattr(g, "user", None)
+    if not current_user or current_user.role != UserRole.ADMIN:
+        return jsonify({"error": "Yetkisiz"}), 403
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı"}), 404
+
+    if request.method == "GET":
+        try:
+            features = (
+                json.loads(user.custom_features)
+                if isinstance(user.custom_features, str) and user.custom_features
+                else user.custom_features or {}
+            )
+        except json.JSONDecodeError:
+            features = {}
+        return jsonify({"custom_features": features}), 200
+
+    try:
+        data = request.get_json(force=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "Geçersiz veri"}), 400
+        user.custom_features = json.dumps(data)
+        db.session.commit()
+        create_log(
+            user_id=str(current_user.id),
+            username=current_user.username,
+            ip_address=request.remote_addr or "unknown",
+            action="admin_update_custom_features",
+            target=f"/api/admin/users/{user_id}/custom_features",
+            description=f"custom_features updated: {data}",
+            status="success",
+            user_agent=request.headers.get("User-Agent", ""),
+        )
+        return jsonify({"success": True}), 200
+    except (SQLAlchemyError, json.JSONDecodeError) as e:
+        return jsonify({"error": str(e)}), 500
