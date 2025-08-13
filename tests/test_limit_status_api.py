@@ -1,7 +1,7 @@
 import json
 import flask_jwt_extended
 import pytest
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from backend import create_app, db
 from flask import g
@@ -99,3 +99,27 @@ def test_limit_status_flag_disabled(test_app, test_user, monkeypatch):
         g.user = db.session.merge(test_user)
         resp = client.get("/api/limits/status")
     assert resp.status_code == 403
+
+def test_limit_status_custom_reset_day(test_app, test_user, monkeypatch):
+    """
+    LIMITS_RESET_DAY ortam değişkeni verildiğinde reset_at o güne göre hesaplanmalı.
+    """
+    monkeypatch.setenv("LIMITS_RESET_DAY", "15")
+    with test_app.app_context():
+        token = test_user.generate_access_token()
+    client = test_app.test_client()
+    with test_app.app_context():
+        g.user = db.session.merge(test_user)
+        resp = client.get(
+            "/api/limits/status",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "reset_at" in data
+    ra = datetime.fromisoformat(data["reset_at"])
+    # reset günü 15 olmalı; bugün 15'i geçtiyse bir sonraki ayın 15'i
+    today = datetime.utcnow()
+    expected_month = today.month if today.day < 15 else (1 if today.month == 12 else today.month + 1)
+    assert ra.day == 15
+    assert ra.month in {expected_month, (expected_month % 12) or 12}
