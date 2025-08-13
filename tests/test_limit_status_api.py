@@ -85,6 +85,8 @@ def test_limit_status_endpoint(test_app, test_user):
     assert "reset_at" in data
     reset_at = datetime.fromisoformat(data["reset_at"])
     assert reset_at > datetime.utcnow()
+    assert "custom_features" in data
+    assert isinstance(data["custom_features"], dict)
     log = Log.query.filter_by(action="limit_status").first()
     assert log is not None
     assert log.user_id == str(test_user.id)
