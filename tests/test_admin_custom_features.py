@@ -1,5 +1,6 @@
 import json
 import pytest
+from flask import g
 
 from backend import create_app, db
 from backend.db.models import User, Role, UserRole
@@ -11,7 +12,17 @@ def client(monkeypatch):
     monkeypatch.setattr("backend.Config.SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
     monkeypatch.setattr("backend.Config.SQLALCHEMY_ENGINE_OPTIONS", {}, raising=False)
     import flask_jwt_extended
-    monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f), raising=False)
+    admin_user = None
+    def fake_jwt_required(*args, **kwargs):
+        def decorator(fn):
+            from functools import wraps
+            @wraps(fn)
+            def wrapper(*a, **kw):
+                g.user = admin_user
+                return fn(*a, **kw)
+            return wrapper
+        return decorator
+    monkeypatch.setattr(flask_jwt_extended, "jwt_required", fake_jwt_required, raising=False)
     monkeypatch.setattr(flask_jwt_extended, "fresh_jwt_required", lambda *a, **k: (lambda f: f), raising=False)
     monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
     app = create_app()
@@ -27,6 +38,7 @@ def client(monkeypatch):
         admin.set_password("adminpass")
         db.session.add(admin)
         db.session.commit()
+        admin_user = admin
     return app.test_client()
 
 
@@ -52,21 +64,19 @@ def test_user(client):
 
 def test_admin_can_update_custom_features(client, admin_headers, test_user):
     payload = {
-        "custom_features": json.dumps({
-            "can_export_csv": True,
-            "predict_daily": 99,
-        })
+        "can_export_csv": True,
+        "predict_daily": 99,
     }
 
-    res = client.post(
-        f"/api/admin/users/{test_user.id}/custom-features",
+    res = client.put(
+        f"/api/admin/users/{test_user.id}/custom_features",
         headers=admin_headers,
         json=payload,
     )
 
     assert res.status_code == 200
     data = res.get_json()
-    assert data["message"] == "Özel özellikler güncellendi."
+    assert data["success"] is True
 
     from backend.db.models import User
     with client.application.app_context():
@@ -75,22 +85,39 @@ def test_admin_can_update_custom_features(client, admin_headers, test_user):
     assert features["can_export_csv"] is True
     assert features["predict_daily"] == 99
 
+    res_get = client.get(
+        f"/api/admin/users/{test_user.id}/custom_features",
+        headers=admin_headers,
+    )
+    assert res_get.status_code == 200
+    data_get = res_get.get_json()
+    assert data_get["custom_features"]["predict_daily"] == 99
+
 
 def test_update_custom_features_invalid_json(client, admin_headers, test_user):
-    invalid_payload = {"custom_features": "{invalid: json,"}
-    resp = client.post(
-        f"/api/admin/users/{test_user.id}/custom-features",
+    invalid_payload = ["invalid"]
+    resp = client.put(
+        f"/api/admin/users/{test_user.id}/custom_features",
         json=invalid_payload,
         headers=admin_headers,
     )
     assert resp.status_code == 400
-    assert resp.get_json().get("error") == "Geçersiz JSON"
+    assert resp.get_json().get("error") == "Geçersiz veri"
 
 
 def test_update_custom_features_user_not_found(client, admin_headers):
-    resp = client.post(
-        "/api/admin/users/999/custom-features",
-        json={"custom_features": "{}"},
+    resp = client.put(
+        "/api/admin/users/999/custom_features",
+        json={},
+        headers=admin_headers,
+    )
+    assert resp.status_code == 404
+    assert resp.get_json().get("error") == "Kullanıcı bulunamadı"
+
+
+def test_update_custom_features_invalid_user_id(client, admin_headers):
+    resp = client.get(
+        "/api/admin/users/notint/custom_features",
         headers=admin_headers,
     )
     assert resp.status_code == 404
