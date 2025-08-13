@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, g, request
 from flask_jwt_extended import jwt_required
 from datetime import datetime, timedelta
+import os
 
 from backend.middleware.plan_limits import enforce_plan_limit
 from backend.utils.feature_flags import feature_flag_enabled
@@ -51,17 +52,27 @@ def get_limits_status():
         )
         return jsonify({"error": "Limitler alınamadı."}), 500
 
-    # Limitlerin resetleneceği zamanı hesapla
-    plan_name = limits_data.get("plan")
+    # Limitlerin resetleneceği zamanı hesapla (yapılandırılabilir)
+    def _next_monthly_reset(now_utc: datetime, day: int) -> datetime:
+        """Ayın verilen günündeki (1-28) bir sonraki reset tarihini döndürür."""
+        day = max(1, min(28, int(day)))
+        try:
+            candidate = datetime(now_utc.year, now_utc.month, day)
+        except ValueError:
+            candidate = datetime(now_utc.year, now_utc.month, 1)
+        if candidate <= now_utc:
+            if now_utc.month == 12:
+                return datetime(now_utc.year + 1, 1, day)
+            return datetime(now_utc.year, now_utc.month + 1, day)
+        return candidate
+
     now = datetime.utcnow()
-    if plan_name and plan_name.lower() in ("pro", "premium", "basic"):
-        # Basit örnek: her ayın 1'inde reset
-        next_month = now.month + 1 if now.month < 12 else 1
-        year = now.year if now.month < 12 else now.year + 1
-        reset_at = datetime(year, next_month, 1)
-    else:
-        # Varsayılan olarak 30 gün sonra reset
-        reset_at = now + timedelta(days=30)
+    reset_day_env = os.getenv("LIMITS_RESET_DAY", "1").strip()
+    try:
+        reset_day = int(reset_day_env)
+    except ValueError:
+        reset_day = 1
+    reset_at = _next_monthly_reset(now, reset_day)
     limits_data["reset_at"] = reset_at.isoformat()
 
     # Kullanım yüzdelerini hesapla
