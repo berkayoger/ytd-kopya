@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import React from "react";
 import "@testing-library/jest-dom";
-import UserDetail from "../react/admin/UserDetail";
+import { MemoryRouter } from "react-router-dom";
+import AdminRoutes from "../react/AdminRoutes";
 
 beforeEach(() => {
   // CustomFeaturesEditor içindeki GET çağrısını karşılamak için mock
@@ -15,7 +16,11 @@ beforeEach(() => {
 });
 
 test("renders user detail and loads CustomFeaturesEditor", async () => {
-  render(<UserDetail userId={42} />);
+  render(
+    <MemoryRouter initialEntries={["/admin/users/42"]}>
+      <AdminRoutes />
+    </MemoryRouter>
+  );
   expect(await screen.findByText("Kullanıcı Detayı")).toBeInTheDocument();
   expect(screen.getByText("Kullanıcı ID: 42")).toBeInTheDocument();
   // CustomFeaturesEditor başlığı
