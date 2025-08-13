@@ -1,5 +1,5 @@
 import React from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, useParams } from 'react-router-dom';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminUsers from './pages/AdminUsers';
 import AdminPromos from './pages/AdminPromos';
@@ -10,12 +10,14 @@ import AdminContent from './pages/AdminContent';
 import AdminMonitoring from './pages/AdminMonitoring';
 import AdminLogs from './pages/AdminLogs';
 import AdminFeatureFlags from './pages/AdminFeatureFlags';
+import UserDetail from './admin/UserDetail';
 
 const AdminRoutes = () => {
   return (
     <Routes>
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/admin/users" element={<AdminUsers />} />
+      <Route path="/admin/users/:id" element={<AdminUserDetailRoute />} />
       <Route path="/admin/promos" element={<AdminPromos />} />
       <Route path="/admin/predictions" element={<AdminPredictions />} />
       <Route path="/admin/plans" element={<AdminPlanManager />} />
@@ -27,5 +29,11 @@ const AdminRoutes = () => {
     </Routes>
   );
 };
+
+// Route bileşeni, URL parametresinden kullanıcı ID'sini alır
+function AdminUserDetailRoute() {
+  const { id } = useParams<{ id: string }>();
+  return <UserDetail userId={id!} />;
+}
 
 export default AdminRoutes;
