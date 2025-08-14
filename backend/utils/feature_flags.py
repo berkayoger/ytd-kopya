@@ -31,7 +31,9 @@ _default_flags: Dict[str, bool] = {
     "next_generation_model": False,
     "advanced_forecast": False,
     "health_check": True,
+    # DRAKS için hem kısa hem _enabled alias'ı destekleyelim
     "draks": False,
+    "draks_enabled": False,
 
 }
 
@@ -43,23 +45,38 @@ _default_flag_meta: Dict[str, Dict[str, str]] = {
 _flag_groups: Dict[str, list] = {}
 
 
+def _aliases(name: str) -> list[str]:
+    """İstenen flag adı için muhtemel alias'ları döndür."""
+    if name.endswith("_enabled"):
+        base = name[: -len("_enabled")]
+        return [name, base]
+    else:
+        return [name, f"{name}_enabled"]
+
+
 def feature_flag_enabled(flag_name: str) -> bool:
-    """Return ``True`` if the feature flag is enabled."""
+    """Return ``True`` if the feature flag is enabled (alias'larla birlikte)."""
+    candidates = _aliases(flag_name)
     if USE_REDIS and redis_client:
-        value = redis_client.get(f"feature_flag:{flag_name}")
-        if value is None:
-            return False
-        return value == "true"
-    return _default_flags.get(flag_name, False)
+        for n in candidates:
+            value = redis_client.get(f"feature_flag:{n}")
+            if value is not None:
+                return value == "true"
+        return False
+    for n in candidates:
+        if n in _default_flags:
+            return _default_flags.get(n, False)
+    return False
 
 
 def set_feature_flag(flag_name: str, value: bool) -> None:
     """Update a specific feature flag."""
     if USE_REDIS and redis_client:
-        redis_client.set(f"feature_flag:{flag_name}", str(value).lower())
-    else:
-        if flag_name in _default_flags:
-            _default_flags[flag_name] = value
+        # alias olanları da birlikte yaz
+        for n in _aliases(flag_name):
+            redis_client.set(f"feature_flag:{n}", str(value).lower())
+    for n in _aliases(flag_name):
+        _default_flags[n] = bool(value)
 
 
 def all_feature_flags() -> Dict[str, bool]:
@@ -77,17 +94,17 @@ def create_feature_flag(
 ):
     """Create a new feature flag and optionally store metadata"""
     if USE_REDIS and redis_client:
-        redis_client.set(f"feature_flag:{flag_name}", str(enabled).lower())
         redis_client.hset(
             f"feature_flag_meta:{flag_name}",
             mapping={"description": description, "category": category},
         )
         redis_client.sadd(f"feature_flags:category:{category}", flag_name)
-    _default_flags[flag_name] = enabled
     _default_flag_meta[flag_name] = {
         "description": description,
         "category": category,
     }
+    # flag değeri ve alias'ları güncelle
+    set_feature_flag(flag_name, enabled)
 
 
 def get_feature_flag_metadata(flag_name: str) -> Dict[str, str]:
