@@ -32,6 +32,7 @@ _default_flags: Dict[str, bool] = {
     "advanced_forecast": False,
     "health_check": True,
     "draks": False,
+
 }
 
 # In-memory metadata store for feature flags
