@@ -38,6 +38,7 @@ class BaseConfig:
     REFRESH_TOKEN_SECRET = os.getenv("REFRESH_TOKEN_SECRET", "change_me_refresh")
     ACCESS_TOKEN_EXP_MINUTES = int(os.getenv("ACCESS_TOKEN_EXP_MINUTES", "15"))
     REFRESH_TOKEN_EXP_DAYS = int(os.getenv("REFRESH_TOKEN_EXP_DAYS", "7"))
+    DRAKS_ENGINE_URL = os.getenv("DRAKS_ENGINE_URL", "http://draks-engine:8000")
 
 
 class DevelopmentConfig(BaseConfig):
