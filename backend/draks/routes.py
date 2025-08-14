@@ -68,6 +68,23 @@ def _df_from_candles(candles: list[dict]) -> pd.DataFrame:
     return df.sort_index()
 
 
+@draks_bp.get("/health")
+def draks_health():
+    """
+    DRAKS health endpoint.
+    - Özelliğin açık/kapalı bilgisini ve motorun hazır olduğunu döndürür.
+    - Kimlik doğrulaması gerektirmez; sistem izleme için hafif bir sağlık kontrolü.
+    """
+    try:
+        enabled = feature_flag_enabled("draks")
+        # Minimal kontrol: engine objesi çalışıyor mu?
+        ok = ENGINE is not None
+        return jsonify({"status": "ok" if ok else "degraded", "enabled": enabled}), 200
+    except Exception as e:  # pragma: no cover
+        current_app.logger.exception("draks health error")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
 def _fetch_ohlcv_ccxt(
     symbol: str, timeframe: str = "1h", limit: int = 500
 ) -> pd.DataFrame:

@@ -240,7 +240,6 @@ def create_app() -> Flask:
     from backend.api.ta_routes import bp as ta_bp
     from backend.api.public.technical import technical_bp
     from backend.api.public.subscriptions import subscriptions_bp
-    from backend.api.draks import draks_bp
     from backend.api.decision import decision_bp
 
     # Ağır bağımlılıkları gerektiren blueprint'i CI/Smoke ortamında yükleme
@@ -281,7 +280,6 @@ def create_app() -> Flask:
     app.register_blueprint(ta_bp)
     app.register_blueprint(technical_bp)
     app.register_blueprint(feature_flags_bp, url_prefix="/api/admin")
-    app.register_blueprint(draks_bp)
     app.register_blueprint(decision_bp)
     app.register_blueprint(subscriptions_bp)
     app.register_blueprint(limits_bp)
