@@ -174,15 +174,38 @@ def copy_evaluate():
 
     try:
         p = request.get_json(force=True, silent=True) or {}
-        side = str(p.get("side", "")).upper()
+        # --- zorunlular / doğrulama ---
         symbol = str(p.get("symbol", "BTC/USDT"))
+        side = str(p.get("side", "")).upper()
+        if side not in {"BUY", "SELL"}:
+            return jsonify({"error": "Geçersiz side. BUY veya SELL olmalı."}), 400
+        # opsiyoneller
         timeframe = str(p.get("timeframe", CFG["timeframe"]))
-        limit = int(p.get("limit", 500))
+        try:
+            limit = int(p.get("limit", 500))
+        except Exception:
+            return jsonify({"error": "limit sayısal olmalı"}), 400
         candles = p.get("candles")
+        size = p.get("size")
+        if size is not None:
+            try:
+                size = float(size)
+                if size < 0:
+                    return jsonify({"error": "size negatif olamaz"}), 400
+            except Exception:
+                return jsonify({"error": "size sayısal olmalı"}), 400
 
-        df = _df_from_candles(candles) if candles else _fetch_ohlcv_ccxt(
-            symbol, timeframe=timeframe, limit=limit
-        )
+        # veri kaynağı: candles → ccxt fallback
+        if candles:
+            df = _df_from_candles(candles)
+        else:
+            # ccxt kurulu değilse net bir mesaj döndür
+            if ccxt is None:
+                return jsonify({"error": "candles sağlanmalı veya ccxt kurulmalı"}), 400
+            df = _fetch_ohlcv_ccxt(symbol, timeframe=timeframe, limit=limit)
+
+        if len(df) < 60:
+            return jsonify({"error": "yetersiz veri"}), 400
         out = ENGINE.run(df, symbol.replace(" ", ""))
 
         score = float(out.get("score", 0.0))
@@ -190,9 +213,9 @@ def copy_evaluate():
         greenlight = (decision == "LONG" and side == "BUY") or (
             decision == "SHORT" and side == "SELL"
         )
-        scale = max(0.0, min(1.0, abs(score) * 1.5)) if greenlight else 0.0
-        size = p.get("size")
-        scaled_size = (float(size) * scale) if (size is not None) else None
+        # ölçek faktörü ve scaled_size
+        scale_factor = max(0.0, min(1.0, abs(score) * 1.5)) if greenlight else 0.0
+        scaled_size = (size * scale_factor) if (size is not None) else None
 
         if user:
             db.session.add(UsageLog(user_id=user.id, action="draks_copy"))
@@ -208,7 +231,12 @@ def copy_evaluate():
                 user_agent=user_agent,
             )
 
-        return jsonify({"greenlight": greenlight, "scaled_size": scaled_size, "draks": out})
+        return jsonify({
+            "greenlight": greenlight,
+            "scale_factor": scale_factor,
+            "scaled_size": scaled_size,
+            "draks": out
+        })
     except Exception as e:  # pragma: no cover
         current_app.logger.exception("draks eval error")
         if user:

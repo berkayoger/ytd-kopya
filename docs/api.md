@@ -131,9 +131,10 @@ Kopya (copy-trading) senaryosunda lider sinyali DRAKS ile doğrular; yeşil ış
 {
   "symbol": "BTC/USDT",
   "side": "BUY",                  // veya SELL
-  "size": 1000,                   // opsiyonel nominal büyüklük
+  "size": 1000,                   // opsiyonel nominal büyüklük (>= 0, sayısal)
   "timeframe": "1h",
-  "candles": [ /* opsiyonel */ ]
+  "limit": 500,                   // opsiyonel, candles yoksa ccxt ile çekilecek mum sayısı
+  "candles": [ /* opsiyonel, sağlanırsa ccxt'e ihtiyaç yok */ ]
 }
 ```
 
@@ -141,10 +142,25 @@ Kopya (copy-trading) senaryosunda lider sinyali DRAKS ile doğrular; yeşil ış
 ```json
 {
   "greenlight": true,
-  "scaled_size": 640.5,           // size * ölçek faktörü (0..1), yoksa null
+  "scale_factor": 0.64,           // 0..1 arası ölçek katsayısı
+  "scaled_size": 640.5,           // size * scale_factor, size yoksa null
   "draks": { /* decision.run cevabı */ }
 }
 ```
 
 ### Hatalar
-403 (flag), 429 (limit), 500 (sunucu hatası).
+-403 (flag), 429 (limit), 500 (sunucu hatası). +- 400:
+
+Geçersiz side. BUY veya SELL olmalı.
+
+
+size sayısal olmalı / size negatif olamaz
+
+
+limit sayısal olmalı
+
+
+candles sağlanmalı veya ccxt kurulmalı
+
+
+yetersiz veri
