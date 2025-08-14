@@ -108,6 +108,17 @@ def test_export_feature_flags_error(test_app, monkeypatch):
     assert "error" in res.get_json()
 
 
+def test_alias_handling(monkeypatch):
+    monkeypatch.setattr(feature_flags, "USE_REDIS", False)
+    monkeypatch.setattr(feature_flags, "redis_client", None)
+    monkeypatch.setattr(feature_flags, "_default_flags", dict(feature_flags._default_flags))
+
+    feature_flags.set_feature_flag("draks", True)
+    assert feature_flag_enabled("draks_enabled") is True
+    feature_flags.set_feature_flag("draks_enabled", False)
+    assert feature_flag_enabled("draks") is False
+
+
 def test_import_feature_flags(test_app, monkeypatch):
     monkeypatch.setattr(feature_flags, "_default_flags", {})
     monkeypatch.setattr(feature_flags, "_default_flag_meta", {})
