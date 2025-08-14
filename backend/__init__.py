@@ -286,6 +286,13 @@ def create_app() -> Flask:
     app.register_blueprint(subscriptions_bp)
     app.register_blueprint(limits_bp)
 
+    # --- DRAKS Karar Motoru blueprint ---
+    try:
+        from backend.draks import draks_bp
+        app.register_blueprint(draks_bp)
+    except Exception as e:  # pragma: no cover
+        logger.warning(f"DRAKS blueprint yüklenemedi: {e}")
+
     # Health
     @app.route("/health", methods=["GET"])
     def health_check():

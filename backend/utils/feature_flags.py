@@ -31,7 +31,7 @@ _default_flags: Dict[str, bool] = {
     "next_generation_model": False,
     "advanced_forecast": False,
     "health_check": True,
-    "draks_enabled": False,
+    "draks": False ,
 }
 
 # In-memory metadata store for feature flags
