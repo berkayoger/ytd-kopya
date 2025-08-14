@@ -30,3 +30,13 @@ flask_socketio
 loguru
 requests
 psutil
+
+# --- DRAKS için ek bağımlılıklar ---
+numpy>=1.26.0
+pandas>=2.2.0
+scikit-learn>=1.4.0
+ccxt>=4.0.0
+python-dateutil>=2.9.0
+APScheduler>=3.10.0
+feedparser>=6.0.10
+yfinance>=0.2.36
