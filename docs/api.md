@@ -2,6 +2,19 @@
 
 Bu doküman kimliği doğrulanmış API uçlarını özetler. JWT Bearer zorunludur (aksi belirtilmedikçe).
 
+## Quickstart / Setup
+
+1) **Feature flag’i açın**  
+   - `draks` **veya** `draks_enabled` bayrağını **true** yapın (Admin Feature Flags veya Redis anahtarı: `feature_flag:draks="true"`).
+
+2) **Motor**  
+   - **Entegre minimal motor** (varsayılan): Ek servis gerekmez. `/api/draks/health` ile kontrol edin.
+   - **Harici FastAPI motoru** (opsiyonel): `DRAKS_ENGINE_URL` ayarlayın (örn. `http://draks-engine:8000`) ve motoru ayağa kaldırın.
+
+3) **Test**  
+   - `GET /api/draks/health` → `{"status":"ok","enabled":true}` beklenir.
+   - `POST /api/draks/decision/run` → örnek gövdeyle karar dönmelidir.
+
 ## GET /api/limits/status
 
 Returns the current user's subscription plan and usage limits.
@@ -37,6 +50,21 @@ Returns the current user's subscription plan and usage limits.
 - **401 Unauthorized**: `{ "error": "Kullanıcı bulunamadı." }`
 - **403 Forbidden**: `{ "error": "Özellik kapalı." }`
 - **500 Internal Server Error**: `{ "error": "Limitler alınamadı." }`
+
+---
+
+## GET /api/draks/health
+
+DRAKS entegrasyonu için basit sağlık kontrolü.
+
+### Auth
+- Gerekli değil.
+
+### Response (200)
+```json
+{ "status": "ok", "enabled": true }
+```
+`status`: ok | degraded | error
 
 ---
 
