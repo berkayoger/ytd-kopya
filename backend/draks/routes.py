@@ -3,6 +3,7 @@ from flask import request, jsonify, current_app, g
 from datetime import datetime, timezone
 import pandas as pd
 import numpy as np
+import os
 
 try:
     import ccxt  # opsiyonel: candles yoksa otomatik çeker
@@ -18,6 +19,12 @@ from backend import db
 
 from . import draks_bp
 from .engine_min import DRAKSEngine
+
+# Gelişmiş mantık (opsiyonel)
+try:  # pragma: no cover - unit testler bu modüle ihtiyaç duymaz
+    from .advanced import advanced_decision_logic
+except Exception:  # pragma: no cover
+    advanced_decision_logic = None  # type: ignore
 
 # Basit konfig (gerekirse .yaml'dan okunabilir)
 CFG = {
@@ -110,6 +117,13 @@ def decision_run():
     user = getattr(g, "user", None)
     ip_address = request.remote_addr or "unknown"
     user_agent = request.headers.get("User-Agent", "")
+    # çalışma anı toggles (env veya flag)
+    use_advanced = (
+        feature_flag_enabled("draks_advanced")
+        or os.getenv("DRAKS_ADVANCED", "0").lower() in {"1", "true", "yes"}
+    )
+    live_mode = os.getenv("DRAKS_LIVE_MODE", "0").lower() in {"1", "true", "yes"}
+    # not: live_mode sadece risk kapaklarını sıkılaştırır, plan/flag kontrollerini etkilemez
 
     try:
         p = request.get_json(force=True, silent=True) or {}
@@ -172,6 +186,14 @@ def copy_evaluate():
     ip_address = request.remote_addr or "unknown"
     user_agent = request.headers.get("User-Agent", "")
 
+    # çalışma anı toggles (env veya bayrak)
+    use_advanced = (
+        feature_flag_enabled("draks_advanced")
+        or os.getenv("DRAKS_ADVANCED", "0").lower() in {"1", "true", "yes"}
+    )
+    live_mode = os.getenv("DRAKS_LIVE_MODE", "0").lower() in {"1", "true", "yes"}
+    # not: live_mode sadece risk kapaklarını kısar, plan/flag kontrollerini etkilemez
+
     try:
         p = request.get_json(force=True, silent=True) or {}
         # --- zorunlular / doğrulama ---
@@ -213,9 +235,23 @@ def copy_evaluate():
         greenlight = (decision == "LONG" and side == "BUY") or (
             decision == "SHORT" and side == "SELL"
         )
-        # ölçek faktörü ve scaled_size
-        scale_factor = max(0.0, min(1.0, abs(score) * 1.5)) if greenlight else 0.0
-        scaled_size = (size * scale_factor) if (size is not None) else None
+        # temel ölçek faktörü
+        base_scale = max(0.0, min(1.0, abs(score) * 1.5)) if greenlight else 0.0
+
+        # Gelişmiş mantık (rejim & canlı kapakları) flag/env ile devreye girer
+        final_green = greenlight
+        final_scale = base_scale
+        if use_advanced and advanced_decision_logic:
+            try:
+                final_green, final_scale = advanced_decision_logic(
+                    draks_out=out,
+                    side=side,
+                    base_scale=base_scale,
+                    live_mode=live_mode,
+                )
+            except Exception:  # pragma: no cover
+                final_green, final_scale = greenlight, base_scale
+        scaled_size = (size * final_scale) if (size is not None) else None
 
         if user:
             db.session.add(UsageLog(user_id=user.id, action="draks_copy"))
@@ -226,14 +262,14 @@ def copy_evaluate():
                 ip_address=ip_address,
                 action="draks_copy",
                 target="/api/draks/copy/evaluate",
-                description="DRAKS kopya sinyali değerlendirildi.",
+                description=f"DRAKS kopya sinyali değerlendirildi (adv={use_advanced}, live={live_mode}).",
                 status="success",
                 user_agent=user_agent,
             )
 
         return jsonify({
-            "greenlight": greenlight,
-            "scale_factor": scale_factor,
+            "greenlight": final_green,
+            "scale_factor": final_scale,
             "scaled_size": scaled_size,
             "draks": out
         })

@@ -148,6 +148,13 @@ Kopya (copy-trading) senaryosunda lider sinyali DRAKS ile doğrular; yeşil ış
 }
 ```
 
+Ölçek, motorun döndürdüğü skordan türetilir. Daha gelişmiş ve rejime duyarlı
+filtreleme için `draks_advanced` bayrağı veya `DRAKS_ADVANCED=true`
+ortam değişkeni kullanılabilir.
+
+Canlı modda daha sıkı risk kapakları `DRAKS_LIVE_MODE=true` ile etkinleşir.
+Bu mod yalnızca ölçek tavanını düşürür; plan ve flag kontrolleri aynen geçerlidir.
+
 ### Hatalar
 -403 (flag), 429 (limit), 500 (sunucu hatası). +- 400:
 
