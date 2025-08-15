@@ -171,3 +171,34 @@ candles sağlanmalı veya ccxt kurulmalı
 
 
 yetersiz veri
+
+---
+
+## GET /api/admin/draks/decisions  (ADMIN)
+Son DRAKS kararlarını sayfalı döndürür.
+
+Query:
+- `page` (varsayılan 1), `limit` (<=100), `symbol` (opsiyonel tam eşleşme)
+
+Yanıt:
+```json
+{
+  "items": [
+    { "id": 1, "symbol": "BTC/USDT", "decision": "LONG", "position_pct": 0.018, "stop": 102.1, "take_profit": 108.9, "created_at": "2025-08-14T20:00:00Z" }
+  ],
+  "meta": { "page": 1, "limit": 25, "total": 123 }
+}
+```
+
+## GET /api/admin/draks/signals  (ADMIN)
+Son DRAKS sinyal skorlarını sayfalı döndürür.
+
+Yanıt:
+```json
+{
+  "items": [
+    { "id": 10, "symbol": "ETH/USDT", "timeframe": "1h", "score": 0.12, "decision": "HOLD", "created_at": "2025-08-14T20:10:00Z" }
+  ],
+  "meta": { "page": 1, "limit": 25, "total": 321 }
+}
+```
