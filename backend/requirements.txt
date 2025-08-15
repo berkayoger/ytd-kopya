@@ -31,6 +31,9 @@ loguru
 requests
 psutil
 
+# Observability / Metrics
+prometheus-client>=0.20.0
+
 # --- DRAKS için ek bağımlılıklar ---
 numpy>=1.26.0
 pandas>=2.2.0
