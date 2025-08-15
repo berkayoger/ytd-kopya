@@ -85,9 +85,20 @@ def draks_health():
     """
     try:
         enabled = feature_flag_enabled("draks")
+        use_advanced = (
+            feature_flag_enabled("draks_advanced")
+            or os.getenv("DRAKS_ADVANCED", "0").lower() in {"1", "true", "yes"}
+        )
+        live_mode = os.getenv("DRAKS_LIVE_MODE", "0").lower() in {"1", "true", "yes"}
         # Minimal kontrol: engine objesi çalışıyor mu?
         ok = ENGINE is not None
-        return jsonify({"status": "ok" if ok else "degraded", "enabled": enabled}), 200
+        return jsonify({
+            "status": "ok" if ok else "degraded",
+            "enabled": enabled,
+            "advanced": bool(use_advanced),
+            "live_mode": bool(live_mode),
+            "timeframe": CFG.get("timeframe", "1h")
+        }), 200
     except Exception as e:  # pragma: no cover
         current_app.logger.exception("draks health error")
         return jsonify({"status": "error", "error": str(e)}), 500
