@@ -4,6 +4,7 @@ from datetime import datetime
 from backend import create_app, db
 from backend.db.models import DraksDecision, DraksSignalRun
 from backend.utils.feature_flags import set_feature_flag
+import json
 
 
 @pytest.fixture
@@ -43,6 +44,11 @@ def test_list_decisions(admin_client):
     data = resp.get_json()
     assert data["meta"]["total"] == 1
     assert data["items"][0]["symbol"] == "BTC/USDT"
+    # detail
+    row_id = data["items"][0]["id"]
+    d = admin_client.get(f"/api/admin/draks/decisions/{row_id}")
+    assert d.status_code == 200
+    assert d.get_json()["symbol"] == "BTC/USDT"
 
 
 def test_list_signals(admin_client):
@@ -66,4 +72,11 @@ def test_list_signals(admin_client):
     data = resp.get_json()
     assert data["meta"]["total"] == 1
     assert data["items"][0]["symbol"] == "BTC/USDT"
+    # detail
+    row_id = data["items"][0]["id"]
+    d = admin_client.get(f"/api/admin/draks/signals/{row_id}")
+    assert d.status_code == 200
+    jd = d.get_json()
+    assert jd["symbol"] == "BTC/USDT"
+    assert "regime_probs" in jd and "weights" in jd
 
