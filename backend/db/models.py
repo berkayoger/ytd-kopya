@@ -660,6 +660,31 @@ class UsageLog(db.Model):
     timestamp = Column(DateTime, default=datetime.utcnow)
 
 
+# --- DRAKS tablolari ---
+class DraksSignalRun(db.Model):
+    __tablename__ = "draks_signal_runs"
+    id = Column(Integer, primary_key=True)
+    symbol = Column(String(64), nullable=False)
+    timeframe = Column(String(16), nullable=False, default="1h")
+    regime_probs = Column(Text, nullable=False)  # JSON string
+    weights = Column(Text, nullable=False)  # JSON string
+    score = Column(Float, nullable=False)
+    decision = Column(String(16), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class DraksDecision(db.Model):
+    __tablename__ = "draks_decisions"
+    id = Column(Integer, primary_key=True)
+    symbol = Column(String(64), nullable=False)
+    decision = Column(String(16), nullable=False)
+    position_pct = Column(Float)
+    stop = Column(Float)
+    take_profit = Column(Float)
+    reasons = Column(Text)  # JSON string
+    raw_response = Column(Text)  # JSON string
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
 class DatabaseBackup(db.Model):
     """Stores database backup metadata."""
 

@@ -10,6 +10,7 @@ import AdminContent from '../pages/AdminContent';
 import AdminMonitoring from '../pages/AdminMonitoring';
 import AdminLogs from '../pages/AdminLogs';
 import AdminFeatureFlags from '../pages/AdminFeatureFlags';
+import AdminDraks from '../pages/AdminDraks';
 import UserDetail from './UserDetail';
 
 const AdminRoutes = () => {
@@ -24,6 +25,7 @@ const AdminRoutes = () => {
       <Route path="limits" element={<AdminLimits />} />
       <Route path="content" element={<AdminContent />} />
       <Route path="monitoring" element={<AdminMonitoring />} />
+      <Route path="draks" element={<AdminDraks />} />
       <Route path="feature-flags" element={<AdminFeatureFlags />} />
       <Route path="logs" element={<AdminLogs />} />
     </Routes>
