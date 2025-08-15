@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import os
 import sys
+import uuid
+from time import perf_counter
 from datetime import timedelta, datetime
 from typing import Optional
 
-from flask import Flask, jsonify, request, g
+from flask import Flask, jsonify, request, g, Response
 from flask.testing import FlaskClient
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -16,6 +18,7 @@ from flask_socketio import SocketIO, emit
 from redis import Redis
 from dotenv import load_dotenv
 from loguru import logger
+from backend.observability.metrics import prometheus_wsgi_app
 
 # Proje içi
 from backend.db import db as base_db
@@ -147,6 +150,7 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.test_client_class = LegacyTestClient
     app.config.from_object(Config)
+    app.logger.info("App booting with observability metrics enabled.")
 
     # Test ortamı ayarları
     if os.getenv("FLASK_ENV") == "testing":
@@ -215,6 +219,50 @@ def create_app() -> Flask:
         except Exception as exc:
             logger.warning(f"YTDCryptoSystem instance oluşturulamadı: {exc}")
             app.ytd_system_instance = None
+
+    # -------- Observability: request id + latency logging --------
+    @app.before_request
+    def _inject_request_id_and_timer():
+        rid = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        g.request_id = rid
+        g._t0 = perf_counter()
+
+    @app.after_request
+    def _after(resp):
+        try:
+            dt = perf_counter() - getattr(g, "_t0", perf_counter())
+            app.logger.info(
+                {
+                    "event": "http_access",
+                    "method": request.method,
+                    "path": request.path,
+                    "status": resp.status_code,
+                    "request_id": getattr(g, "request_id", None),
+                    "user_id": getattr(getattr(g, "user", None), "id", None),
+                    "remote_addr": request.remote_addr,
+                    "latency_sec": round(dt, 4),
+                }
+            )
+            resp.headers["X-Request-ID"] = getattr(g, "request_id", "")
+        except Exception:
+            pass
+        return resp
+
+    # -------- /metrics endpoint (optional auth / IP allow) --------
+    def _metrics_allowed() -> bool:
+        allow_ips = [x.strip() for x in os.getenv("METRICS_ALLOW_IPS", "").split(",") if x.strip()]
+        return (not allow_ips) or (request.remote_addr in allow_ips)
+
+    @app.route("/metrics")
+    def metrics():
+        if not _metrics_allowed():
+            return jsonify({"error": "forbidden"}), 403
+        u, p = os.getenv("METRICS_BASIC_AUTH_USER"), os.getenv("METRICS_BASIC_AUTH_PASS")
+        if u and p:
+            auth = request.authorization
+            if not auth or auth.username != u or auth.password != p:
+                return Response("Auth required", 401, {"WWW-Authenticate": 'Basic realm="metrics"'})
+        return Response(b"".join(prometheus_wsgi_app({}, lambda *a, **k: None)), mimetype="text/plain")
 
     # Blueprint’ler
     from backend.auth.routes import auth_bp
