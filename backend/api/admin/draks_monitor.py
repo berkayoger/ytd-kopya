@@ -5,6 +5,7 @@ from backend.auth.middlewares import admin_required
 from backend.db.models import DraksDecision, DraksSignalRun
 from backend.utils.feature_flags import feature_flag_enabled
 from backend.utils.logger import create_log
+import json
 
 admin_draks_bp = Blueprint("admin_draks", __name__, url_prefix="/api/admin/draks")
 
@@ -60,6 +61,27 @@ def list_decisions():
     return jsonify({"items": out, "meta": meta})
 
 
+@admin_draks_bp.get("/decisions/<int:row_id>")
+@jwt_required()
+@admin_required()
+def get_decision_detail(row_id: int):
+    if not feature_flag_enabled("draks"):
+        return jsonify({"error": "Özellik şu anda devre dışı."}), 403
+    r = DraksDecision.query.get_or_404(row_id)
+    body = {
+        "id": r.id,
+        "symbol": r.symbol,
+        "decision": r.decision,
+        "position_pct": r.position_pct,
+        "stop": r.stop,
+        "take_profit": r.take_profit,
+        "reasons": json.loads(r.reasons or "[]"),
+        "raw_response": json.loads(r.raw_response or "{}"),
+        "created_at": r.created_at.isoformat() + "Z",
+    }
+    return jsonify(body), 200
+
+
 @admin_draks_bp.get("/signals")
 @jwt_required()
 @admin_required()
@@ -95,4 +117,24 @@ def list_signals():
             user_agent=request.headers.get("User-Agent", ""),
         )
     return jsonify({"items": out, "meta": meta})
+
+
+@admin_draks_bp.get("/signals/<int:row_id>")
+@jwt_required()
+@admin_required()
+def get_signal_detail(row_id: int):
+    if not feature_flag_enabled("draks"):
+        return jsonify({"error": "Özellik şu anda devre dışı."}), 403
+    r = DraksSignalRun.query.get_or_404(row_id)
+    body = {
+        "id": r.id,
+        "symbol": r.symbol,
+        "timeframe": r.timeframe,
+        "score": r.score,
+        "decision": r.decision,
+        "regime_probs": json.loads(r.regime_probs or "{}"),
+        "weights": json.loads(r.weights or "{}"),
+        "created_at": r.created_at.isoformat() + "Z",
+    }
+    return jsonify(body), 200
 
