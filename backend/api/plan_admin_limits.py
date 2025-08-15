@@ -22,7 +22,7 @@ plan_admin_limits_bp = Blueprint(
 @require_admin
 def update_plan_limits(plan_id):
     try:
-        plan = Plan.query.get(plan_id)
+        plan = db.session.get(Plan, plan_id)
         if not plan:
             return jsonify({"error": "Plan bulunamadı."}), 404
 
