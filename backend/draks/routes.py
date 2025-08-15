@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import pandas as pd
 import numpy as np
 import os
+import json
 
 try:
     import ccxt  # opsiyonel: candles yoksa otomatik çeker
@@ -14,8 +15,8 @@ from backend.auth.jwt_utils import jwt_required_if_not_testing
 from backend.middleware.plan_limits import enforce_plan_limit
 from backend.utils.feature_flags import feature_flag_enabled
 from backend.utils.logger import create_log
-from backend.db.models import UsageLog
-from backend import db
+from backend.db.models import UsageLog, DraksSignalRun, DraksDecision
+from backend import db, limiter
 
 from . import draks_bp
 from .engine_min import DRAKSEngine
@@ -109,6 +110,7 @@ def _fetch_ohlcv_ccxt(
 @draks_bp.post("/decision/run")
 @jwt_required_if_not_testing()
 @enforce_plan_limit("draks_decision")
+@limiter.limit("60/minute")
 def decision_run():
     """Karar motorunu çalıştır."""
     if not feature_flag_enabled("draks"):
@@ -142,6 +144,34 @@ def decision_run():
 
         out = ENGINE.run(df, symbol.replace(" ", ""))
         out["as_of"] = datetime.utcnow().isoformat() + "Z"
+
+        # Opsiyonel kalıcı kaydetme
+        try:
+            db.session.add(
+                DraksSignalRun(
+                    symbol=out["symbol"],
+                    timeframe=out.get("timeframe", "1h"),
+                    regime_probs=json.dumps(out.get("regime_probs", {})),
+                    weights=json.dumps(out.get("weights", {})),
+                    score=float(out.get("score", 0.0)),
+                    decision=str(out.get("decision", "HOLD")),
+                )
+            )
+            db.session.add(
+                DraksDecision(
+                    symbol=out["symbol"],
+                    decision=str(out.get("decision", "HOLD")),
+                    position_pct=float(out.get("position_pct", 0.0)),
+                    stop=float(out.get("stop", 0.0)),
+                    take_profit=float(out.get("take_profit", 0.0)),
+                    reasons=json.dumps(out.get("reasons", [])),
+                    raw_response=json.dumps(out),
+                )
+            )
+            db.session.commit()
+        except Exception:  # pragma: no cover
+            current_app.logger.exception("draks persistence error")
+            db.session.rollback()
 
         if user:
             db.session.add(UsageLog(user_id=user.id, action="draks_decision"))
@@ -177,6 +207,7 @@ def decision_run():
 @draks_bp.post("/copy/evaluate")
 @jwt_required_if_not_testing()
 @enforce_plan_limit("draks_copy")
+@limiter.limit("60/minute")
 def copy_evaluate():
     """Lider sinyalini değerlendir."""
     if not feature_flag_enabled("draks"):
