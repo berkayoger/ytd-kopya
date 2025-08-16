@@ -51,7 +51,7 @@ def test_run_tests_success(admin_client, monkeypatch):
     summary_line = "=== 3 passed, 1 skipped in 0.12s ===\n"
     dummy_out = "collected 4 items\n\n" + summary_line
 
-    def fake_run(args, capture_output, text, timeout, env):
+    def fake_run(args, capture_output, text, timeout, cwd, env):
         assert "pytest" in args[0]
         # suite seçimine göre -k filtrelerinin geldiğini doğrulamamız şart değil
         return DummyProc(returncode=0, stdout=dummy_out, stderr="")
@@ -89,7 +89,7 @@ def test_run_tests_nonzero_exit_returns_202(admin_client, monkeypatch):
     dummy_out = "some output...\n" + summary_line
     dummy_err = "E   AssertionError: boom\n"
 
-    def fake_run(args, capture_output, text, timeout, env):
+    def fake_run(args, capture_output, text, timeout, cwd, env):
         return DummyProc(returncode=1, stdout=dummy_out, stderr=dummy_err)
 
     monkeypatch.setattr("subprocess.run", fake_run)
@@ -102,3 +102,16 @@ def test_run_tests_nonzero_exit_returns_202(admin_client, monkeypatch):
     assert b["summary"]["failed"] == 1
     assert b["summary"]["errors"] == 0
     assert "AssertionError" in b["stderr"]
+
+
+def test_status_endpoint(admin_client, monkeypatch):
+    """/status endpoint'i ALLOW_ADMIN_TEST_RUN değerini döner."""
+    _reload_tests_module(monkeypatch, allow=True)
+    r = admin_client.get("/api/admin/tests/status")
+    assert r.status_code == 200
+    assert r.get_json()["allowed"] is True
+
+    _reload_tests_module(monkeypatch, allow=False)
+    r2 = admin_client.get("/api/admin/tests/status")
+    assert r2.status_code == 200
+    assert r2.get_json()["allowed"] is False

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os, re, shlex, subprocess
+from pathlib import Path
 from flask import Blueprint, jsonify, request, g
 from backend.auth.jwt_utils import jwt_required_if_not_testing
 from backend.auth.middlewares import admin_required
@@ -11,6 +12,40 @@ admin_tests_bp = Blueprint("admin_tests", __name__, url_prefix="/api/admin/tests
 
 # Ortam değişkeni ile kapatılabilir
 _ALLOW = os.getenv("ALLOW_ADMIN_TEST_RUN", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _project_root() -> Path:
+    """
+    Güvenli çalışma dizini: repo kökü tahmini.
+    - Tercih: git projesi kökü
+    - Değilse: backend klasörünün 1 üstü
+    """
+    here = Path(__file__).resolve()
+    # git kökü ara
+    for p in [here] + list(here.parents):
+        if (p / ".git").exists() or (p / "pyproject.toml").exists() or (p / "pytest.ini").exists():
+            return p if p.is_dir() else p.parent
+    # yedek: backend klasörünün üstü
+    for p in here.parents:
+        if (p / "backend").exists():
+            return p
+    return here.parent
+
+
+def _whitelisted_env() -> dict[str, str]:
+    """
+    Alt süreç için beyaz listeli environment.
+    Gizli anahtarları taşımayız; test için yeterli minimum set.
+    """
+    allow: dict[str, str] = {}
+    # Terminal çıktısı için faydalı
+    for k in ("PATH", "PYTHONPATH", "TERM", "COLUMNS", "LINES"):
+        if k in os.environ:
+            allow[k] = os.environ[k]
+    # Test modunda koşsun, bytecode yazmasın
+    allow["FLASK_ENV"] = os.getenv("FLASK_ENV", "testing")
+    allow["PYTHONDONTWRITEBYTECODE"] = "1"
+    return allow
 
 
 def _suite_to_pytest_args(suite: str) -> list[str]:
@@ -61,7 +96,8 @@ def run_tests():
             capture_output=True,
             text=True,
             timeout=600,
-            env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+            cwd=str(_project_root()),
+            env=_whitelisted_env(),
         )
         stdout = proc.stdout or ""
         stderr = proc.stderr or ""
@@ -100,3 +136,23 @@ def run_tests():
     except Exception as e:  # pragma: no cover
         inc_error("tests_exception")
         return jsonify({"error": str(e)}), 500
+
+
+@admin_tests_bp.get("/status")
+@jwt_required_if_not_testing()
+@admin_required()
+def tests_status():
+    """UI'nin toggle durumunu okuyabilmesi için basit durum endpoint'i."""
+    user = g.get("user")
+    if user:
+        create_log(
+            user_id=str(user.id),
+            username=user.username,
+            ip_address=request.remote_addr or "unknown",
+            action="admin_tests_status",
+            target="/api/admin/tests/status",
+            description=f"allowed={_ALLOW}",
+            status="success",
+            user_agent=request.headers.get("User-Agent", ""),
+        )
+    return jsonify({"allowed": bool(_ALLOW)}), 200
