@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 type Result = {
   exit_code: number;
@@ -15,6 +15,7 @@ export default function AdminTests() {
   const [running, setRunning] = useState(false);
   const [res, setRes] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [allowed, setAllowed] = useState<boolean | null>(null);
 
   const headers = useMemo(() => {
     const h: Record<string, string> = { "Content-Type": "application/json" };
@@ -24,6 +25,18 @@ export default function AdminTests() {
     if (apiKey) h["X-API-KEY"] = `${apiKey}`;
     return h;
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("/api/admin/tests/status", { headers, credentials: "include" });
+        const j = await r.json();
+        if (r.ok) setAllowed(!!j.allowed);
+      } catch {
+        setAllowed(null);
+      }
+    })();
+  }, [headers]);
 
   async function run() {
     setRunning(true);
@@ -63,7 +76,7 @@ export default function AdminTests() {
             value={extra}
             onChange={(e) => setExtra(e.target.value)}
           />
-          <button disabled={running} onClick={run} className="border rounded px-3 py-1 text-sm bg-white">
+          <button disabled={running || allowed === false} onClick={run} className="border rounded px-3 py-1 text-sm bg-white">
             {running ? "Çalışıyor…" : "Testleri Çalıştır"}
           </button>
         </div>
@@ -71,6 +84,11 @@ export default function AdminTests() {
           Not: Bu özellik sadece <code>ALLOW_ADMIN_TEST_RUN=true</code> iken çalışır. Üretimde kapalı tutmanız önerilir.
         </div>
       </div>
+      {allowed === false && (
+        <div className="border rounded p-2 text-sm text-orange-700 bg-orange-50">
+          Uyarı: Sunucu, test çalıştırmayı devre dışı bırakmış görünüyor (<code>ALLOW_ADMIN_TEST_RUN=false</code>). Bu sayfa sadece sonuç görüntüler; çalıştırma yapılamaz.
+        </div>
+      )}
       {error && <div className="border rounded p-2 text-sm text-red-600 bg-red-50">Hata: {error}</div>}
       {res && (
         <div className="space-y-3">

@@ -39,9 +39,14 @@ scrape_configs:
 
 ## Admin Test Çalıştırma
 - Endpoint: `POST /api/admin/tests/run` (sadece admin, rate-limit 6/saat)
+- Status: `GET /api/admin/tests/status` (sadece admin) → `{ "allowed": true|false }`
 - Env toggle: `ALLOW_ADMIN_TEST_RUN=true` (default: false)
 - Request body:
 ```json
 { "suite": "unit|smoke|all", "extra": "-k mypattern" }
 ```
 - Response: exit_code, özet, stdout/stderr (kısaltılmış) içerir.
+
+### Güvenlik Sertleştirme
+- Alt süreç çalışma dizini repo kökü ile sınırlandırılmıştır.
+- Alt sürece aktarılan environment beyaz listelidir (PATH, PYTHONPATH, FLASK_ENV vb.). Gizli anahtarlar aktarılmaz.
