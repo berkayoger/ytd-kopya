@@ -11,6 +11,7 @@ import AdminMonitoring from '../pages/AdminMonitoring';
 import AdminLogs from '../pages/AdminLogs';
 import AdminFeatureFlags from '../pages/AdminFeatureFlags';
 import AdminDraks from '../pages/AdminDraks';
+import AdminTests from '../pages/AdminTests';
 import UserDetail from './UserDetail';
 
 const AdminRoutes = () => {
@@ -26,6 +27,7 @@ const AdminRoutes = () => {
       <Route path="content" element={<AdminContent />} />
       <Route path="monitoring" element={<AdminMonitoring />} />
       <Route path="draks" element={<AdminDraks />} />
+      <Route path="tests" element={<AdminTests />} />
       <Route path="feature-flags" element={<AdminFeatureFlags />} />
       <Route path="logs" element={<AdminLogs />} />
     </Routes>
