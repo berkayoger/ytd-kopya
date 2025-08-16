@@ -1,30 +1,104 @@
-from types import SimpleNamespace
-
-from backend import create_app
 import importlib
+from dataclasses import dataclass
+
+import pytest
+from backend import create_app, db
 
 
-def test_run_tests(monkeypatch):
+@pytest.fixture()
+def admin_client(monkeypatch):
+    """Admin JWT ve admin_required kontrolünü test ortamında bypass eden test client."""
     monkeypatch.setenv("FLASK_ENV", "testing")
-    monkeypatch.setenv("ALLOW_ADMIN_TEST_RUN", "true")
     # admin_required bypass
     monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    # JWT verify bypass (jwt_required_if_not_testing zaten testing'te no-op ama yine de güvence)
+    import flask_jwt_extended.view_decorators as vd
+    monkeypatch.setattr(vd, "verify_jwt_in_request", lambda *a, **k: None)
 
-    # Ortam değişkeni değiştikten sonra modülü yeniden yükle
+    app = create_app()
+    app.config["TESTING"] = True
+    with app.app_context():
+        db.create_all()
+    try:
+        yield app.test_client()
+    finally:
+        with app.app_context():
+            db.session.remove()
+            db.drop_all()
+
+
+@dataclass
+class DummyProc:
+    returncode: int = 0
+    stdout: str = ""
+    stderr: str = ""
+
+
+def _reload_tests_module(monkeypatch, allow: bool):
+    """/api/admin/tests blueprint'inin ALLOW_ADMIN_TEST_RUN değerini alması için modülü yeniden yükle."""
+    monkeypatch.setenv("ALLOW_ADMIN_TEST_RUN", "true" if allow else "false")
+    # import sırası önemli: önce modülü reload et, sonra app'i import eden testler onu kullanıyor olacak
     import backend.api.admin.tests as admin_tests_module
     importlib.reload(admin_tests_module)
 
-    # subprocess.run'ı sahte sonuç dönecek şekilde patchle
+
+def test_run_tests_success(admin_client, monkeypatch):
+    """Mutlu yol: ALLOW_ADMIN_TEST_RUN=true iken, subprocess.run mock'lanır ve
+    0 exit code + anlaşılır summary üretir; API 200 döner ve özet parse edilir."""
+    _reload_tests_module(monkeypatch, allow=True)
+
+    # subprocess.run'ı sahtele: pytest çıktısının son satırında özet versin
+    summary_line = "=== 3 passed, 1 skipped in 0.12s ===\n"
+    dummy_out = "collected 4 items\n\n" + summary_line
+
     def fake_run(args, capture_output, text, timeout, env):
-        return SimpleNamespace(returncode=0, stdout="=== 1 passed in 0.01s ===", stderr="")
+        assert "pytest" in args[0]
+        # suite seçimine göre -k filtrelerinin geldiğini doğrulamamız şart değil
+        return DummyProc(returncode=0, stdout=dummy_out, stderr="")
 
     monkeypatch.setattr("subprocess.run", fake_run)
 
-    app = create_app()
-    client = app.test_client()
+    r = admin_client.post("/api/admin/tests/run", json={"suite": "unit", "extra": ""})
+    assert r.status_code == 200
+    body = r.get_json()
+    # Komut bilgisini ve özetin parse edildiğini doğrula
+    assert body["exit_code"] == 0
+    assert "cmd" in body and "pytest" in body["cmd"]
+    assert body["summary"]["passed"] == 3
+    assert body["summary"]["skipped"] == 1
+    assert body["summary"]["failed"] == 0
+    assert body["summary"]["errors"] == 0
+    # stdout kesilmeden dönüyor (dummy kısa)
+    assert "collected 4 items" in body["stdout"]
+    assert body["stderr"] == ""
 
-    resp = client.post("/api/admin/tests/run", json={"suite": "unit"})
-    assert resp.status_code == 200
-    data = resp.get_json()
-    assert data["summary"]["passed"] == 1
-    assert data["exit_code"] == 0
+
+def test_run_tests_forbidden(admin_client, monkeypatch):
+    """ALLOW_ADMIN_TEST_RUN=false iken endpoint 403 döner."""
+    _reload_tests_module(monkeypatch, allow=False)
+    r = admin_client.post("/api/admin/tests/run", json={"suite": "unit"})
+    assert r.status_code == 403
+    assert "devre dışı" in r.get_json().get("error", "").lower()
+
+
+def test_run_tests_nonzero_exit_returns_202(admin_client, monkeypatch):
+    """pytest exit code !=0 ise API 202 döner ve özet yine parse edilir."""
+    _reload_tests_module(monkeypatch, allow=True)
+
+    summary_line = "=== 2 passed, 1 failed in 1.23s ===\n"
+    dummy_out = "some output...\n" + summary_line
+    dummy_err = "E   AssertionError: boom\n"
+
+    def fake_run(args, capture_output, text, timeout, env):
+        return DummyProc(returncode=1, stdout=dummy_out, stderr=dummy_err)
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+
+    r = admin_client.post("/api/admin/tests/run", json={"suite": "all", "extra": "-k smoke"})
+    assert r.status_code == 202
+    b = r.get_json()
+    assert b["exit_code"] == 1
+    assert b["summary"]["passed"] == 2
+    assert b["summary"]["failed"] == 1
+    assert b["summary"]["errors"] == 0
+    assert "AssertionError" in b["stderr"]
