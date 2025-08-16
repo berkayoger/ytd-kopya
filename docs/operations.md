@@ -36,3 +36,12 @@ scrape_configs:
 - Panel: Latency p95/p99 (`histogram_quantile` ile)
 - Panel: Success ratio = 200 / (200+4xx+5xx)
 - Panel: Errors by type (`draks_errors_total{type}` rate())
+
+## Admin Test Çalıştırma
+- Endpoint: `POST /api/admin/tests/run` (sadece admin, rate-limit 6/saat)
+- Env toggle: `ALLOW_ADMIN_TEST_RUN=true` (default: false)
+- Request body:
+```json
+{ "suite": "unit|smoke|all", "extra": "-k mypattern" }
+```
+- Response: exit_code, özet, stdout/stderr (kısaltılmış) içerir.
