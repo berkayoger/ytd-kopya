@@ -1,6 +1,4 @@
 anyio==4.9.0
-argon2-cffi==25.1.0
-argon2-cffi-bindings==21.2.0
 arrow==1.3.0
 asttokens==3.0.0
 async-lru==2.0.5
@@ -116,7 +114,7 @@ types-python-dateutil==2.9.0.20250708
 typing_extensions==4.14.1
 tzdata==2025.2
 uri-template==1.3.0
-urllib3==2.5.0
+urllib3==1.26.18  # boto3/botocore <1.27 gerektirir
 wcwidth==0.2.13
 webcolors==24.11.1
 webencodings==0.5.1
@@ -134,9 +132,24 @@ redis==5.0.4
 python-dotenv==1.0.1
 pytest-cov==4.1.0
 pytest-cov==4.1.0
-pyjwt
 flask_jwt_extended
 pycoingecko
 factory_boy
 faker
 
+cryptography==41.0.7
+pwnedpasswords==2.0.0
+python-jose[cryptography]==3.3.0
+boto3==1.28.0
+azure-identity==1.16.0
+azure-keyvault-secrets==4.7.0
+pyotp==2.9.0
+email-validator==2.1.0
+python-multipart==0.0.6
+slowapi==0.1.9
+uvicorn==0.30.1
+passlib==1.7.4
+argon2-cffi==23.1.0
+
+# PyJWT pin (flask_jwt_extended uyumu için)
+PyJWT==2.8.0
