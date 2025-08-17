@@ -2,7 +2,7 @@ from __future__ import annotations
 import os, time
 from contextlib import contextmanager
 from typing import Iterable, Optional
-from prometheus_client import Counter, Histogram, CollectorRegistry, CONTENT_TYPE_LATEST, generate_latest
+from prometheus_client import Counter, Histogram, Gauge, CollectorRegistry, CONTENT_TYPE_LATEST, generate_latest
 
 # Custom registry so we can export only our app metrics if needed
 REGISTRY = CollectorRegistry()
@@ -51,6 +51,42 @@ ERRORS_TOTAL = Counter(
     registry=REGISTRY,
 )
 
+# ---------------- Batch Metrics ----------------
+BATCH_SUBMIT_TOTAL = Counter(
+    "draks_batch_submit_total",
+    "Total number of batch submits.",
+    ["status"],
+    registry=REGISTRY,
+)
+
+BATCH_ITEM_TOTAL = Counter(
+    "draks_batch_items_total",
+    "Total number of batch items processed.",
+    ["asset", "status"],
+    registry=REGISTRY,
+)
+
+BATCH_JOB_DURATION = Histogram(
+    "draks_batch_job_duration_seconds",
+    "Duration of batch job processing from submit to complete.",
+    registry=REGISTRY,
+    buckets=(1, 2, 5, 10, 20, 30, 60, 120, 300, 600, 1200),
+)
+
+OHLCV_CACHE_HIT = Counter(
+    "draks_ohlcv_cache_hit_total",
+    "OHLCV cache hits.",
+    ["asset"],
+    registry=REGISTRY,
+)
+
+OHLCV_CACHE_MISS = Counter(
+    "draks_ohlcv_cache_miss_total",
+    "OHLCV cache misses.",
+    ["asset"],
+    registry=REGISTRY,
+)
+
 
 def inc_decision(status: str) -> None:
     DECISION_REQ_TOTAL.labels(status=str(status)).inc()
@@ -62,6 +98,26 @@ def inc_copy(status: str) -> None:
 
 def inc_error(err_type: str) -> None:
     ERRORS_TOTAL.labels(type=str(err_type)).inc()
+
+
+def inc_batch_submit(status: str) -> None:
+    BATCH_SUBMIT_TOTAL.labels(status=str(status)).inc()
+
+
+def inc_batch_item(asset: str, status: str) -> None:
+    BATCH_ITEM_TOTAL.labels(asset=str(asset), status=str(status)).inc()
+
+
+def observe_batch_duration(seconds: float) -> None:
+    BATCH_JOB_DURATION.observe(float(seconds))
+
+
+def inc_cache_hit(asset: str) -> None:
+    OHLCV_CACHE_HIT.labels(asset=str(asset)).inc()
+
+
+def inc_cache_miss(asset: str) -> None:
+    OHLCV_CACHE_MISS.labels(asset=str(asset)).inc()
 
 
 @contextmanager
