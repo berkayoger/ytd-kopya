@@ -59,3 +59,53 @@ def generate_csrf_token() -> str:
     """
     import secrets
     return secrets.token_hex(16)
+
+# --- DRAKS Batch yardımcıları ---
+
+import re
+
+_SYMBOL_RE = re.compile(r"^[A-Z0-9./:-]{1,20}$")
+_TIMEFRAME_WHITELIST = {
+    "1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d", "1w"
+}
+_ASSET_WHITELIST = {"crypto", "equity"}
+
+
+def validate_symbol(symbol: str) -> bool:
+    """Sembolü büyük harfe çevirip regex ile doğrular."""
+    try:
+        return bool(_SYMBOL_RE.match(str(symbol).upper()))
+    except Exception:
+        return False
+
+
+def validate_symbols_list(symbols: list[str], max_count: int) -> list[str]:
+    """Geçerli sembolleri liste olarak döndürür."""
+    out: list[str] = []
+    for s in symbols[:max_count]:
+        su = str(s).upper().strip()
+        if validate_symbol(su):
+            out.append(su)
+    return out
+
+
+def validate_timeframe(tf: str) -> bool:
+    """Desteklenen timeframe'leri kontrol eder."""
+    try:
+        return str(tf) in _TIMEFRAME_WHITELIST
+    except Exception:
+        return False
+
+
+def validate_asset(asset: str) -> bool:
+    """Varlık tipini whitelist ile doğrular."""
+    return str(asset).lower() in _ASSET_WHITELIST
+
+
+def safe_cache_key(prefix: str, *parts: str) -> str:
+    """Cache anahtarını temizleyip birleştirir."""
+    clean = []
+    for p in parts:
+        x = re.sub(r"[^A-Z0-9./:\-]", "", str(p).upper())
+        clean.append(x[:32])
+    return f"{prefix}:" + ":".join(clean)
