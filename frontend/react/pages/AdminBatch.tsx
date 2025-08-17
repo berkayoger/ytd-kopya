@@ -30,6 +30,7 @@ export default function AdminBatch() {
   const [filterDecision, setFilterDecision] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [filterSymbol, setFilterSymbol] = useState<string>("");
+  const [wsInfo, setWsInfo] = useState<string>("");
 
   const headers = useMemo(() => {
     const h: Record<string, string> = { "Content-Type": "application/json" };
@@ -100,10 +101,35 @@ export default function AdminBatch() {
 
   useEffect(() => {
     if (!jobId) return;
-    const t = setInterval(() => {
-      pollStatus(jobId);
-    }, 2000);
-    return () => clearInterval(t);
+    // Her zaman polling'i koru (fallback)
+    const t = setInterval(() => pollStatus(jobId), 2000);
+    // Opsiyonel: Socket.IO varsa gerçek zamanlı ilerleme
+    let socket: any = null;
+    const anyWin: any = window as any;
+    if (anyWin.io) {
+      try {
+        socket = anyWin.io("/", { path: "/socket.io", transports: ["websocket", "polling"] });
+        socket.on("connect", () => {
+          setWsInfo("ws: connected");
+          socket.emit("join", { job_id: jobId });
+        });
+        socket.on("joined", () => setWsInfo("ws: joined"));
+        socket.on("progress", (msg: any) => {
+          if (msg?.job_id !== jobId) return;
+          setStatus((prev) => prev ? {
+            ...prev,
+            total: msg.total ?? prev.total,
+            done: new Array(msg.done || 0).fill(0).map((_,i)=>`done-${i}`),
+            failed: new Array(msg.failed || 0).fill(0).map((_,i)=>`fail-${i}`),
+            pending: new Array(Math.max(0,(msg.total||prev.total)-(msg.done||0)-(msg.failed||0))).fill(0).map((_,i)=>`pending-${i}`),
+          } : prev);
+        });
+      } catch {}
+    }
+    return () => {
+      clearInterval(t);
+      if (socket) { try { socket.close(); } catch {} }
+    };
   }, [jobId, headers]);
 
   useEffect(() => {
@@ -204,6 +230,7 @@ export default function AdminBatch() {
           <div className="text-sm">
             <b>Job:</b> {jobId}
           </div>
+          {!!wsInfo && <div className="text-xs text-gray-500">{wsInfo}</div>}
           <div className="w-full bg-gray-100 rounded h-3">
             <div
               className="h-3 bg-green-500 rounded"
