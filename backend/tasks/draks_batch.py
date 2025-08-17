@@ -27,6 +27,7 @@ from backend.observability.metrics import (
 from backend.utils.security import safe_cache_key
 
 from backend.draks.engine_min import DRAKSEngine
+from flask_socketio import SocketIO
 
 CFG = {
     "timeframe": "1h",
@@ -57,6 +58,9 @@ BATCH_JOB_TIMEOUT = int(os.getenv("BATCH_JOB_TIMEOUT", "300"))
 
 def _r() -> Redis:
     return Redis.from_url(REDIS_URL, decode_responses=True)
+
+# Socket.IO publisher (Redis MQ üzerinden)
+SIO = SocketIO(message_queue=REDIS_URL)
 
 
 def _df_from_ohlcv_rows(rows):
@@ -162,6 +166,12 @@ def _try_finalize(job_id: str):
             started_at = float(meta.get("started_at", time.time()))
             observe_batch_duration(max(0.0, time.time() - started_at))
             r.hset("draks:batch:index", job_id, int(time.time()))
+            # tamamlandı bildirimi
+            try:
+                SIO.emit("progress", {"job_id": job_id, "done": int(done), "failed": int(failed), "total": int(total), "finished": True},
+                         namespace="/batch", to=f"job:{job_id}")
+            except Exception:
+                pass
     except Exception:
         logger.exception("finalize failed")
 
@@ -189,6 +199,15 @@ def process_symbol(self, *, asset: str, symbol: str, timeframe: str, limit: int,
         logger.exception(f"batch item failed: {asset} {symbol} {timeframe} {limit}")
     finally:
         r.srem(_set_key(job_id, "pending"), symbol)
+        # anlık ilerleme bildir
+        try:
+            total = int(json.loads(r.get(_meta_key(job_id)) or "{}").get("total", 0))
+            done = r.scard(_set_key(job_id, "done"))
+            failed = r.scard(_set_key(job_id, "failed"))
+            SIO.emit("progress", {"job_id": job_id, "done": int(done), "failed": int(failed), "total": int(total)},
+                     namespace="/batch", to=f"job:{job_id}")
+        except Exception:
+            pass
         _try_finalize(job_id)
 
 

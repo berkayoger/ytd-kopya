@@ -175,6 +175,12 @@ def create_app() -> Flask:
         message_queue=Config.CELERY_BROKER_URL,
         cors_allowed_origins=Config.CORS_ORIGINS,
     )
+    # Socket.IO namespace'leri
+    try:
+        from backend.realtime.batch_ws import init_batch_namespace
+        init_batch_namespace(socketio, app)
+    except Exception as _e:  # pragma: no cover
+        logger.warning(f"Batch WS init skipped: {_e}")
 
     # Dev/Test için otomatik tablo oluşturma (Prod’da migration kullanın)
     with app.app_context():
