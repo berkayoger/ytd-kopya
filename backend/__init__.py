@@ -25,6 +25,7 @@ from backend.db import db as base_db
 from backend.limiting import limiter
 from backend.db.models import User, SubscriptionPlan
 from backend.models.plan import Plan  # noqa: F401 (kullanıldığı modüller olabilir)
+from backend.models.admin_test_run import AdminTestRun  # noqa: F401
 from backend.utils.usage_limits import check_usage_limit
 
 load_dotenv()

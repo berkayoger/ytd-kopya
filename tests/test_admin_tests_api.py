@@ -115,3 +115,26 @@ def test_status_endpoint(admin_client, monkeypatch):
     r2 = admin_client.get("/api/admin/tests/status")
     assert r2.status_code == 200
     assert r2.get_json()["allowed"] is False
+
+
+def test_history_endpoint(admin_client, monkeypatch):
+    """/history endpoint'i son çalıştırma kayıtlarını döner."""
+    _reload_tests_module(monkeypatch, allow=True)
+
+    summary_line = "=== 1 passed in 0.01s ===\n"
+    dummy_out = "collected 1 item\n\n" + summary_line
+
+    def fake_run(args, capture_output, text, timeout, cwd, env):
+        return DummyProc(returncode=0, stdout=dummy_out, stderr="")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+
+    r = admin_client.post("/api/admin/tests/run", json={"suite": "unit"})
+    assert r.status_code == 200
+
+    hist = admin_client.get("/api/admin/tests/history")
+    assert hist.status_code == 200
+    body = hist.get_json()
+    assert isinstance(body, list) and len(body) == 1
+    assert body[0]["suite"] == "unit"
+    assert body[0]["exit_code"] == 0
