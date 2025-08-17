@@ -16,6 +16,7 @@ export default function AdminTests() {
   const [res, setRes] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
 
   const headers = useMemo(() => {
     const h: Record<string, string> = { "Content-Type": "application/json" };
@@ -37,6 +38,19 @@ export default function AdminTests() {
       }
     })();
   }, [headers]);
+
+  // Geçmiş test çalıştırmalarını getir
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("/api/admin/tests/history", { headers, credentials: "include" });
+        const j = await r.json();
+        if (r.ok) setHistory(j);
+      } catch {
+        setHistory([]);
+      }
+    })();
+  }, [headers, res]);
 
   async function run() {
     setRunning(true);
@@ -117,6 +131,34 @@ export default function AdminTests() {
               <pre className="p-2 text-xs overflow-auto max-h-[50vh] whitespace-pre-wrap">{res.stderr || "(empty)"}</pre>
             </div>
           </div>
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-lg font-semibold mb-2">Geçmiş Çalıştırmalar</h2>
+          <table className="w-full text-sm border">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="p-2 border">Tarih</th>
+                <th className="p-2 border">Kullanıcı</th>
+                <th className="p-2 border">Suite</th>
+                <th className="p-2 border">Exit</th>
+                <th className="p-2 border">Özet</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map((h) => (
+                <tr key={h.id} className="odd:bg-white even:bg-gray-50">
+                  <td className="p-2 border">{new Date(h.created_at).toLocaleString()}</td>
+                  <td className="p-2 border">{h.username || "-"}</td>
+                  <td className="p-2 border">{h.suite}</td>
+                  <td className="p-2 border">{h.exit_code}</td>
+                  <td className="p-2 border">{h.summary_raw}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
