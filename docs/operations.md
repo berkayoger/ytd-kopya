@@ -50,3 +50,29 @@ scrape_configs:
 ### Güvenlik Sertleştirme
 - Alt süreç çalışma dizini repo kökü ile sınırlandırılmıştır.
 - Alt sürece aktarılan environment beyaz listelidir (PATH, PYTHONPATH, FLASK_ENV vb.). Gizli anahtarlar aktarılmaz.
+
+## Batch İşleri (Operasyon)
+
+### Env
+- `DRAKS_BATCH_ENABLED=true`
+- `BATCH_MAX_SYMBOLS=50`
+- `BATCH_MAX_CANDLES=500`
+- `BATCH_RATE_LIMIT=2/hour`
+- `BATCH_JOB_TIMEOUT=300`
+- `OHLCV_CACHE_TTL=600`, `DECISION_CACHE_TTL=600`
+
+### Metrikler
+- `draks_batch_submit_total{status}`
+- `draks_batch_items_total{asset,status}`
+- `draks_batch_job_duration_seconds`
+- `draks_ohlcv_cache_hit_total{asset}` / `draks_ohlcv_cache_miss_total{asset}`
+
+### Alarm Önerileri
+- Submit error rate artışı
+- Job duration p95 > 300s
+- Cache miss oranı %80'i geçerse veri kaynakları yavaş/arıza olabilir
+
+### Güvenlik
+- Rate-limit (BATCH_RATE_LIMIT) sıkı tutun
+- Feature-flag ile kapatma: `draks_batch`
+- Redis TTL'ler zorunlu, key'ler `draks:*` namespace'inde

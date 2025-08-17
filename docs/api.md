@@ -202,3 +202,80 @@ Yanıt:
   "meta": { "page": 1, "limit": 25, "total": 321 }
 }
 ```
+
+---
+
+# DRAKS Batch API
+Toplu analiz işleri: yüzlerce kripto/hisse sembolünü asenkron işler.
+
+## Özellikler
+- Celery kuyruklarıyla ölçeklenir
+- Redis cache: OHLCV ve karar çıktıları TTL'li tutulur
+- Plan limiti: `draks_batch`
+- Feature flag: `draks_batch` veya `DRAKS_BATCH_ENABLED=true`
+- Rate-limit: `.env` `BATCH_RATE_LIMIT` (örn `2/hour`)
+- Güvenlik: input validation, job ownership, cache key sanitization
+
+## POST /api/draks/batch/submit
+Yeni batch işi başlatır.
+
+Auth: JWT zorunlu + plan limiti `draks_batch`  
+Rate-limit: `BATCH_RATE_LIMIT` (varsayılan `2/hour`)  
+
+Body:
+```json
+{
+  "asset": "crypto",        // veya "equity"
+  "timeframe": "1h",        // whitelist: 1m..1w
+  "limit": 500,             // BATCH_MAX_CANDLES ile sınır
+  "symbols": ["BTC/USDT","ETH/USDT","AAPL"]   // max BATCH_MAX_SYMBOLS
+}
+```
+
+200/202 Yanıt:
+```json
+{ "job_id": "d3f4...", "total": 42 }
+```
+
+Hatalar: 400 (geçersiz girdi), 403 (flag/forbidden), 429 (rate).
+
+## GET /api/draks/batch/status/{job_id}
+Sadece iş sahibi (veya admin) görebilir.
+
+Yanıt:
+```json
+{
+  "job_id": "d3f4...",
+  "total": 42,
+  "pending": ["ETH/USDT"],
+  "done": ["BTC/USDT"],
+  "failed": ["DOGE/USDT"],
+  "started_at": 1734461000.123
+}
+```
+
+## GET /api/draks/batch/results/{job_id}
+Filtrelenmiş sonuçlar.
+
+Query: `decision=LONG|SHORT|HOLD` `status=ok|error` `symbol=BTC`
+
+Yanıt:
+```json
+{
+  "job_id": "d3f4...",
+  "items": [
+    { "symbol": "BTC/USDT", "status":"ok", "decision":"LONG", "score":0.42, "draks": { /* decision.run */ } },
+    { "symbol": "DOGE/USDT", "status":"error" }
+  ]
+}
+```
+
+## Notlar / Limitler
+- `BATCH_MAX_SYMBOLS` ve `BATCH_MAX_CANDLES` ile sınırlar ayarlanır.
+- `OHLCV_CACHE_TTL` ve `DECISION_CACHE_TTL` TTL uygular.
+
+## Güvenlik
+- Semboller regex ile doğrulanır (`^[A-Z0-9./:\-]{1,20}`)
+- Cache key'leri sanitize edilir (`safe_cache_key`).
+- Job sahipliği kontrolü yapılır (JWT user).
+- Rate-limit `.env` üzerinden yönetilir.

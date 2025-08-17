@@ -169,6 +169,7 @@ def create_app() -> Flask:
     db.init_app(app)
     limiter.init_app(app)
     celery_app.conf.update(app.config)
+    celery_app.conf.task_time_limit = int(os.getenv("BATCH_JOB_TIMEOUT", "300"))
     socketio.init_app(
         app,
         message_queue=Config.CELERY_BROKER_URL,
@@ -288,6 +289,7 @@ def create_app() -> Flask:
     from backend.api.admin.draks_monitor import admin_draks_bp
     from backend.api.admin.batch_controls import batch_controls_bp
     from backend.api.admin.tests import admin_tests_bp
+    from backend.api.draks.batch import draks_batch_bp
     from backend.api.limits import bp as limits_bp
     from backend.api.ta_routes import bp as ta_bp
     from backend.api.public.technical import technical_bp
@@ -336,6 +338,7 @@ def create_app() -> Flask:
     app.register_blueprint(admin_draks_bp)
     app.register_blueprint(batch_controls_bp)
     app.register_blueprint(admin_tests_bp)
+    app.register_blueprint(draks_batch_bp, url_prefix="/api/draks")
     app.register_blueprint(decision_bp)
     app.register_blueprint(subscriptions_bp)
     app.register_blueprint(limits_bp)
