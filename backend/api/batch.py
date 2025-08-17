@@ -15,6 +15,7 @@ from backend.utils.security import (
 from backend.observability.anomaly import record_submit
 from backend.observability.metrics import inc_error
 from backend import limiter, celery_app, socketio
+from flask_socketio import SocketIO
 
 batch_bp = Blueprint("batch", __name__, url_prefix="/api/batch")
 
@@ -118,7 +119,11 @@ def run_batch(self, *, symbols: List[str], timeframe: str, asset: str):
     """
     import psutil, os, time
     mem_limit_mb = _conf_int("CELERY_WORKER_MEMORY_LIMIT_MB", 512)
+    # Socket.IO publisher (Redis MQ üzerinden; backend.socketio zaten MQ ile bağlı)
+    sio = SocketIO(message_queue=os.getenv("REDIS_URL", "redis://localhost:6379/0"))
     results = []
+    total = len(symbols)
+    done = 0
     for s in symbols:
         # Basit RAM kontrolü
         try:
@@ -130,4 +135,15 @@ def run_batch(self, *, symbols: List[str], timeframe: str, asset: str):
         # Simüle analiz (gerçek hayatta cache + ENGINE.run + karar)
         time.sleep(0.01)
         results.append({"symbol": s, "timeframe": timeframe, "asset": asset, "score": 0.0, "decision": "HOLD"})
+        done += 1
+        try:
+            sio.emit("progress", {"job_id": self.request.id, "done": done, "failed": 0, "total": total},
+                     namespace="/batch", to=f"job:{self.request.id}")
+        except Exception:
+            pass
+    try:
+        sio.emit("progress", {"job_id": self.request.id, "done": done, "failed": 0, "total": total, "finished": True},
+                 namespace="/batch", to=f"job:{self.request.id}")
+    except Exception:
+        pass
     return {"items": results, "count": len(results)}
