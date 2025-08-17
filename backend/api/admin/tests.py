@@ -181,12 +181,37 @@ def tests_status():
 @jwt_required_if_not_testing()
 @admin_required()
 def tests_history():
-    """Geçmiş test çalıştırma kayıtlarını döner."""
-    from backend.models.admin_test_run import AdminTestRun
+    """Geçmiş test çalıştırma kayıtlarını döner (filtreli)."""
+    from backend.models.admin_test_run import AdminTestRun, db
+    from sqlalchemy import and_
 
-    q = (
-        AdminTestRun.query.order_by(AdminTestRun.created_at.desc()).limit(20).all()
-    )
+    q = AdminTestRun.query
+
+    suite = request.args.get("suite")
+    if suite:
+        q = q.filter(AdminTestRun.suite == suite)
+
+    exit_code = request.args.get("exit_code")
+    if exit_code is not None:
+        try:
+            q = q.filter(AdminTestRun.exit_code == int(exit_code))
+        except ValueError:
+            pass
+
+    username = request.args.get("username")
+    if username:
+        q = q.filter(AdminTestRun.username.ilike(f"%{username}%"))
+
+    start = request.args.get("start")
+    end = request.args.get("end")
+    if start:
+        q = q.filter(AdminTestRun.created_at >= start)
+    if end:
+        q = q.filter(AdminTestRun.created_at <= end)
+
+    q = q.order_by(AdminTestRun.created_at.desc()).limit(50)
+    results = q.all()
+
     user = g.get("user")
     if user:
         create_log(
@@ -195,8 +220,8 @@ def tests_history():
             ip_address=request.remote_addr or "unknown",
             action="admin_tests_history",
             target="/api/admin/tests/history",
-            description="list last 20 runs",
+            description=f"filters suite={suite} exit_code={exit_code} username={username}",
             status="success",
             user_agent=request.headers.get("User-Agent", ""),
         )
-    return jsonify([r.to_dict() for r in q]), 200
+    return jsonify([r.to_dict() for r in results]), 200

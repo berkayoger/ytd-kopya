@@ -138,3 +138,23 @@ def test_history_endpoint(admin_client, monkeypatch):
     assert isinstance(body, list) and len(body) == 1
     assert body[0]["suite"] == "unit"
     assert body[0]["exit_code"] == 0
+
+
+def test_history_filters(admin_client, monkeypatch):
+    """/history filtre parametreleriyle çalışır."""
+    _reload_tests_module(monkeypatch, allow=True)
+
+    dummy_out = "collected 1 item\n\n=== 1 passed in 0.01s ===\n"
+
+    def fake_run(args, capture_output, text, timeout, cwd, env):
+        return DummyProc(returncode=0, stdout=dummy_out, stderr="")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+
+    # 2 kayıt ekle
+    admin_client.post("/api/admin/tests/run", json={"suite": "unit"})
+    admin_client.post("/api/admin/tests/run", json={"suite": "smoke"})
+
+    r = admin_client.get("/api/admin/tests/history?suite=unit&exit_code=0")
+    data = r.get_json()
+    assert all(item["suite"] == "unit" for item in data)
