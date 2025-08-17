@@ -286,12 +286,14 @@ def create_app() -> Flask:
     from backend.api.admin.logs import admin_logs_bp
     from backend.api.admin.feature_flags import feature_flags_bp
     from backend.api.admin.draks_monitor import admin_draks_bp
+    from backend.api.admin.batch_controls import batch_controls_bp
     from backend.api.admin.tests import admin_tests_bp
     from backend.api.limits import bp as limits_bp
     from backend.api.ta_routes import bp as ta_bp
     from backend.api.public.technical import technical_bp
     from backend.api.public.subscriptions import subscriptions_bp
     from backend.api.decision import decision_bp
+    from backend.api.batch import batch_bp
 
     # Ağır bağımlılıkları gerektiren blueprint'i CI/Smoke ortamında yükleme
     def _maybe_import_predict_bp():
@@ -332,10 +334,12 @@ def create_app() -> Flask:
     app.register_blueprint(technical_bp)
     app.register_blueprint(feature_flags_bp, url_prefix="/api/admin")
     app.register_blueprint(admin_draks_bp)
+    app.register_blueprint(batch_controls_bp)
     app.register_blueprint(admin_tests_bp)
     app.register_blueprint(decision_bp)
     app.register_blueprint(subscriptions_bp)
     app.register_blueprint(limits_bp)
+    app.register_blueprint(batch_bp)
 
     # --- DRAKS Karar Motoru blueprint ---
     try:
