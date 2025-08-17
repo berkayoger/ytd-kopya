@@ -7,6 +7,7 @@ from backend.auth.middlewares import admin_required
 from backend.utils.logger import create_log
 from backend.observability.metrics import inc_error
 from backend import limiter
+from loguru import logger
 
 admin_tests_bp = Blueprint("admin_tests", __name__, url_prefix="/api/admin/tests")
 
@@ -127,6 +128,24 @@ def run_tests():
                 user_agent=request.headers.get("User-Agent", ""),
             )
 
+        # Çalıştırma kaydını DB'ye yaz
+        try:
+            from backend.models.admin_test_run import AdminTestRun, db
+
+            run = AdminTestRun(
+                user_id=str(user.id) if user else None,
+                username=user.username if user else None,
+                suite=suite,
+                exit_code=proc.returncode,
+                summary_raw=result["summary"]["raw"],
+            )
+            db.session.add(run)
+            db.session.commit()
+        except Exception as e:
+            logger.exception("Admin test run DB kaydı başarısız")
+            inc_error("admin_test_run_db")
+            db.session.rollback()
+
         status = 200 if proc.returncode == 0 else 202
         return jsonify(result), status
 
@@ -156,3 +175,28 @@ def tests_status():
             user_agent=request.headers.get("User-Agent", ""),
         )
     return jsonify({"allowed": bool(_ALLOW)}), 200
+
+
+@admin_tests_bp.get("/history")
+@jwt_required_if_not_testing()
+@admin_required()
+def tests_history():
+    """Geçmiş test çalıştırma kayıtlarını döner."""
+    from backend.models.admin_test_run import AdminTestRun
+
+    q = (
+        AdminTestRun.query.order_by(AdminTestRun.created_at.desc()).limit(20).all()
+    )
+    user = g.get("user")
+    if user:
+        create_log(
+            user_id=str(user.id),
+            username=user.username,
+            ip_address=request.remote_addr or "unknown",
+            action="admin_tests_history",
+            target="/api/admin/tests/history",
+            description="list last 20 runs",
+            status="success",
+            user_agent=request.headers.get("User-Agent", ""),
+        )
+    return jsonify([r.to_dict() for r in q]), 200
