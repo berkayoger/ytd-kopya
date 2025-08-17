@@ -3,9 +3,11 @@
 import hmac
 import hashlib
 import base64
+import os
 from typing import Optional, Tuple
-from flask import request, jsonify, Response
+from flask import request, jsonify, Response, g
 from loguru import logger
+from redis import Redis
 
 def verify_iyzico_signature(secret: str, data: bytes, signature: str) -> bool:
     """
@@ -109,3 +111,40 @@ def safe_cache_key(prefix: str, *parts: str) -> str:
         x = re.sub(r"[^A-Z0-9./:\-]", "", str(p).upper())
         clean.append(x[:32])
     return f"{prefix}:" + ":".join(clean)
+
+# --- Güvenlik Sertleştirme Ekleri ---
+
+def ip_allowed(ip: Optional[str]) -> bool:
+    allow = os.getenv("BATCH_IP_ALLOWLIST", "").strip()
+    if not allow:
+        return True
+    allowset = {x.strip() for x in allow.split(",") if x.strip()}
+    return (ip or "") in allowset
+
+def is_2fa_required() -> bool:
+    return os.getenv("BATCH_REQUIRE_2FA", "false").strip().lower() in {"1","true","yes","on"}
+
+def is_user_2fa_ok() -> bool:
+    """
+    Basit kontrol: Kullanıcı objesinde 'two_factor_enabled' ve 'last_2fa_verified_at' varsayılsın.
+    Yoksa false dönmeyelim; sadece enabled ise son doğrulama var mı diye bakalım.
+    """
+    user = getattr(g, "user", None)
+    if not user:
+        return False
+    enabled = getattr(user, "two_factor_enabled", False)
+    if not enabled:
+        return True  # 2FA aktif değilse, zorunluluk yoksa geç
+    return bool(getattr(user, "last_2fa_verified_at", None))
+
+def need_admin_approval(symbol_count: int) -> bool:
+    try:
+        thr = int(os.getenv("BATCH_ADMIN_APPROVAL_THRESHOLD", "25"))
+    except Exception:
+        thr = 25
+    return symbol_count >= max(1, thr)
+
+def has_admin_approval(r: Redis, user_id: Optional[str]) -> bool:
+    if not user_id:
+        return False
+    return bool(r.get(f"batch_admin_approval:{user_id}"))
