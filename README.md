@@ -1,4 +1,25 @@
-# YTD Kripto
+# YTD-Kopya
+
+> **Security-hardening aktif**  
+> Prod/staging kurulumunda WSGI entrypoint olarak **`app.secure_app:app`** kullanın. Bu sarmalayıcı mevcut Flask uygulamasını otomatik bulur ve:
+> - CORS allowlist,
+> - Global rate limit + login özel limit,
+> - HSTS/CSP ve temel güvenlik başlıkları
+> katmanlarını uygular.
+
+## Kurulum
+
+1. Ortam değişkenlerini `.env.example` üzerinden oluşturun.
+2. Veritabanı migrasyonlarını çalıştırın.
+3. Uygulamayı başlatın.
+
+### Prod güvenlik notları (özet)
+- JWT: HS512, kısa ömürlü access (15 dk), refresh (30 gün) + **rotate-on-use** ve **revoke (Redis JTI)**.
+- Sırlar: **Secrets Manager/Key Vault**; `JWT_KEY_VERSION` ile rotasyon. `scripts/rotate_jwt_secret.py` aracı mevcuttur.
+- Giriş güvenliği: parola politikası (Argon2id) + pwned kontrolü, brute-force lockout, route başına rate-limit.
+- CSRF: Cookie tabanlı oturum kullanıyorsanız HMAC+timestamp token zorunludur.
+- Web güvenliği: HSTS (preload), katı CSP, XFO=DENY, XCTO=nosniff.
+- CI: `pip-audit` ve **SBOM** üretimi (`.github/workflows/security.yml`).
 
 Bu proje Flask tabanlı bir kripto para analiz uygulamasıdır. Depo iki ana kısımdan oluşur:
 
