@@ -17,6 +17,10 @@ export default function AdminTests() {
   const [error, setError] = useState<string | null>(null);
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [filterSuite, setFilterSuite] = useState<string>("");
+  const [filterExit, setFilterExit] = useState<string>("");
+  const [filterUser, setFilterUser] = useState<string>("");
+  const [filterDate, setFilterDate] = useState<{ start: string; end: string }>({ start: "", end: "" });
 
   const headers = useMemo(() => {
     const h: Record<string, string> = { "Content-Type": "application/json" };
@@ -40,17 +44,25 @@ export default function AdminTests() {
   }, [headers]);
 
   // Geçmiş test çalıştırmalarını getir
+  async function fetchHistory() {
+    try {
+      const params = new URLSearchParams();
+      if (filterSuite) params.append("suite", filterSuite);
+      if (filterExit) params.append("exit_code", filterExit);
+      if (filterUser) params.append("username", filterUser);
+      if (filterDate.start) params.append("start", filterDate.start);
+      if (filterDate.end) params.append("end", filterDate.end);
+      const r = await fetch(`/api/admin/tests/history?${params.toString()}`, { headers, credentials: "include" });
+      const j = await r.json();
+      if (r.ok) setHistory(j);
+    } catch {
+      setHistory([]);
+    }
+  }
+
   useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetch("/api/admin/tests/history", { headers, credentials: "include" });
-        const j = await r.json();
-        if (r.ok) setHistory(j);
-      } catch {
-        setHistory([]);
-      }
-    })();
-  }, [headers, res]);
+    fetchHistory();
+  }, [headers, res, filterSuite, filterExit, filterUser, filterDate]);
 
   async function run() {
     setRunning(true);
@@ -136,6 +148,23 @@ export default function AdminTests() {
 
       {history.length > 0 && (
         <div className="mt-6">
+          <div className="mb-3 space-x-2 flex flex-wrap items-center">
+            <select value={filterSuite} onChange={(e) => setFilterSuite(e.target.value)} className="border rounded p-1">
+              <option value="">Suite (hepsi)</option>
+              <option value="unit">unit</option>
+              <option value="smoke">smoke</option>
+              <option value="all">all</option>
+            </select>
+            <select value={filterExit} onChange={(e) => setFilterExit(e.target.value)} className="border rounded p-1">
+              <option value="">Exit Code (hepsi)</option>
+              <option value="0">0 (başarılı)</option>
+              <option value="1">1</option>
+            </select>
+            <input type="text" placeholder="Kullanıcı" value={filterUser} onChange={(e) => setFilterUser(e.target.value)} className="border rounded p-1" />
+            <input type="date" value={filterDate.start} onChange={(e) => setFilterDate({ ...filterDate, start: e.target.value })} className="border rounded p-1" />
+            <input type="date" value={filterDate.end} onChange={(e) => setFilterDate({ ...filterDate, end: e.target.value })} className="border rounded p-1" />
+            <button onClick={fetchHistory} className="px-2 py-1 bg-blue-600 text-white rounded">Filtrele</button>
+          </div>
           <h2 className="text-lg font-semibold mb-2">Geçmiş Çalıştırmalar</h2>
           <table className="w-full text-sm border">
             <thead className="bg-gray-100">
