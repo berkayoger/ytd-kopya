@@ -1,5 +1,7 @@
+
 # Curated deps for pip-audit (yükseltilebilir ve güvenli pin'ler)
 # Not: üretim SBOM'u tüm requirements.txt'tan çıkarılıyor; audit bu hafif set üzerinde koşuyor.
+
 Flask==2.3.3
 Flask-SQLAlchemy==3.1.1
 redis==5.0.4

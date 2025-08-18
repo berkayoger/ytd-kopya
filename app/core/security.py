@@ -7,7 +7,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Tuple
 
-from jose import jwt
+import jwt  # PyJWT
 from passlib.context import CryptContext
 from argon2 import PasswordHasher
 import pwnedpasswords
