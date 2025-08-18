@@ -1,5 +1,15 @@
+## Security: never commit secrets / private keys / local logs
+.env
+.env.*
+*.pem
+*.key
+secrets*.json
+logs/
+sbom.json
+
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
 node_modules/
 frontend/package-lock.json
 .coverage
