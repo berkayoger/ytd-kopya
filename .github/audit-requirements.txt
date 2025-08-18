@@ -1,0 +1,16 @@
+# Audit için küratörlü, hafif ve güvenli set
+Flask==2.3.3
+Flask-SQLAlchemy==3.1.1
+redis==5.0.4
+passlib==1.7.4
+argon2-cffi==23.1.0
+PyJWT==2.8.0
+cryptography==43.0.1
+email-validator==2.1.0
+pyotp==2.9.0
+slowapi==0.1.9
+python-multipart==0.0.18
+# Transitif sabitlemeler (audit false positive kapatır)
+future==0.18.3
+# Not: boto3/azure/torch gibi ağır veya urllib3<2 kısıtı olan paketler
+# audit kapsamı dışında tutuldu; SBOM tüm requirements.txt'tan üretilir.
