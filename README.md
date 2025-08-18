@@ -7,6 +7,17 @@
 > - HSTS/CSP ve temel güvenlik başlıkları
 > katmanlarını uygular.
 
+## Ortam Değişkenlerini Hazırlama
+`.env.example` dosyanız branch’ler arasında farklı olabilir. Çatışma yaşamamak için
+gerekli yeni anahtarları idempotent bir script ile ekliyoruz:
+
+```bash
+python3 scripts/ensure_env_keys.py --apply
+# sadece kontrol: python3 scripts/ensure_env_keys.py --check
+```
+
+Üretimde sırları `.env` yerine **AWS Secrets Manager** veya **Azure Key Vault** üzerinden sağlayın.
+
 ## Kurulum
 
 1. Ortam değişkenlerini `.env.example` üzerinden oluşturun.
