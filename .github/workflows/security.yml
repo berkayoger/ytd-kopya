@@ -1,0 +1,36 @@
+name: security
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  deps-audit-sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install audit deps (curated)
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r .github/audit-requirements.txt
+          pip install pip-audit cyclonedx-bom
+      - name: pip check
+        run: pip check
+      - name: pip-audit
+        run: pip-audit -r .github/audit-requirements.txt --progress-spinner=off --strict
+      - name: SBOM (CycloneDX)
+        # SBOM'u tam requirements'tan üret – üretim şeffaflığı
+        run: cyclonedx-bom -r requirements.txt -o sbom.json
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+
