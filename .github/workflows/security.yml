@@ -21,6 +21,10 @@ jobs:
 
           cache: 'pip'
 
+      - name: Verify .env.example keys
+        run: |
+          python scripts/ensure_env_keys.py --check
+
       # Dosya eksikse CI içinde oluştur (merge’lerde kırılmasın)
 
       - name: Ensure curated audit requirements file
