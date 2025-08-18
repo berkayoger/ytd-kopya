@@ -16,18 +16,18 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
-      - name: Install audit deps (curated)
+      - name: Install audit deps (curated + tools)
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install -r .github/audit-requirements.txt
-          pip install pip-audit cyclonedx-bom
+          python -m pip install --upgrade pip-audit cyclonedx-bom
       - name: pip check
         run: pip check
       - name: pip-audit
         run: pip-audit -r .github/audit-requirements.txt --progress-spinner=off --strict
       - name: SBOM (CycloneDX)
-        # SBOM'u tam requirements'tan üret – üretim şeffaflığı
-        run: cyclonedx-bom -r requirements.txt -o sbom.json
+        # SBOM'u tam requirements'tan üret – modül çağrısı ile daha taşınabilir. CLI yoksa fallback.
+        run: python -m cyclonedx_py -r requirements.txt -o sbom.json || cyclonedx-bom -r requirements.txt -o sbom.json
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
