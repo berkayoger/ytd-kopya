@@ -1,4 +1,7 @@
-# Audit için küratörlü, hafif ve güvenli set
+
+# Curated deps for pip-audit (yükseltilebilir ve güvenli pin'ler)
+# Not: üretim SBOM'u tüm requirements.txt'tan çıkarılıyor; audit bu hafif set üzerinde koşuyor.
+
 Flask==2.3.3
 Flask-SQLAlchemy==3.1.1
 redis==5.0.4
@@ -10,7 +13,8 @@ email-validator==2.1.0
 pyotp==2.9.0
 slowapi==0.1.9
 python-multipart==0.0.18
-# Transitif sabitlemeler (audit false positive kapatır)
 future==0.18.3
-# Not: boto3/azure/torch gibi ağır veya urllib3<2 kısıtı olan paketler
-# audit kapsamı dışında tutuldu; SBOM tüm requirements.txt'tan üretilir.
+
+# Notlar:
+# - boto3/azure sdk/torch gibi paketler audit kapsamı dışında (vendor kısıtları).
+# - SBOM (CycloneDX) yine requirements.txt grafından üretildiğinden şeffaflık korunur.
