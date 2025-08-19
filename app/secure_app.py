@@ -10,7 +10,9 @@ gunicorn örneği:
 import importlib
 import os
 from typing import Optional
+
 from app.security_bootstrap import bootstrap_security
+from app.auto_register import register_all
 
 def _resolve_candidate(spec: str):
     mod, _, attr = spec.partition(":")
@@ -42,4 +44,7 @@ def _load_app_from_candidates() -> Optional[object]:
 # Gerçek uygulamayı çözüp güvenlik katmanlarını uygula
 _real_app = _load_app_from_candidates()
 app = bootstrap_security(_real_app)
+
+# Otomatik blueprint ve veritabanı kayıtları
+register_all(app)
 
