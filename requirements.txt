@@ -154,3 +154,7 @@ argon2-cffi==23.1.0
 
 # PyJWT pin (flask_jwt_extended uyumu için)
 PyJWT==2.8.0
+stripe==8.10.0
+#
+# Not: Craftgate için projede stub provider kullanıyoruz (app/billing/providers/stub_craftgate.py).
+# Resmi bir Python SDK/PyPI paketi bulunmadığından craftgate bağımlılığını eklemiyoruz.
