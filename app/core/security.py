@@ -349,6 +349,21 @@ def create_refresh_token(subject: str, extra: Optional[Dict[str, Any]] = None, e
         claims.update(extra)
     return _encode_jwt(claims, version=ver)
 
+def create_email_token(subject: str, expires_minutes: Optional[int] = None) -> str:
+    """E-posta doğrulama tokenı üret."""
+    ver = int(os.getenv("JWT_KEY_VERSION", "1"))
+    exp_m = int(expires_minutes or os.getenv("EMAIL_TOKEN_EXPIRES_MINUTES", str(60 * 24)))
+    now = datetime.now(timezone.utc)
+    claims: Dict[str, Any] = {
+        "sub": str(subject),
+        "iat": int(now.timestamp()),
+        "exp": int(_jwt_exp(exp_m).timestamp()),
+        "jti": uuid.uuid4().hex,
+        "t": "email",
+        "ver": ver,
+    }
+    return _encode_jwt(claims, version=ver)
+
 def generate_tokens(user_id: str) -> Tuple[str, str]:
     """Belirtilen kullanıcı için access ve refresh token üret."""
     access = create_access_token(subject=str(user_id))

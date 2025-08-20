@@ -9,6 +9,7 @@ from ..core.security import (
     get_password_hash,
     verify_password,
     create_access_token,
+    create_email_token,
     create_refresh_token,
     rotate_refresh_token,
     record_failed_login,
@@ -83,7 +84,7 @@ def register():
     )
     db.session.add(user)
     db.session.commit()
-    token = create_access_token(subject=user.id, extra={"t": "email"}, expires_minutes=60 * 24)
+    token = create_email_token(subject=user.id, expires_minutes=60 * 24)
     verify_url = f"{os.getenv('SITE_URL','').rstrip('/')}/api/auth/verify?token={token}"
     _send_email(email, "Verify your email", f"Click to verify: {verify_url}")
     return jsonify({"status": "ok"}), 201
@@ -95,7 +96,7 @@ def verify():
     if not token:
         return jsonify({"detail": "missing token"}), 422
     try:
-        p = decode_token(token)
+        p = decode_token(token, require_type="email")
         uid = p["sub"]
     except Exception:
         return jsonify({"detail": "invalid token"}), 401
