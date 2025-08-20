@@ -3,6 +3,9 @@ from typing import List, Optional
 from flask import request, jsonify, make_response, g
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from limits import parse
+from limits.storage import storage_from_string
+from limits.strategies import MovingWindowRateLimiter
 from uuid import uuid4
 
 
@@ -145,16 +148,21 @@ def bootstrap_security(app):
     login_rl = os.getenv("LOGIN_RATE_LIMIT", "").strip()
     if login_rl:
         # Basit path eşlemesi: /login ve /api/auth/login
+        storage = storage_from_string(os.getenv("REDIS_URL", "memory://"))
+        strategy = MovingWindowRateLimiter(storage)
+        limit = parse(login_rl)
+
         def _before_request():
             path = request.path.lower()
             if path.endswith("/login") or path.endswith("/auth/login"):
-                # endpoint dekoratörünü bilmediğimiz için direkt limiter’a vuruyoruz
-                key = f"login:{request.remote_addr}"
-                # Dolum: 1 istek (otomatik pencere yönetimi storage katmanında)
-                try:
-                    limiter.hit(key)
-                except Exception:
-                    pass
+                addr = get_remote_address()
+                key = f"login:{addr}"
+                allowed = strategy.hit(limit, key)
+                if not allowed:
+                    # Limit aşıldığında uyarı logu yaz ve isteği engelle
+                    app.logger.warning("Giriş rate limit aşıldı ip=%s", addr)
+                    return jsonify({"detail": "Too Many Requests"}), 429
+
         app.before_request(_before_request)
 
     return app
