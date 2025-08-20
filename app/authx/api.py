@@ -96,7 +96,12 @@ def verify():
     if not token:
         return jsonify({"detail": "missing token"}), 422
     try:
-        p = decode_token(token, require_type="email")
+        # Token mutlaka e-posta doğrulama niyetinde olmalı
+        p = decode_token(token)
+        token_type = (p.get("type") or "").lower()
+        token_hint = (p.get("t") or "").lower()
+        if token_type != "email" and token_hint != "email":
+            return jsonify({"detail": "invalid token"}), 401
         uid = p["sub"]
     except Exception:
         return jsonify({"detail": "invalid token"}), 401
