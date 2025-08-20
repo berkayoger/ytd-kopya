@@ -112,10 +112,11 @@ def _setup_security_headers(app):
             if request.is_secure and hsts_age > 0:
                 resp.headers["Strict-Transport-Security"] = f"max-age={hsts_age}; includeSubDomains; preload"
             if csp:
-                resp.headers["Content-Security-Policy"] = csp
-                # Modern eşdeğer: clickjacking’e karşı
-                if "frame-ancestors" not in csp:
-                    resp.headers.setdefault("Content-Security-Policy", csp + "; frame-ancestors 'none'")
+                # CSP'yi gerektiğinde frame-ancestors ile genişlet
+                final_csp = csp
+                if "frame-ancestors" not in csp.replace(" ", ""):
+                    final_csp = f"{csp}; frame-ancestors 'none'"
+                resp.headers["Content-Security-Policy"] = final_csp
             resp.headers["X-Frame-Options"] = "DENY"
             resp.headers["X-Content-Type-Options"] = "nosniff"
             resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
