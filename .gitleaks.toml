@@ -1,0 +1,10 @@
+[allowlist]
+description = "Allowlist for non-sensitive example files"
+paths = [
+  '''^\.env\.example$''',
+  '''^docs/.*$'''
+]
+
+[rules]
+# Varsayılan kuralları kullan (yeni sızıntıları yakala). Burada özel rule tanımlamıyoruz.
+
