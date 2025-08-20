@@ -349,6 +349,12 @@ def create_refresh_token(subject: str, extra: Optional[Dict[str, Any]] = None, e
         claims.update(extra)
     return _encode_jwt(claims, version=ver)
 
+def generate_tokens(user_id: str) -> Tuple[str, str]:
+    """Belirtilen kullanıcı için access ve refresh token üret."""
+    access = create_access_token(subject=str(user_id))
+    refresh = create_refresh_token(subject=str(user_id))
+    return access, refresh
+
 def decode_token(token: str, require_type: Optional[str] = None) -> Dict[str, Any]:
     """Decode token trying current and previous key versions (graceful rotation)."""
     cur = int(os.getenv("JWT_KEY_VERSION", "1"))

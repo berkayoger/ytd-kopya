@@ -1,4 +1,6 @@
 import os
+import re
+from typing import List
 from flask import Blueprint, request, jsonify, current_app
 
 from ..models.db import db, User
@@ -38,6 +40,25 @@ def _send_email(to, subject, body):
     current_app.logger.info("[EMAIL] to=%s subject=%s body=%s", to, subject, body)
 
 
+def validate_password(password: str) -> List[str]:
+    """Şifre için temel güvenlik kontrolleri"""
+    errors: List[str] = []
+    if len(password) < 12:
+        errors.append("Password must be at least 12 characters")
+    if not re.search(r"[A-Z]", password):
+        errors.append("Password must contain uppercase letter")
+    if not re.search(r"[a-z]", password):
+        errors.append("Password must contain lowercase letter")
+    if not re.search(r"[0-9]", password):
+        errors.append("Password must contain number")
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        errors.append("Password must contain special character")
+    common = ["password", "123456", "qwerty", "admin"]
+    if any(c in password.lower() for c in common):
+        errors.append("Password is too common")
+    return errors
+
+
 @bp.post("/register")
 def register():
     data = _json()
@@ -45,9 +66,12 @@ def register():
     if miss:
         return jsonify({"detail": f"Missing: {miss}"}), 422
     email = validate_and_normalize_email(data["email"])
+    password_errors = validate_password(data.get("password", ""))
     ok, msg = PasswordPolicy.validate(data["password"])
     if not ok:
-        return jsonify({"detail": msg}), 422
+        password_errors.append(msg)
+    if password_errors:
+        return jsonify({"errors": password_errors}), 422
     if not data.get("accept_tos"):
         return jsonify({"detail": "Terms must be accepted"}), 422
     if User.query.filter_by(email=email).first():
