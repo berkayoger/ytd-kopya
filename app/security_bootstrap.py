@@ -155,9 +155,14 @@ def bootstrap_security(app):
         def _before_request():
             path = request.path.lower()
             if path.endswith("/login") or path.endswith("/auth/login"):
-                key = f"login:{get_remote_address()}"
+
+                addr = get_remote_address()
+                key = f"login:{addr}"
                 allowed = strategy.hit(limit, key)
                 if not allowed:
+                    # Limit aşıldığında uyarı logu yaz ve isteği engelle
+                    app.logger.warning("Giriş rate limit aşıldı ip=%s", addr)
+
                     return jsonify({"detail": "Too Many Requests"}), 429
 
         app.before_request(_before_request)
