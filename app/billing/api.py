@@ -28,6 +28,24 @@ def _auth_user():
         return None
 
 
+@bp.get("/usage")
+def usage():
+    user = _auth_user()
+    if not user:
+        return jsonify({"detail": "unauthorized"}), 401
+    key = f"usage:{user.id}"
+    # _redis_client decode_responses=True ile döner; .decode() gereksiz ve hata üretir.
+    data = _redis_client().hgetall(key) or {}
+    # string->int çevirmeye çalış, sayı değilse olduğu gibi bırak
+    norm = {}
+    for k, v in data.items():
+        try:
+            norm[k] = int(v)
+        except Exception:
+            norm[k] = v
+    return jsonify(norm), 200
+
+
 @bp.get("/plans")
 def plans():
     rows = Plan.query.filter_by(active=True).all()
