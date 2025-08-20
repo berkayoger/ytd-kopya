@@ -13,6 +13,7 @@ from typing import Optional
 
 from app.security_bootstrap import bootstrap_security
 from app.auto_register import register_all
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 def _resolve_candidate(spec: str):
     mod, _, attr = spec.partition(":")
@@ -43,6 +44,19 @@ def _load_app_from_candidates() -> Optional[object]:
 
 # Gerçek uygulamayı çözüp güvenlik katmanlarını uygula
 _real_app = _load_app_from_candidates()
+
+# Reverse proxy arkasında güvenli şema/host bilgisini doğru okuyabilmek için (HSTS, secure cookie, is_secure)
+def _maybe_apply_proxy_fix(app):
+    if os.getenv("PROXY_FIX_ENABLED", "true").lower() == "true":
+        x_for   = int(os.getenv("PROXY_FIX_X_FOR", "1"))
+        x_proto = int(os.getenv("PROXY_FIX_X_PROTO", "1"))
+        x_host  = int(os.getenv("PROXY_FIX_X_HOST", "1"))
+        x_port  = int(os.getenv("PROXY_FIX_X_PORT", "1"))
+        x_pref  = int(os.getenv("PROXY_FIX_X_PREFIX", "0"))
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=x_for, x_proto=x_proto, x_host=x_host, x_port=x_port, x_prefix=x_pref)
+    return app
+
+_real_app = _maybe_apply_proxy_fix(_real_app)
 app = bootstrap_security(_real_app)
 
 # Otomatik blueprint ve veritabanı kayıtları
