@@ -22,7 +22,9 @@ def register_all(app) -> None:
     seed_plans(app)
     from .authx.api import bp as auth_bp
     from .billing.api import bp as billing_bp
+    from .core.csrf_api import bp as csrf_bp
 
     _register_if_missing(app, auth_bp, "/api/auth")
     _register_if_missing(app, billing_bp, "/api/billing")
+    _register_if_missing(app, csrf_bp, "/api/csrf")
 
