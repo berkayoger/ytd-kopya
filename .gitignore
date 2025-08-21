@@ -6,6 +6,7 @@
 .env.production
 .env.*
 !.env.example
+!.env.production.example
 
 # Secret files
 *.key
