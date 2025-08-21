@@ -50,7 +50,7 @@ def setup_development_env() -> None:
         "REDIS_URL": "redis://localhost:6379/0",
         "LOG_LEVEL": "INFO",
         "LOG_FILE": "logs/app.log",
-        "RATELIMIT_DEFAULT": "100 per hour",
+        "RATE_LIMIT_DEFAULT": "100/minute",
     }
     with open(env_file, "w") as f:
         f.write("# Otomatik oluşturulan geliştirme yapılandırması\n")
