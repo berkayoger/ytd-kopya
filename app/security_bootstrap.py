@@ -1,6 +1,6 @@
 import os
 from typing import List, Optional
-from flask import request, jsonify, make_response, g
+from flask import request, jsonify, make_response, g, redirect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from limits import parse
@@ -32,8 +32,14 @@ def _origin_allowed(origin: Optional[str], allowlist: List[str]) -> bool:
 
 
 def _setup_rate_limit(app):
-    default_limits = [os.getenv("RATE_LIMIT_DEFAULT", "100/minute")]
-    storage_uri = os.getenv("REDIS_URL", "memory://")
+    # Önce app.config, yoksa env
+    conf_limit = app.config.get("RATE_LIMIT_DEFAULT")
+    default_limits = [conf_limit or os.getenv("RATE_LIMIT_DEFAULT", "100/minute")]
+    storage_uri = (
+        app.config.get("RATE_LIMIT_STORAGE_URL")
+        or os.getenv("RATE_LIMIT_STORAGE_URL")
+        or os.getenv("REDIS_URL", "memory://")
+    )
     limiter = Limiter(key_func=get_remote_address, storage_uri=storage_uri, default_limits=default_limits)
     limiter.init_app(app)
     app.extensions["limiter"] = limiter
@@ -106,9 +112,11 @@ def _setup_error_handlers(app):
 
 
 def _setup_security_headers(app):
-    hsts_age = int(os.getenv("HSTS_MAX_AGE", "0"))
-    csp = os.getenv("CSP_POLICY", "")
-    enable = os.getenv("SECURE_HEADERS_ENABLED", "false").lower() == "true"
+    # Önce app.config, yoksa env
+    hsts_age = int(str(app.config.get("HSTS_MAX_AGE", os.getenv("HSTS_MAX_AGE", "0"))))
+    csp = str(app.config.get("CSP_POLICY", os.getenv("CSP_POLICY", "")))
+    enable_raw = app.config.get("SECURE_HEADERS_ENABLED", os.getenv("SECURE_HEADERS_ENABLED", "false"))
+    enable = str(enable_raw).lower() == "true"
     @app.after_request
     def _add_headers(resp):
         if enable:
@@ -130,6 +138,20 @@ def _setup_security_headers(app):
         return resp
 
 
+def _enforce_https(app):
+    """FORCE_HTTPS etkinse tüm HTTP isteklerini HTTPS'e yönlendir."""
+    force = (os.getenv("FORCE_HTTPS", "false").lower() == "true") or bool(app.config.get("FORCE_HTTPS"))
+    if not force:
+        return
+
+    @app.before_request
+    def _https_redirect():
+        # Proxy arkasında X-Forwarded-Proto'ya da bak
+        proto = request.headers.get("X-Forwarded-Proto", "").lower()
+        if (not request.is_secure) and proto != "https":
+            return redirect(request.url.replace("http://", "https://", 1), code=301)
+
+
 def bootstrap_security(app):
     """
     Uygulamayı merkezi olarak sertleştirir:
@@ -143,12 +165,17 @@ def bootstrap_security(app):
     _setup_error_handlers(app)
     _setup_security_headers(app)
     _setup_request_id(app)
+    _enforce_https(app)
 
     # Login yolları için ek sıkı limit (varsa):
     login_rl = os.getenv("LOGIN_RATE_LIMIT", "").strip()
     if login_rl:
         # Basit path eşlemesi: /login ve /api/auth/login
-        storage = storage_from_string(os.getenv("REDIS_URL", "memory://"))
+        storage = storage_from_string(
+            app.config.get("RATE_LIMIT_STORAGE_URL")
+            or os.getenv("RATE_LIMIT_STORAGE_URL")
+            or os.getenv("REDIS_URL", "memory://")
+        )
         strategy = MovingWindowRateLimiter(storage)
         limit = parse(login_rl)
 

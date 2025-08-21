@@ -10,7 +10,7 @@ from .secrets_manager import SecretsManager
 
 
 # Uygulama genelinde kullanılacak gizli değer yöneticisi
-secrets_manager = SecretsManager(os.environ.get("ENCRYPTION_KEY"))
+secrets_manager = SecretsManager(os.environ.get("MASTER_ENCRYPTION_KEY"))
 
 
 def _decrypt_secret(encrypted_value: Optional[str]) -> Optional[str]:
@@ -75,14 +75,14 @@ class Config:
     LOG_MAX_SIZE = int(os.environ.get("LOG_MAX_SIZE", 10 * 1024 * 1024))
     LOG_BACKUP_COUNT = int(os.environ.get("LOG_BACKUP_COUNT", 5))
 
-    RATELIMIT_STORAGE_URL = REDIS_URL
-    RATELIMIT_DEFAULT = os.environ.get("RATELIMIT_DEFAULT", "100 per hour")
+    RATE_LIMIT_STORAGE_URL = REDIS_URL
+    RATE_LIMIT_DEFAULT = os.environ.get("RATE_LIMIT_DEFAULT", "100/minute")
 
     @classmethod
     def validate_config(cls) -> Dict[str, Any]:
         """Kritik yapılandırma değerlerini doğrula"""
         issues = []
-        if cls.SECRET_KEY == "hard-to-guess-string":
+        if str(cls.SECRET_KEY).strip().lower() in {"change-me", "changeme"}:
             issues.append("SECRET_KEY varsayılan değerde")
         if not cls.COINGECKO_API_KEY:
             issues.append("COINGECKO_API_KEY ayarlanmadı")
@@ -137,14 +137,25 @@ class ProductionConfig(Config):
         "pool_timeout": 30,
         "pool_recycle": 1800,
     }
-    RATELIMIT_DEFAULT = "50 per hour"
+    RATE_LIMIT_DEFAULT = "50/minute"
 
     @classmethod
     def validate_production_config(cls):
         """Üretim ortamı için ek doğrulamalar"""
         validation = cls.validate_config()
-        if not os.environ.get("ENCRYPTION_KEY"):
-            validation["issues"].append("ENCRYPTION_KEY üretimde ayarlanmalı")
+        # Master key zorunlu
+        if not os.environ.get("MASTER_ENCRYPTION_KEY"):
+            validation["issues"].append("MASTER_ENCRYPTION_KEY üretimde ayarlanmalı")
+        # SECRET_KEY ve JWT_SECRET_KEY mutlaka env'den gelmeli (fallback/random olmamalı)
+        if not os.environ.get("SECRET_KEY"):
+            validation["issues"].append("SECRET_KEY üretimde environment üzerinden verilmelidir")
+        if not os.environ.get("JWT_SECRET_KEY"):
+            validation["issues"].append("JWT_SECRET_KEY üretimde environment üzerinden verilmelidir")
+        # Çok kısa anahtarlar engellensin
+        if len(str(cls.JWT_SECRET_KEY)) < 32:
+            validation["issues"].append("JWT_SECRET_KEY çok kısa (>=32 bayt önerilir)")
+        if len(str(cls.SECRET_KEY)) < 16:
+            validation["issues"].append("SECRET_KEY çok kısa (>=16 bayt önerilir)")
         if cls.REDIS_URL.startswith("redis://localhost"):
             validation["issues"].append("REDIS_URL üretimde localhost olmamalı")
         if "sqlite" in cls.SQLALCHEMY_DATABASE_URI:
@@ -159,7 +170,7 @@ class TestingConfig(Config):
     TESTING = True
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
-    RATELIMIT_ENABLED = False
+    RATE_LIMIT_ENABLED = False
     JWT_ACCESS_TOKEN_EXPIRES = 60
     JWT_REFRESH_TOKEN_EXPIRES = 300
 
