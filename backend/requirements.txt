@@ -30,6 +30,7 @@ flask_socketio
 loguru
 requests
 psutil
+bleach
 
 # Observability / Metrics
 prometheus-client>=0.20.0
