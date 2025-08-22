@@ -8,6 +8,7 @@ from typing import Optional, Tuple
 from flask import request, jsonify, Response, g
 from loguru import logger
 from redis import Redis
+import bleach
 
 def verify_iyzico_signature(secret: str, data: bytes, signature: str) -> bool:
     """
@@ -148,3 +149,57 @@ def has_admin_approval(r: Redis, user_id: Optional[str]) -> bool:
     if not user_id:
         return False
     return bool(r.get(f"batch_admin_approval:{user_id}"))
+
+
+# ----------------------------------------------------------------------------
+# Genel güvenlik yardımcıları
+# ----------------------------------------------------------------------------
+def sanitize_input(text: str, allowed_tags: Optional[list[str]] = None) -> str:
+    """Kullanıcı girdisini XSS saldırılarına karşı temizler."""
+    allowed_tags = allowed_tags or []
+    return bleach.clean(text, tags=allowed_tags, strip=True)
+
+
+def validate_file_upload(file) -> tuple[bool, str]:
+    """Yüklenen dosyayı uzantı ve boyut açısından doğrular."""
+    if not file:
+        return False, "Dosya bulunamadı"
+
+    allowed_extensions = {"png", "jpg", "jpeg", "gif", "pdf", "txt", "csv"}
+    filename = getattr(file, "filename", "").lower()
+
+    if "." not in filename or filename.rsplit(".", 1)[1] not in allowed_extensions:
+        return False, "Dosya türüne izin verilmiyor"
+
+    file.seek(0, 2)
+    size = file.tell()
+    file.seek(0)
+
+    if size > 5 * 1024 * 1024:
+        return False, "Dosya çok büyük"
+
+    return True, "Dosya geçerli"
+
+
+def generate_secure_token() -> str:
+    """Kriptografik olarak güvenli bir token üretir."""
+    import secrets
+
+    return secrets.token_urlsafe(32)
+
+
+def hash_api_key(api_key: str) -> bytes:
+    """API anahtarını güvenli şekilde hashler."""
+    import secrets
+
+    salt = secrets.token_bytes(32)
+    pwdhash = hashlib.pbkdf2_hmac("sha256", api_key.encode("utf-8"), salt, 100_000)
+    return salt + pwdhash
+
+
+def verify_api_key(stored_key: bytes, provided_key: str) -> bool:
+    """Sağlanan API anahtarını kayıtlı hash ile karşılaştırır."""
+    salt = stored_key[:32]
+    stored_hash = stored_key[32:]
+    pwdhash = hashlib.pbkdf2_hmac("sha256", provided_key.encode("utf-8"), salt, 100_000)
+    return hmac.compare_digest(pwdhash, stored_hash)
