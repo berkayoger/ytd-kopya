@@ -39,6 +39,15 @@ def test_validate_file_upload(tmp_path):
     assert "tür" in msg
 
 
+def test_validate_file_upload_too_large(tmp_path):
+    """Büyük dosya yüklemelerinin engellenmesini test eder."""
+    big = io.BytesIO(b"x" * (5 * 1024 * 1024 + 1))
+    big.filename = "a.pdf"
+    valid, msg = validate_file_upload(big)
+    assert not valid
+    assert "çok büyük" in msg
+
+
 def test_api_key_hash_and_verify():
     key = generate_secure_token()
     stored = hash_api_key(key)
