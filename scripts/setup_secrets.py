@@ -27,8 +27,8 @@ def generate_jwt_secret() -> str:
     return secrets.token_urlsafe(64)
 
 
-def generate_master_key() -> str:
-    """Master şifreleme anahtarı üret"""
+def generate_encryption_key() -> str:
+    """Şifreleme anahtarı üret"""
     return base64.urlsafe_b64encode(os.urandom(32)).decode()
 
 
@@ -45,12 +45,12 @@ def setup_development_env() -> None:
         "FLASK_DEBUG": "True",
         "SECRET_KEY": generate_secret_key(),
         "JWT_SECRET_KEY": generate_jwt_secret(),
-        "MASTER_ENCRYPTION_KEY": generate_master_key(),
+        "ENCRYPTION_KEY": generate_encryption_key(),
         "DATABASE_URL": "sqlite:///app.db",
         "REDIS_URL": "redis://localhost:6379/0",
         "LOG_LEVEL": "INFO",
         "LOG_FILE": "logs/app.log",
-        "RATELIMIT_DEFAULT": "100 per hour",
+        "RATE_LIMIT_DEFAULT": "100/minute",
     }
     with open(env_file, "w") as f:
         f.write("# Otomatik oluşturulan geliştirme yapılandırması\n")
@@ -63,13 +63,13 @@ def setup_development_env() -> None:
     print("- CRYPTOCOMPARE_API_KEY")
 
 
-def encrypt_env_file(input_file: str, output_file: str, master_key: str) -> None:
+def encrypt_env_file(input_file: str, output_file: str, encryption_key: str) -> None:
     """Bir .env dosyasını şifrele"""
     if not Path(input_file).exists():
         print(f"Hata: giriş dosyası {input_file} bulunamadı")
         return
     try:
-        manager = SecretsManager(master_key)
+        manager = SecretsManager(encryption_key)
         manager.encrypt_env_file(input_file, output_file)
         print(f"Env dosyası şifrelendi: {input_file} -> {output_file}")
     except Exception as exc:  # pragma: no cover - kullanıcı girdisi
@@ -116,7 +116,7 @@ def main() -> None:
     enc = sub.add_parser("encrypt", help=".env dosyasını şifrele")
     enc.add_argument("input", help="Giriş .env dosyası")
     enc.add_argument("output", help="Şifreli çıktı dosyası")
-    enc.add_argument("master", help="MASTER_ENCRYPTION_KEY değeri")
+    enc.add_argument("key", help="ENCRYPTION_KEY değeri")
 
     val = sub.add_parser("validate", help=".env dosyasını doğrula")
     val.add_argument("file", help="Kontrol edilecek dosya")
@@ -125,7 +125,7 @@ def main() -> None:
     if args.command == "init":
         setup_development_env()
     elif args.command == "encrypt":
-        encrypt_env_file(args.input, args.output, args.master)
+        encrypt_env_file(args.input, args.output, args.key)
     elif args.command == "validate":
         validate_env_file(args.file)
     else:
