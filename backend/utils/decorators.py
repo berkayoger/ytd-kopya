@@ -1,9 +1,12 @@
 # backend/utils/decorators.py
 
 from functools import wraps
-from flask import g, jsonify, request
+from flask import g, jsonify, request, current_app
+from flask_jwt_extended import get_jwt_identity
 from loguru import logger
 from backend.db.models import User, SubscriptionPlan, UserRole
+import hashlib
+import hmac
 
 def _error_response(message: str, status_code: int):
     """Hata yanıtları için merkezi bir yardımcı fonksiyon."""
@@ -55,6 +58,38 @@ def require_role(required_role: UserRole):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+
+
+def csrf_protect(f):
+    """POST istekleri için basit CSRF koruması sağlar."""
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if request.method == "POST":
+            token = request.headers.get("X-CSRF-Token")
+            if not token:
+                return jsonify({"error": "CSRF token eksik"}), 403
+            if not validate_csrf_token(token):
+                return jsonify({"error": "CSRF token geçersiz"}), 403
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def validate_csrf_token(token: str) -> bool:
+    """Sağlanan CSRF token'ın geçerli olup olmadığını kontrol eder."""
+    try:
+        user_id = get_jwt_identity()
+        expected = generate_csrf_token(user_id)
+        return hmac.compare_digest(token, expected)
+    except Exception:
+        return False
+
+
+def generate_csrf_token(user_id: str) -> str:
+    """Kullanıcıya özgü CSRF token üretir."""
+    secret = current_app.config["SECRET_KEY"]
+    return hashlib.sha256(f"{secret}{user_id}".encode()).hexdigest()
 
 def require_subscription_plan(minimum_plan: SubscriptionPlan):
     """
