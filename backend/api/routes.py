@@ -3,10 +3,15 @@
 import json
 import requests
 from flask import Blueprint, request, jsonify, current_app, g
-from backend import limiter
+try:
+    from flask_limiter import current_limiter as limiter
+except ImportError:  # Eski Flask-Limiter sürümleri için geri dönüş
+    from backend import limiter  # pragma: no cover
 from backend.limiting import get_plan_rate_limit
 from loguru import logger
 from backend.utils.logger import create_log
+from backend.utils.security import sanitize_input
+from backend.utils.validators import validate_crypto_symbol
 from flask_limiter.errors import RateLimitExceeded
 from datetime import datetime, date, timedelta
 from sqlalchemy.exc import IntegrityError
@@ -55,6 +60,12 @@ BACKEND_PLAN_PRICES = {
 def analyze_coin_api(coin_id):
     user = g.user # Dekorator'den gelen kullanıcı objesi
 
+    # Kullanıcı girdisini XSS'e karşı temizle ve formatı doğrula
+    coin_id = sanitize_input(coin_id or "").upper()
+    if not validate_crypto_symbol(coin_id):
+        logger.error("Geçersiz coin ID formatı isteği.")
+        return jsonify({"error": "Geçersiz coin ID formatı."}), 400
+
     investor_profile = request.args.get('profile', 'moderate').lower()
     if request.method == 'POST':
         request_data = request.get_json(silent=True)
@@ -72,10 +83,6 @@ def analyze_coin_api(coin_id):
             return jsonify(json.loads(cached_result))
 
     try:
-        if not coin_id or not isinstance(coin_id, str):
-            logger.error("Geçersiz coin ID formatı isteği.")
-            return jsonify({"error": "Geçersiz coin ID formatı."}), 400
-
         celery_app = current_app.extensions['celery']
 
         priority = 5
