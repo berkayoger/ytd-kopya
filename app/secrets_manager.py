@@ -15,7 +15,7 @@ class SecretsManager:
 
     def __init__(self, master_key: Optional[str] = None):
         """Şifreleme için anahtar hazırla"""
-        self.master_key = master_key or os.environ.get("MASTER_ENCRYPTION_KEY")
+        self.master_key = master_key or os.environ.get("ENCRYPTION_KEY")
         self._fernet: Optional[Fernet] = None
         if self.master_key:
             self._setup_encryption()
