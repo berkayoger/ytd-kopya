@@ -1,150 +1,110 @@
-import json
-"""Utilities for enforcing plan limits on users."""
+# backend/utils/plan_limits.py
+from __future__ import annotations
 
-from datetime import datetime, timedelta
-from flask import g, jsonify, request
-from backend.db.models import UsageLog
-import json
+from typing import Dict, Optional
+from flask import g
+from datetime import datetime
 
-
-def get_limit_status(user, limit_name, usage_value):
-    """Return limit status for a user feature usage."""
-    limits = user.plan.features_dict() if user.plan else {}
-    if getattr(user, "boost_expire_at", None) and user.boost_expire_at > datetime.utcnow():
-        try:
-            limits.update(json.loads(user.boost_features or "{}"))
-        except Exception:
-            pass
-    if getattr(user, "custom_features", None):
-        try:
-            limits.update(json.loads(user.custom_features or "{}"))
-        except Exception:
-            pass
-    max_value = limits.get(limit_name)
-    if not max_value:
-        return "unlimited"
-    try:
-        ratio = float(usage_value) / float(max_value)
-    except ZeroDivisionError:
-        return "limit_exceeded"
-    if ratio >= 1:
-        return "limit_exceeded"
-    elif ratio >= 0.8:
-        return "limit_warning"
-    return "ok"
+# Mevcut modellerle uyumlu kalmak adına yalnızca User'ı zorunlu alıyoruz.
+from backend.db.models import User
 
 
-def get_user_effective_limits(user):
-    """Kullanıcının plan, boost ve özel tanımlarını birleştirir."""
-
-    limits: dict = {}
-
-    # 3. Plan limitleri (en düşük öncelik)
-    if user.plan and getattr(user.plan, "features", None):
-        features = user.plan.features
-        if isinstance(features, str):
-            try:
-                features = json.loads(features)
-            except Exception:
-                features = {}
-        limits.update(features)
-
-    # 2. Geçici boost limitleri
-    if getattr(user, "boost_features", None) and getattr(user, "boost_expire_at", None):
-        if user.boost_expire_at > datetime.utcnow():
-            try:
-                boosts = json.loads(user.boost_features) if isinstance(user.boost_features, str) else user.boost_features
-                limits.update(boosts)
-            except Exception:
-                pass
-
-    # 1. Kullanıcıya özel limitler
-    if getattr(user, "custom_features", None):
-        try:
-            custom = json.loads(user.custom_features) if isinstance(user.custom_features, str) else user.custom_features
-            limits.update(custom)
-        except Exception:
-            pass
-
-    return limits
-
-
-def check_custom_feature(user, key):
-    """Belirli bir özelliğin kullanıcıya tanımlı olup olmadığını kontrol eder."""
-    try:
-        features = json.loads(user.custom_features) if isinstance(user.custom_features, str) else user.custom_features
-        return features.get(key, False)
-    except Exception:
-        return False
-
-
-def give_user_boost(user, features, expire_at):
-    user.boost_features = json.dumps(features)
-    user.boost_expire_at = expire_at
-    from backend import db
-    db.session.commit()
-
-
-PLAN_LIMITS = {
-    "basic": {
-        "predict_daily": 10,
-        "api_request_daily": 100,
+# DB tanımı yoksa çalışacak güvenli defaultlar (plan -> feature -> (daily, burst))
+PLAN_DEFAULTS: Dict[str, Dict[str, tuple[int, int]]] = {
+    "BASIC": {
+        "global_api": (60, 60),
+        "coin_analysis": (50, 10),
+        "prediction": (20, 5),
+        "market_data": (100, 30),
     },
-    "premium": {
-        "predict_daily": 100,
-        "api_request_daily": 1000,
+    "ADVANCED": {
+        "global_api": (500, 120),
+        "coin_analysis": (200, 30),
+        "prediction": (100, 20),
+        "market_data": (1000, 60),
+    },
+    "PREMIUM": {
+        "global_api": (2000, 300),
+        "coin_analysis": (1000, 100),
+        "prediction": (500, 50),
+        "market_data": (5000, 150),
     },
 }
 
 
-def enforce_plan_limits(limit_key):
-    def wrapper(fn):
-        def inner(*args, **kwargs):
-            user = g.user if hasattr(g, "user") else None
-            if not user:
-                api_key = request.headers.get("X-API-KEY")
-                if api_key:
-                    from backend.db.models import User
-                    user = User.query.filter_by(api_key=api_key).first()
-                    if user:
-                        g.user = user
-            if not user:
-                return jsonify({"error": "Auth required"}), 401
+def _user_for(user_id: Optional[str]) -> Optional[User]:
+    if user_id:
+        try:
+            return User.query.get(user_id)
+        except Exception:
+            return None
+    if hasattr(g, "user") and isinstance(getattr(g, "user", None), User):
+        return g.user  # type: ignore[return-value]
+    return None
 
-            plan_name = (
-                user.plan.name.lower() if getattr(user, "plan", None) else "basic"
+
+def get_user_effective_limits(user_id: Optional[str], feature_key: str) -> Dict[str, int]:
+    """Kullanıcının efektif limitleri.
+
+    Öncelik: (1) PlanLimit (varsa) → (2) UserLimitOverride (varsa && süresi geçmemişse)
+             → (3) PLAN_DEFAULTS.
+    Model tabloları projede yoksa sessizce defaultlara düşer.
+    """
+    user = _user_for(user_id)
+    plan_name = (getattr(user, "subscription_level", None) or "BASIC").upper()
+
+    # Başlangıç değerleri: defaultlar
+    default_daily, default_burst = PLAN_DEFAULTS.get(plan_name, {}).get(feature_key, (0, 0))
+    daily_quota, burst_per_minute = default_daily, default_burst
+
+    # Opsiyonel: PlanLimit
+    try:
+        from backend.db.models import PlanLimit  # type: ignore
+        row = (
+            PlanLimit.query.filter_by(plan_name=plan_name, feature_key=feature_key)
+            .first()
+        )
+        if row:
+            daily_quota = int(row.daily_quota or daily_quota)
+            burst_per_minute = int(row.burst_per_minute or burst_per_minute)
+    except Exception:
+        pass
+
+    # Opsiyonel: UserLimitOverride
+    try:
+        from backend.db.models import UserLimitOverride  # type: ignore
+        if user is not None:
+            ov = (
+                UserLimitOverride.query.filter_by(
+                    user_id=str(user.id), feature_key=feature_key
+                ).first()
             )
-            limits = PLAN_LIMITS.get(plan_name, {})
-            limit = limits.get(limit_key)
+            if ov and (ov.expires_at is None or ov.expires_at > datetime.utcnow()):
+                if ov.daily_quota_override is not None:
+                    daily_quota = int(ov.daily_quota_override)
+                if ov.burst_per_minute_override is not None:
+                    burst_per_minute = int(ov.burst_per_minute_override)
+    except Exception:
+        pass
 
-            if limit is None:
-                return fn(*args, **kwargs)
+    return {
+        "plan_name": plan_name,
+        "feature_key": feature_key,
+        "daily_quota": max(0, int(daily_quota)),
+        "burst_per_minute": max(0, int(burst_per_minute)),
+    }
 
-            start_time = datetime.utcnow() - timedelta(days=1)
-            usage_count = (
-                UsageLog.query.filter_by(user_id=user.id, action=limit_key)
-                .filter(UsageLog.timestamp > start_time)
-                .count()
-            )
 
-            if usage_count >= limit:
-                return (
-                    jsonify(
-                        {
-                            "error": "PlanLimitExceeded",
-                            "message": f"{plan_name} plan\u0131 i\u00e7in '{limit_key}' limiti ({limit}) a\u015f\u0131ld\u0131."
-                        }
-                    ),
-                    429,
-                )
-
-            log = UsageLog(user_id=user.id, action=limit_key, timestamp=datetime.utcnow())
-            from backend import db
-            db.session.add(log)
-            db.session.commit()
-
-            return fn(*args, **kwargs)
-
-        return inner
-
-    return wrapper
+def get_all_feature_keys() -> list[str]:
+    """UI için bilinen feature anahtarları."""
+    keys = set()
+    for d in PLAN_DEFAULTS.values():
+        keys.update(d.keys())
+    # PlanLimit varsa DB'den de toplayalım (mevcutsa)
+    try:
+        from backend.db.models import PlanLimit  # type: ignore
+        for (fk,) in PlanLimit.query.with_entities(PlanLimit.feature_key).distinct().all():
+            keys.add(fk)
+    except Exception:
+        pass
+    return sorted(keys)
