@@ -30,11 +30,25 @@ def setup_app(monkeypatch):
         lambda *_a, **_k: _noop_decorator,
         raising=False,
     )
+    monkeypatch.setattr(
+        "backend.api.routes.require_subscription_plan",
+        lambda *_a, **_k: _noop_decorator,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "backend.api.routes.check_usage_limit",
+        lambda *_a, **_k: _noop_decorator,
+        raising=False,
+    )
     # usage limit → no‑op
     monkeypatch.setattr(
         "backend.utils.usage_limits.check_usage_limit",
         lambda *_a, **_k: _noop_decorator,
         raising=False,
+    )
+    # JWT gerekliliğini kaldır
+    monkeypatch.setattr(
+        "flask_jwt_extended.jwt_required", lambda *_a, **_k: _noop_decorator, raising=False
     )
     # rate limit → no‑op
     monkeypatch.setattr(
