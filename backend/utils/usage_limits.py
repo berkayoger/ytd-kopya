@@ -160,3 +160,18 @@ def get_usage_status(user_id: str, feature_key: str) -> Dict:
     pl = _payload(used, int(eff.get("daily_quota", 0)))
     pl.update({"feature_key": feature_key, "plan_name": eff.get("plan_name")})
     return pl
+
+
+def get_usage_count(user_id: str, feature_key: str) -> int:
+    """Belirtilen kullanıcı ve özellik için günlük kullanım sayısını döndür."""
+    used = _get_r(user_id, feature_key)
+    if used is None:
+        used = _get_db(user_id, feature_key)
+    return int(used or 0)
+
+
+__all__ = [
+    "check_usage_limit",
+    "get_usage_status",
+    "get_usage_count",
+]
