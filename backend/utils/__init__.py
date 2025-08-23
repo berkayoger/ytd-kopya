@@ -1,4 +1,20 @@
-# backend/utils/__init__.py
+from .plan_limits import (
+    get_user_effective_limits,
+    get_all_feature_keys,
+    get_plan_rate_limit,
+    rate_limit_key_func,
+    check_and_increment_usage,
+    check_custom_feature,
+    give_user_boost,
+)
 
-# Bu boş dosya, projenizin utils klasörünün Python tarafından bir paket olarak görülmesi için yeterlidir.
-# It can be left empty or used to initialize package-level variables.
+__all__ = [
+    "get_user_effective_limits",
+    "get_all_feature_keys",
+    "get_plan_rate_limit",
+    "rate_limit_key_func",
+    "check_and_increment_usage",
+    "check_custom_feature",
+    "give_user_boost",
+]
+

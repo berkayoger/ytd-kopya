@@ -160,3 +160,21 @@ def get_usage_status(user_id: str, feature_key: str) -> Dict:
     pl = _payload(used, int(eff.get("daily_quota", 0)))
     pl.update({"feature_key": feature_key, "plan_name": eff.get("plan_name")})
     return pl
+
+
+def get_usage_count(user, action: str) -> int:
+    """Belirli bir aksiyon için günlük kullanım sayısını döndür."""
+    from backend.db.models import UsageLog
+
+    uid = getattr(user, "id", user)
+    start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=1)
+
+    return (
+        UsageLog.query.filter(
+            UsageLog.user_id == uid,
+            UsageLog.action == action,
+            UsageLog.timestamp >= start,
+            UsageLog.timestamp < end,
+        ).count()
+    )
