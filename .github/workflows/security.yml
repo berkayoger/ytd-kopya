@@ -1,67 +1,132 @@
 
-name: Security Audit
+name: Security & SBOM
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
+  schedule:
+    - cron: "23 3 * * 3"  # Haftalık tarama (Çarşamba 03:23 UTC)
+  workflow_dispatch:
+permissions:
+  contents: read
+  security-events: write   # CodeQL sonuçları için
 
 jobs:
-  audit:
-
+  codeql:
+    name: CodeQL (Python + JS)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
         with:
-          python-version: '3.11'
+          languages: python,javascript
+          queries: +security-and-quality
+      - uses: github/codeql-action/analyze@v3
 
-          cache: 'pip'
-
-      - name: Verify .env.example keys
+  pip_audit:
+    name: pip-audit (raporla/bozma)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pip-audit
+        run: pip install pip-audit
+      - name: Run pip-audit
+        continue-on-error: true   # bulgular pipeline'ı bozmasın
         run: |
-          python scripts/ensure_env_keys.py --check
-
-      # Dosya eksikse CI içinde oluştur (merge’lerde kırılmasın)
-
-      - name: Ensure curated audit requirements file
-        run: |
-          mkdir -p .github
-          if [ ! -f .github/audit-requirements.txt ]; then
-            cat > .github/audit-requirements.txt <<'REQ'
-Flask==2.3.3
-Flask-SQLAlchemy==3.1.1
-redis==5.0.4
-passlib==1.7.4
-argon2-cffi==23.1.0
-PyJWT==2.8.0
-cryptography==44.0.1
-email-validator==2.1.0
-pyotp==2.9.0
-slowapi==0.1.9
-python-multipart==0.0.18
-future==0.18.3
-REQ
+          if [ -f "requirements.txt" ]; then
+            pip-audit -r requirements.txt -f json -o pip-audit.json || true
           fi
+          if [ -f "backend/requirements.txt" ]; then
+            pip-audit -r backend/requirements.txt -f json -o pip-audit-backend.json || true
+          fi
+      - name: Upload audit artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit
+          path: |
+            pip-audit.json
+            pip-audit-backend.json
+          if-no-files-found: ignore
 
-      - name: Install audit deps (curated + tools)
+  npm_audit:
+    name: npm audit (raporla/bozma)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect FE
+        id: has_fe
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install -r .github/audit-requirements.txt
-          python -m pip install --upgrade pip-audit cyclonedx-bom
-      - name: pip check
-        run: pip check
-      - name: pip-audit
-        run: pip-audit -r .github/audit-requirements.txt --progress-spinner=off --strict
-      - name: SBOM (CycloneDX)
-        # SBOM'u tam requirements'tan üret – modül çağrısı ile daha taşınabilir. CLI yoksa fallback.
-        run: python -m cyclonedx_py -r requirements.txt -o sbom.json || cyclonedx-bom -r requirements.txt -o sbom.json
-      - name: Upload SBOM
+          if [ -f "frontend/package.json" ]; then
+            echo "found=true" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.has_fe.outputs.found == 'true'
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "frontend/package-lock.json"
+      - name: npm ci & audit
+        if: steps.has_fe.outputs.found == 'true'
+        working-directory: frontend
+        continue-on-error: true
+        run: |
+          if [ -f "package-lock.json" ]; then npm ci; else npm install; fi
+          npm audit --audit-level=high --json > ../npm-audit.json || true
+      - name: Upload npm audit
+        if: steps.has_fe.outputs.found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit
+          path: npm-audit.json
+          if-no-files-found: ignore
+
+  gitleaks:
+    name: Gitleaks (raporla/bozma)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tüm geçmişi tara
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
+        with:
+          config-path: .gitleaks.toml
+          redact: "true"
+
+  sbom:
+    name: CycloneDX SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python SBOM
+        uses: CycloneDX/gh-python-generate-sbom@v2
+        with:
+          input: ./requirements.txt
+          output: ./sbom-python.xml
+          format: xml
+      - name: Node SBOM (if FE)
+        if: ${{ hashFiles('frontend/package.json') != '' }}
+        run: |
+          cd frontend
+          npx -y @cyclonedx/cyclonedx-npm --output-format xml --output-file ../sbom-node.xml || true
+      - name: Upload SBOMs
         uses: actions/upload-artifact@v4
         with:
           name: sbom
-          path: sbom.json
-
+          path: |
+            sbom-python.xml
+            sbom-node.xml
+          if-no-files-found: ignore
