@@ -167,7 +167,11 @@ def create_app() -> Flask:
     # Uzantıları başlat
     CORS(app, supports_credentials=True, origins=Config.CORS_ORIGINS)
     db.init_app(app)
-    limiter.init_app(app)
+    try:
+        limiter.init_app(app)
+    except Exception:  # pragma: no cover
+        # Local/CI ortamlarında limiter yoksa uygulamayı bozma
+        pass
     celery_app.conf.update(app.config)
     celery_app.conf.task_time_limit = int(os.getenv("BATCH_JOB_TIMEOUT", "300"))
     socketio.init_app(
@@ -391,9 +395,31 @@ def create_app() -> Flask:
     def not_found_error(error):
         return jsonify({"error": "Kaynak bulunamadı."}), 404
 
+    @app.errorhandler(429)
+    def ratelimit_handler(e):
+        # Frontend'in beklediği format (plan/limit uyarıları için)
+        return (
+            jsonify(
+                {
+                    "error": "rate_limited",
+                    "message": getattr(e, "description", "Too many requests"),
+                    "upgrade_url": "/pricing",
+                }
+            ),
+            429,
+        )
+
     @app.errorhandler(403)
-    def forbidden_error(error):
-        return jsonify({"error": "Erişim engellendi."}), 403
+    def forbidden_error(e):
+        return (
+            jsonify(
+                {
+                    "error": "forbidden",
+                    "message": getattr(e, "description", "Insufficient permissions"),
+                }
+            ),
+            403,
+        )
 
     # Socket.IO events
     @socketio.on("connect", namespace="/")

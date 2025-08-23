@@ -25,12 +25,16 @@ Flask-Mail
 # Web Sunucusu (Opsiyonel ama önerilir)
 gunicorn
 Flask-Cors
-Flask-Limiter
+flask-limiter>=3.5,<4.0
 flask_socketio
 loguru
 requests
 psutil
 bleach
+email-validator>=2.1.0
+pyotp>=2.9.0
+pycoingecko>=3.1.0
+passlib>=1.7.4
 
 # Observability / Metrics
 prometheus-client>=0.20.0
