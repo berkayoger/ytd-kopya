@@ -1,67 +1,55 @@
-# backend/limiting.py
-"""Plan-bazlı dinamik rate-limit yardımcıları.
-
-Flask-Limiter için kullanıcının planından türetilen burst-per-minute değeri
-üretir. Kullanıcı bulunamazsa güvenli bir IP fallback değeri döner.
+"""
+Plan bazlı rate limit yardımcıları.
+Test/CI ortamında güvenli varsayılanlarla çalışır.
 """
 from __future__ import annotations
-
-from typing import Optional
-from flask import g, request
+import os
+from flask import request, g
 from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 
-try:  # Projenizde olabilir / olmayabilir
-    from flask_jwt_extended import get_jwt_identity  # type: ignore
-except Exception:  # pragma: no cover
-    get_jwt_identity = None  # type: ignore
-
-from backend.utils.plan_limits import get_user_effective_limits
-
-
-limiter = Limiter(key_func=get_remote_address)
+# Plan -> rate ifade haritası (Flask-Limiter formatı)
+# ENV ile override edilebilir (ör: PLAN_LIMIT_PREMIUM="120/minute")
+DEFAULT_PLAN_LIMITS = {
+    "free": os.getenv("PLAN_LIMIT_FREE", "30/minute"),
+    "basic": os.getenv("PLAN_LIMIT_BASIC", "60/minute"),
+    "premium": os.getenv("PLAN_LIMIT_PREMIUM", "120/minute"),
+    "enterprise": os.getenv("PLAN_LIMIT_ENTERPRISE", "240/minute"),
+}
 
 
-def _resolve_user_id() -> Optional[str]:
-    """g.user ya da JWT'den kullanıcı kimliği çöz."""
-    try:
-        if hasattr(g, "user") and getattr(g.user, "id", None):
-            return str(g.user.id)
-    except Exception:
-        pass
 
-    if get_jwt_identity is not None:
-        try:
-            uid = get_jwt_identity()
-            if uid:
-                return str(uid)
-        except Exception:
-            pass
-    return None
-
-
-def get_plan_rate_limit() -> str:
-    """Flask‑Limiter için limit string'i döndür (örn. "60 per minute")."""
-    user_id = _resolve_user_id()
-    feature_key = "global_api"
-
-    # Güvenli varsayılan: 30/dk (kullanıcı yoksa IP bazlı uygulanacak)
-    default_burst = 30
-
-    try:
-        if user_id:
-            eff = get_user_effective_limits(user_id=user_id, feature_key=feature_key)
-            burst = int(eff.get("burst_per_minute") or default_burst)
-            return f"{max(1, burst)} per minute"
-    except Exception:
-        pass
-
-    return f"{default_burst} per minute"
+def get_plan_rate_limit(plan_name: str | None = None) -> str:
+    """
+    Verilen plan adı için rate-limit dizesi döndürür.
+    Tanınmayan/boş planlarda güvenli bir varsayılan kullanır.
+    """
+    if plan_name is None:
+        plan = getattr(g, "user", None)
+        plan_name = getattr(getattr(plan, "plan", None), "name", None) if plan else None
+    if not plan_name:
+        return DEFAULT_PLAN_LIMITS["free"]
+    key = str(plan_name).strip().lower()
+    return DEFAULT_PLAN_LIMITS.get(key, DEFAULT_PLAN_LIMITS["free"])
 
 
 def rate_limit_key_func() -> str:
-    """Limiter key: varsa API key; yoksa uzak IP."""
-    api_key = request.headers.get("X-API-KEY") or request.args.get("api_key")
-    if api_key:
-        return f"api:{api_key}"
-    return request.remote_addr or "unknown"
+    """
+    Limiter için anahtar (IP ya da kullanıcı kimliği).
+    - Auth'lu isteklerde user_id tercih edilir (adil ve doğru kota takibi).
+    - Aksi durumda client IP kullanılır.
+    Bu fonksiyon test/CI'da da güvenle çalışır.
+    """
+    user_id = getattr(g, "user_id", None) or getattr(getattr(g, "user", None), "id", None)
+    if user_id:
+        return f"user:{user_id}"
+    ip = (
+        request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        or request.remote_addr
+        or "unknown"
+    )
+    return f"ip:{ip}"
+
+
+# Flask-Limiter instance (uygulama init'de init_app ile bağlanır)
+limiter = Limiter(key_func=rate_limit_key_func)
+
