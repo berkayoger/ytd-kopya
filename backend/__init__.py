@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import sys
 import uuid
+import json
 from time import perf_counter
 from datetime import timedelta, datetime
 from typing import Optional
@@ -203,6 +204,31 @@ def create_app() -> Flask:
                 db.session.commit()
         else:
             logger.info("Prod: db.create_all() atlandı; migration kullanın.")
+
+    # --- FEATURE_FLAGS alias eşleme (legacy anahtarlar için) ---
+    def _sync_feature_aliases(app_: Flask) -> None:
+        try:
+            flags = app_.config.get("FEATURE_FLAGS") or app_.config.get("feature_flags") or {}
+            if isinstance(flags, str):
+                try:
+                    flags = json.loads(flags or "{}")
+                except Exception:
+                    flags = {}
+            if isinstance(flags, dict):
+                for k, v in flags.items():
+                    up = str(k).upper()
+                    for alias in (f"FEATURE_{up}", f"ENABLE_{up}"):
+                        if alias not in app_.config:
+                            app_.config[alias] = v
+        except Exception:
+            pass
+
+    _sync_feature_aliases(app)
+
+    @app.before_request
+    def _sync_feature_aliases_per_request():
+        _sync_feature_aliases(app)
+    # -----------------------------------------------------------
 
     # Extensions kayıt
     app.extensions["db"] = db
