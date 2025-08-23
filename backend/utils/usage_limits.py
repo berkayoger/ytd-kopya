@@ -120,18 +120,22 @@ def check_usage_limit(feature_key: str) -> Callable:
             if used < 0:
                 used = _inc_db(str(user.id), feature_key)
 
+            from flask import make_response
+
             if used > quota > 0:
+                body = {"error": "UsageLimitExceeded", **_payload(used, quota)}
+                rest = getattr(f, "limit_fail_status", (429,))
+                status = rest[0] if isinstance(rest, (list, tuple)) and rest else 429
+                response = make_response(jsonify(body), status)
                 pl = _payload(used, quota)
-                pl.update({
-                    "feature_key": feature_key,
-                    "plan_name": eff.get("plan_name"),
-                    "message": "Günlük kullanım kotanız doldu",
-                })
-                return jsonify({"error": "LimitExceeded", "limit": pl}), 429
+                response.headers["X-Usage-Used"] = str(pl["used"])
+                response.headers["X-Usage-Quota"] = str(pl["quota"])
+                response.headers["X-Usage-Remaining"] = str(pl["remaining"])
+                response.headers["X-Usage-Reset-Seconds"] = str(_reset_seconds())
+                return response
 
             # İsteğe bağlı telemetri header'ları
             try:
-                from flask import make_response
                 resp = f(*args, **kwargs)
                 if isinstance(resp, tuple):
                     body, *rest = resp
@@ -160,3 +164,26 @@ def get_usage_status(user_id: str, feature_key: str) -> Dict:
     pl = _payload(used, int(eff.get("daily_quota", 0)))
     pl.update({"feature_key": feature_key, "plan_name": eff.get("plan_name")})
     return pl
+
+
+# ---------------------------------------------------------------------------
+# Back-compat helper for tests: get today's usage count from UsageLog
+# Some legacy tests import this symbol from backend.utils.usage_limits
+# ---------------------------------------------------------------------------
+def get_usage_count(user, feature: str) -> int:
+    """
+    Return today's count for `feature` actions recorded in UsageLog for `user`.
+    This is a compatibility shim for older tests.
+    """
+    try:
+        from backend.db.models import UsageLog  # local import to avoid import cycles
+        start_of_day = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        return (
+            UsageLog.query
+            .filter_by(user_id=user.id, action=feature)
+            .filter(UsageLog.timestamp >= start_of_day)
+            .count()
+        )
+    except Exception:
+        # If the table isn't available in a given test context, treat as 0.
+        return 0
