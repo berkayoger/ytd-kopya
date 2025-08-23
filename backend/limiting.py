@@ -50,7 +50,7 @@ def get_plan_rate_limit() -> str:
 
     try:
         if user_id:
-            eff = get_user_effective_limits(user_id=user_id, feature_key=feature_key)
+            eff = get_user_effective_limits(user_id, feature_key)
             burst = int(eff.get("burst_per_minute") or default_burst)
             return f"{max(1, burst)} per minute"
     except Exception:
