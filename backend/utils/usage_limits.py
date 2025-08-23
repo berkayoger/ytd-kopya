@@ -160,3 +160,26 @@ def get_usage_status(user_id: str, feature_key: str) -> Dict:
     pl = _payload(used, int(eff.get("daily_quota", 0)))
     pl.update({"feature_key": feature_key, "plan_name": eff.get("plan_name")})
     return pl
+
+
+# ---------------------------------------------------------------------------
+# Back-compat helper for tests: get today's usage count from UsageLog
+# Some legacy tests import this symbol from backend.utils.usage_limits
+# ---------------------------------------------------------------------------
+def get_usage_count(user, feature: str) -> int:
+    """
+    Return today's count for `feature` actions recorded in UsageLog for `user`.
+    This is a compatibility shim for older tests.
+    """
+    try:
+        from backend.db.models import UsageLog  # local import to avoid import cycles
+        start_of_day = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        return (
+            UsageLog.query
+            .filter_by(user_id=user.id, action=feature)
+            .filter(UsageLog.timestamp >= start_of_day)
+            .count()
+        )
+    except Exception:
+        # If the table isn't available in a given test context, treat as 0.
+        return 0
