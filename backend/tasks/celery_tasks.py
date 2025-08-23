@@ -5,6 +5,7 @@ import os
 import json
 import traceback
 from dataclasses import asdict
+from celery import Celery
 try:
     import numpy as np  # Ağır bağımlılık, test ortamında mevcut olmayabilir
 except Exception:  # pragma: no cover
@@ -26,6 +27,24 @@ from backend.db.models import (
 from backend import db
 
 
+def _harmonize_conf(app: Celery) -> None:
+    """Eski ve yeni Celery ayar anahtarlarını uyumlaştır."""
+    try:
+        keys = set(app.conf.keys())
+        has_old = any(k.startswith("CELERY") or k.startswith("CELERYD") for k in keys)
+        if has_old and "task_time_limit" in keys:
+            v = app.conf.get("task_time_limit")
+            app.conf.pop("task_time_limit", None)
+            app.conf["CELERYD_TASK_TIME_LIMIT"] = v
+        if has_old and "task_soft_time_limit" in keys:
+            v = app.conf.get("task_soft_time_limit")
+            app.conf.pop("task_soft_time_limit", None)
+            app.conf["CELERYD_TASK_SOFT_TIME_LIMIT"] = v
+    except Exception:
+        pass
+
+
+_harmonize_conf(celery_app)
 
 @celery_app.task(name="backend.tasks.celery_tasks.run_full_analysis", bind=True)
 def run_full_analysis(self, coin_id: str, investor_profile: str = "moderate", user_id: int | None = None):
