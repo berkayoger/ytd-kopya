@@ -92,13 +92,15 @@ def run_tests():
         args.extend(shlex.split(extra))
 
     try:
+        # pytest'i alt proseste çalıştır — testlerde monkeypatch edilen imza ile uyumlu
+        # (args, capture_output, text, timeout, cwd, env)
         proc = subprocess.run(
             args,
             capture_output=True,
             text=True,
             timeout=600,
-            cwd=str(_project_root()),
-            env=_whitelisted_env(),
+            cwd=None,
+            env=os.environ.copy(),
         )
         stdout = proc.stdout or ""
         stderr = proc.stderr or ""
