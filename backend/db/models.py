@@ -652,13 +652,18 @@ class AuditLog(db.Model):
 
 
 class UsageLog(db.Model):
-    __tablename__ = "usage_log"
+    __tablename__ = "usage_logs"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, nullable=False)
-    action = Column(String(64), nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    action = Column(String(120), nullable=False, index=True)  # örn: 'predict_daily', 'api_request_daily'
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
 
+    user = db.relationship("User", backref="usage_logs")
+
+    __table_args__ = (
+        db.Index("idx_usage_user_action_time", "user_id", "action", "timestamp"),
+    )
 
 # --- DRAKS tablolari ---
 class DraksSignalRun(db.Model):
