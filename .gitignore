@@ -70,3 +70,4 @@ frontend/.env
 frontend/.env.*
 !frontend/.env.example
 .env
+ytd-kopya.git/
