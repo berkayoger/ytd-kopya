@@ -34,6 +34,7 @@ _default_flags: Dict[str, bool] = {
     # DRAKS için hem kısa hem _enabled alias'ı destekleyelim
     "draks": False,
     "draks_enabled": False,
+    "decision_consensus": True,
 
 }
 
