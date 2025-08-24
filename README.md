@@ -198,6 +198,50 @@ Yonetim panelindeki gelismis raporlar icin eklenen API'lar:
 - `/api/admin/analytics/plans` – Abonelik planlarina gore kullanici dagilimini listeler.
 - `/api/admin/analytics/usage` – Yapilan toplam tahmin ve sistem olayi sayisini dondurur.
 
+### Orkestrasyon (Konsensüs) API
+Rejim kapısı + konsensüs ile çoklu motor çıktısını tek karara indirger.
+
+```
+POST /api/decision/score-multi
+{
+  "symbol": "BTCUSDT",
+  "timeframe": "1h",
+  "engines": ["KM1","KM2","KM3","KM4"],
+  "ohlcv": [
+    {"ts":"2025-08-24T12:00:00Z","open":...,"high":...,"low":...,"close":...,"volume":...}
+  ],
+  "params": {
+    "KM1": {"ema_fast":12,"ema_slow":48},
+    "KM2": {"atr_window":14}
+  },
+  "account_value": 100000
+}
+```
+
+**Örnek yanıt**
+```json
+{
+  "symbol":"BTCUSDT",
+  "timeframe":"1h",
+  "regime":{"label":"mixed","trend_strength":0.0012,"vol_pct":0.018},
+  "consensus":{
+    "label":"buy",
+    "score_raw":0.32,
+    "expected_return":0.046,
+    "confidence":0.61,
+    "conf_int":[0.01,0.08],
+    "horizon_days":5.2,
+    "position_fraction":0.02,
+    "position_value":2000.0,
+    "stop_loss":-0.032,
+    "take_profit":0.078,
+    "rationale":["KM1:buy(0.62)","KM2:hold(0.40)","KM3:buy(0.65)","KM4:hold(0.00)"],
+    "top_drivers":["KM3","KM1","KM2"]
+  },
+  "engines": { "...": "tekil motor çıktıları" }
+}
+```
+
 ## Guvenlik Notlari
 
 Sifreler `werkzeug` kutuphanesi ile guclu bicimde hashlenir ve JWT tabanli oturumlar kullanilir. Kullanici girislerinde olusan **refresh token** degeri `user_sessions` tablosunda saklanir ve token yenileme islemlerinde bu tablo uzerinden dogrulama yapilir. CSRF korumasi icin her istek `X-CSRF-Token` basligi ile dogrulanir. RBAC modeli ile yetki kontrolu saglanir. Flask-Limiter kullanilarak API istekleri oran sinirlariyla korunur. Hassas islemler Celery uzerinden gerceklestirilir ve kritik olaylarda `send_security_alert_task` tetiklenerek loglama yapilir.
