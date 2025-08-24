@@ -32,7 +32,7 @@ class BaseConfig:
             "options": {"queue": "default"},
         },
     }
-    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
+    CORS_ORIGINS = os.getenv("SECURITY_CORS_ALLOWED_ORIGINS", "*").split(",")
 
     ACCESS_TOKEN_SECRET = os.getenv("ACCESS_TOKEN_SECRET", "change_me_access")
     REFRESH_TOKEN_SECRET = os.getenv("REFRESH_TOKEN_SECRET", "change_me_refresh")
