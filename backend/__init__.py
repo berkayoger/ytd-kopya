@@ -29,8 +29,6 @@ from backend.models.plan import Plan  # noqa: F401 (kullanıldığı modüller o
 from backend.models.admin_test_run import AdminTestRun  # noqa: F401
 from backend.utils.usage_limits import check_usage_limit
 
-load_dotenv()
-
 # -----------------------------------------------------------------------------
 # Ortak yardımcılar / config
 # -----------------------------------------------------------------------------
@@ -149,6 +147,8 @@ class LegacyTestClient(FlaskClient):
 # App Factory
 # -----------------------------------------------------------------------------
 def create_app() -> Flask:
+    if os.getenv("FLASK_ENV") != "production":
+        load_dotenv()
     app = Flask(__name__)
     app.test_client_class = LegacyTestClient
     app.config.from_object(Config)
