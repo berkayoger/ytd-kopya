@@ -384,3 +384,11 @@ Bu proje MIT lisansı altında sunulmaktadır. Ayrıntılar için `LICENSE` dosy
 bakabilirsiniz.
 
 
+## Secrets & ENV Yönetimi
+
+Üretim ortamında tüm hassas bilgiler GitHub Actions Secrets üzerinden
+yönetilir. Yerel geliştirmede gerekli değerler `.env` dosyalarına yazılır; bu
+dosyalar depoya eklenmez ve `.gitignore` tarafından korunur. Örnek
+konfigürasyonlar için `*.env.example` dosyalarına bakabilirsiniz.
+
+
