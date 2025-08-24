@@ -26,6 +26,9 @@ def client(monkeypatch):
     monkeypatch.setattr(flask_jwt_extended, "fresh_jwt_required", lambda *a, **k: (lambda f: f), raising=False)
     monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
     app = create_app()
+    # Global admin guard'ı aşmak için JWT doğrulamasını bypass et
+    monkeypatch.setattr("backend.auth.roles.verify_jwt_in_request", lambda optional=False: None)
+    monkeypatch.setattr("backend.auth.roles.current_roles", lambda: {"admin"})
     app.config["TESTING"] = True
     with app.app_context():
         db.create_all()

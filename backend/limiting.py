@@ -8,11 +8,13 @@ from typing import Optional
 from flask import request, g
 from flask_limiter import Limiter
 
-# Güvenli import: jwt fonksiyonu yoksa None olsun
+# Güvenli import: jwt fonksiyonları yoksa None olsun
 try:  # pragma: no cover
-    from flask_jwt_extended import get_jwt_identity  # type: ignore
+    from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request, get_jwt  # type: ignore
 except Exception:  # pragma: no cover
     get_jwt_identity = None  # type: ignore
+    verify_jwt_in_request = None  # type: ignore
+    get_jwt = None  # type: ignore
 
 from backend.utils.plan_limits import get_user_effective_limits
 
@@ -77,21 +79,17 @@ def get_plan_rate_limit(plan_name: str | None = None) -> str:
 
 
 def rate_limit_key_func() -> str:
-    """
-    Limiter için anahtar:
-    1) X-API-KEY, 2) kullanıcı kimliği, 3) IP.
-    """
-    api_key = request.headers.get("X-API-KEY") or request.args.get("api_key")
-    if api_key:
-        return f"api:{api_key}"
-    uid = _resolve_user_id()
-    if uid:
-        return f"user:{uid}"
-    ip = (
-        request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
-        or request.remote_addr
-        or "unknown"
-    )
+    """Limiter anahtarı: JWT varsa kullanıcı, yoksa gerçek IP."""
+    try:
+        if verify_jwt_in_request is not None and get_jwt is not None:
+            verify_jwt_in_request(optional=True)
+            claims = get_jwt()
+            sub = claims.get("sub") if claims else None
+            if sub:
+                return f"user:{sub}"
+    except Exception:
+        pass
+    ip = request.remote_addr or "unknown"
     return f"ip:{ip}"
 
 

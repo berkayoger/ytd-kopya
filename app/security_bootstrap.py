@@ -57,11 +57,14 @@ def _setup_cors(app):
     """
     3. partiye gerek kalmadan CORS allowlist ve preflight yönetimi.
     """
-    origins = _split_csv(os.getenv("CORS_ORIGINS", ""))
-    allow_creds = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true"
-    allow_methods = _split_csv(os.getenv("CORS_ALLOWED_METHODS", "GET,POST,PUT,PATCH,DELETE,OPTIONS"))
-    allow_headers = _split_csv(os.getenv("CORS_ALLOWED_HEADERS", "Authorization,Content-Type,X-CSRF-Token"))
-    expose_headers = _split_csv(os.getenv("CORS_EXPOSE_HEADERS", "X-Request-ID"))
+    # Ortam değişkeni ile whitelist edilen origin'ler
+    origins = _split_csv(os.getenv("SECURITY_CORS_ALLOWED_ORIGINS", ""))
+    # Varsayılan olarak credential paylaşımı kapalı
+    allow_creds = os.getenv("SECURITY_CORS_ALLOW_CREDENTIALS", "false").lower() == "true"
+    # Sadece gerekli metod ve header'lara izin veriyoruz
+    allow_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    allow_headers = ["Authorization", "Content-Type"]
+    expose_headers: List[str] = []
 
     @app.before_request
     def _cors_preflight():

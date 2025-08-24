@@ -17,9 +17,14 @@ from sqlalchemy import text
 from celery import Celery
 from flask_socketio import SocketIO, emit
 from redis import Redis
-from dotenv import load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
+try:
+    from dotenv import load_dotenv
+except Exception:  # pragma: no cover
+    load_dotenv = None
 from loguru import logger
 from backend.observability.metrics import prometheus_wsgi_app
+from backend.auth.roles import ensure_admin_for_admin_paths
 
 # Proje içi
 from backend.db import db as base_db
@@ -147,7 +152,8 @@ class LegacyTestClient(FlaskClient):
 # App Factory
 # -----------------------------------------------------------------------------
 def create_app() -> Flask:
-    if os.getenv("FLASK_ENV") != "production":
+    # Lokal geliştirmede .env yükle (prod'da CI/ENV üzerinden gelir)
+    if os.getenv("FLASK_ENV", "production") != "production" and load_dotenv:
         load_dotenv()
     app = Flask(__name__)
     app.test_client_class = LegacyTestClient
@@ -165,8 +171,19 @@ def create_app() -> Flask:
     Config.assert_production_jwt_key()
     Config.assert_production_cors_origins()
 
+    # --- RBAC: /api/admin/* yollarında admin zorunlu ---
+    @app.before_request
+    def _admin_guard():
+        return ensure_admin_for_admin_paths()
+
     # Uzantıları başlat
-    CORS(app, supports_credentials=True, origins=Config.CORS_ORIGINS)
+    CORS(
+        app,
+        supports_credentials=_bool_env("SECURITY_CORS_ALLOW_CREDENTIALS", False),
+        origins=Config.CORS_ORIGINS,
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
     db.init_app(app)
     try:
         limiter.init_app(app)
@@ -503,5 +520,9 @@ def create_app() -> Flask:
             from backend.api.admin import prediction_scheduler  # noqa: F401
         except Exception as exc:
             logger.warning(f"Scheduler yüklenemedi: {exc}")
+
+    # Reverse proxy (Nginx) arkasında doğru IP/proto için (opsiyonel ENV ile)
+    if os.getenv("USE_PROXYFIX", "1") == "1":
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)  # type: ignore
 
     return app
