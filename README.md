@@ -190,6 +190,29 @@ pytest --cov=backend --cov=frontend tests/
 
 Backend API'lari OpenAPI (Swagger) standardina uygun sekilde belgelenmektedir. Calisan bir sunucu uzerinde `/api/docs` adresinden interaktif dokumanlara erisilebilir. Bu yontem frontend gelistiricileri icin net bir kontrat saglar ve API surumlerini takip etmeyi kolaylastirir.
 
+---
+
+## Secrets & ENV Yönetimi
+
+- **`.env` dosyaları repoya commit edilmez.** Bu repo yalnızca örnek dosyaları içerir: `backend/.env.example`, `frontend/.env.example`.
+- **Prod/Staging** sırları **GitHub Actions → Secrets** altında saklanır ve pipeline sırasında **ENV** olarak enjekte edilir.
+- Frontend tarafında `.env*` içerikleri derlemeye gömülür; **sır konulmaz**. (Vite: `VITE_*`, CRA: `REACT_APP_*`, Next.js: `NEXT_PUBLIC_*` yalnızca public kullanım içindir.)
+- Backend lokal geliştirme için `python-dotenv` varsayılan olarak `.env`'i yükler; prod/staging ortamlarında `.env` kullanılmaz.
+- CORS whitelist: `SECURITY_CORS_ALLOWED_ORIGINS` (virgülle ayrılmış kesin origin listesi) ile yönetilir.
+
+### CI kullanımı
+`deploy.yml` örneği:
+```yaml
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  JWT_SECRET:   ${{ secrets.JWT_SECRET }}
+  API_BASE_URL: ${{ vars.API_BASE_URL }}
+```
+
+### SBOM ve Güvenlik Taramaları
+- `security.yml` iş akışı Python/Node bağımlılıkları için **pip-audit/npm audit** raporları ve **CycloneDX SBOM** üretir.
+- Kritik bulgu tespit edilirse job fail eder.
+
 ### Analytics Uc Noktalari
 
 Yonetim panelindeki gelismis raporlar icin eklenen API'lar:
