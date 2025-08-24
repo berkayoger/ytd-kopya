@@ -185,7 +185,9 @@ def analyze_coin_api(coin_id):
 
                 # Güncel kullanım sayısını almak için objeyi refresh et
                 db.session.refresh(daily_usage_record)
-                logger.info(f"Kullanıcı {user.username} - Günlük analiz kullanımı: {daily_usage_record.analyze_calls}")
+                _u = g.get("user")
+                _uname = getattr(_u, "username", None) or getattr(_u, "email", None) or getattr(_u, "id", "anonymous")
+                logger.info("Kullanıcı %s - Günlük analiz kullanımı: %s", _uname, getattr(daily_usage_record, "analyze_calls", "?"))
 
                 # Audit log kaydı
                 add_audit_log(
@@ -210,8 +212,10 @@ def analyze_coin_api(coin_id):
         logger.error(f"Harici API bağlantı hatası: {e}. Kullanıcı: {user.username}")
         return jsonify({"error": f"Harici API bağlantı hatası. Lütfen daha sonra tekrar deneyin."}), 503
     except Exception as e:
-        logger.exception(f"Analiz sırasında beklenmeyen bir hata oluştu: {e}. Kullanıcı: {user.username}")
-        return jsonify({"error": f"Analiz sırasında beklenmeyen bir hata oluştu. Destek ile iletişime geçin."}), 500
+        _u = g.get("user")
+        _uname = getattr(_u, "username", None) or getattr(_u, "email", None) or getattr(_u, "id", "anonymous")
+        logger.exception("Analiz sırasında beklenmeyen bir hata oluştu: %s; Kullanıcı: %s", e, _uname)
+        return jsonify({"error": "Bilinmeyen bir hata oluştu."}), 500
 
 # LLM Destekli Analiz Endpoint'i (Sadece Premium Kullanıcılar İçin)
 @api_bp.route('/llm/analyze', methods=['POST'])
