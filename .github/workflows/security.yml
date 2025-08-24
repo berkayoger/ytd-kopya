@@ -7,9 +7,13 @@ on:
     branches: [ main ]
   schedule:
     - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  audit:
+  audit_python:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,18 +21,29 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install tools
-        run: pip install pip-audit cyclonedx-bom
-      - name: Run pip-audit
+        run: pip install --upgrade pip-audit cyclonedx-bom
+      - name: Run pip-audit (backend)
         id: audit
         continue-on-error: true
         run: |
-          for f in backend/requirements*.txt; do
-            pip-audit -r "$f" -f json -o "pip-audit-$(basename "$f").json" --fail-on critical
+          shopt -s nullglob
+          files=(backend/requirements*.txt)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No backend/requirements*.txt found, skipping pip-audit"; exit 0
+          fi
+          failed=0
+          for f in "${files[@]}"; do
+            echo "Auditing $f"
+            pip-audit -r "$f" -f json -o "pip-audit-$(basename "$f").json" --fail-on critical || failed=1
           done
-      - name: Generate SBOM
+          exit $failed
+      - name: Generate SBOM (backend)
         run: |
-          for f in backend/requirements*.txt; do
-            cyclonedx-py -r "$f" --format json -o "sbom-$(basename "$f").json"
+          shopt -s nullglob
+          files=(backend/requirements*.txt)
+          for f in "${files[@]}"; do
+            echo "SBOM for $f"
+            cyclonedx-bom -r -i "$f" -o "sbom-$(basename "$f").json" -F json
           done
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -40,4 +55,34 @@ jobs:
           if-no-files-found: ignore
       - name: Fail on vulnerability
         if: steps.audit.outcome == 'failure'
+        run: exit 1
+
+  audit_node:
+    runs-on: ubuntu-latest
+    if: ${{ hashFiles('frontend/package.json') != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: npm ci & audit (high+)
+        working-directory: frontend
+        continue-on-error: true
+        id: npm_audit
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          npm audit --omit dev --audit-level=high --json > ../npm-audit.json || true
+      - name: Node SBOM
+        run: npx -y @cyclonedx/cyclonedx-npm --output-format json --output-file sbom-node.json || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: security-reports-node
+          path: |
+            npm-audit.json
+            sbom-node.json
+          if-no-files-found: ignore
+      - name: Fail on high+ vulnerabilities
+        if: steps.npm_audit.outcome == 'failure'
         run: exit 1
