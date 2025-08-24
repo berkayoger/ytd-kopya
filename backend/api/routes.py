@@ -121,7 +121,9 @@ def analyze_coin_api(coin_id):
 
     # Redis Cache Kontrolü
     r_client = current_app.extensions['redis_client']
-    cache_key = f"analysis:{coin_id}:{investor_profile}:{user.subscription_level.name}" # Cache key'e plan eklendi
+    # user.subscription_level string ya da enum olabilir - güvenli erişim
+    plan_name = getattr(user.subscription_level, 'name', str(user.subscription_level)) if hasattr(user, 'subscription_level') else 'basic'
+    cache_key = f"analysis:{coin_id}:{investor_profile}:{plan_name}" # Cache key'e plan eklendi
 
     if r_client:
         cached_result = r_client.get(cache_key)
