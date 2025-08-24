@@ -6,21 +6,21 @@
 from typing import Dict, Optional
 import os
 import json
-import redis
+from contextlib import suppress
+try:
+    import redis  # type: ignore
+except Exception:
+    redis = None
 
-USE_REDIS = os.getenv("USE_REDIS_FEATURE_FLAGS", "1") == "1"
+USE_REDIS = os.getenv("USE_REDIS_FEATURE_FLAGS", "1") == "1" and redis is not None
 
-redis_client: Optional[redis.Redis]
+redis_client: Optional["redis.Redis"]  # type: ignore[name-defined]
 try:
     redis_client = redis.Redis.from_url(
         os.getenv("REDIS_URL", "redis://localhost:6379"), decode_responses=True
     )
     redis_client.ping()
-    redis_client.json = redis_client  # mock json client if redis-py json is not enabled
-    if hasattr(redis_client, "json"):
-        redis_client.json.get = (
-            lambda key, path=None: json.loads(redis_client.get(key) or "null")
-        )
+    # yumuşak JSON desteği: yoksa .get/.set ile çalışacağız
 except Exception:
     redis_client = None
     USE_REDIS = False
@@ -34,6 +34,7 @@ _default_flags: Dict[str, bool] = {
     # DRAKS için hem kısa hem _enabled alias'ı destekleyelim
     "draks": False,
     "draks_enabled": False,
+    "decision_consensus": True,
 
 }
 
@@ -53,19 +54,38 @@ def _aliases(name: str) -> list[str]:
     else:
         return [name, f"{name}_enabled"]
 
+def _redis_get_bool(n: str) -> Optional[bool]:
+    if not (USE_REDIS and redis_client):
+        return None
+    with suppress(Exception):
+        raw = redis_client.get(f"feature_flag:{n}")
+        if raw is not None:
+            try:
+                val = json.loads(raw)
+            except Exception:
+                val = raw
+            if isinstance(val, bool):
+                return val
+            if isinstance(val, str):
+                if val.lower() in ("true", "1"):
+                    return True
+                if val.lower() in ("false", "0"):
+                    return False
+            if isinstance(val, (int, float)):
+                return bool(val)
+    return None
+
 
 def feature_flag_enabled(flag_name: str) -> bool:
-    """Return ``True`` if the feature flag is enabled (alias'larla birlikte)."""
+    """Flag açık mı? (alias'lar: name ve name_enabled). Redis yoksa in-memory fallback."""
     candidates = _aliases(flag_name)
-    if USE_REDIS and redis_client:
-        for n in candidates:
-            value = redis_client.get(f"feature_flag:{n}")
-            if value is not None:
-                return value == "true"
-        return False
+    for n in candidates:
+        v = _redis_get_bool(n)
+        if v is not None:
+            return bool(v)
     for n in candidates:
         if n in _default_flags:
-            return _default_flags.get(n, False)
+            return bool(_default_flags[n])
     return False
 
 
@@ -91,20 +111,27 @@ def create_feature_flag(
     enabled: bool,
     description: str = "",
     category: str = "general",
-):
+    meta: Optional[Dict[str, str]] = None,
+) -> bool:
     """Create a new feature flag and optionally store metadata"""
+    meta_data = meta or {"description": description, "category": category}
     if USE_REDIS and redis_client:
-        redis_client.hset(
-            f"feature_flag_meta:{flag_name}",
-            mapping={"description": description, "category": category},
-        )
-        redis_client.sadd(f"feature_flags:category:{category}", flag_name)
+        with suppress(Exception):
+            redis_client.hset(
+                f"feature_flag_meta:{flag_name}",
+                mapping=meta_data,
+            )
+            redis_client.sadd(
+                f"feature_flags:category:{meta_data.get('category', 'general')}",
+                flag_name,
+            )
     _default_flag_meta[flag_name] = {
-        "description": description,
-        "category": category,
+        **_default_flag_meta.get(flag_name, {}),
+        **meta_data,
     }
     # flag değeri ve alias'ları güncelle
     set_feature_flag(flag_name, enabled)
+    return True
 
 
 def get_feature_flag_metadata(flag_name: str) -> Dict[str, str]:
