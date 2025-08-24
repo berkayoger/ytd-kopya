@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import sys
 import uuid
+import json
 from time import perf_counter
 from datetime import timedelta, datetime
 from typing import Optional
@@ -203,6 +204,56 @@ def create_app() -> Flask:
                 db.session.commit()
         else:
             logger.info("Prod: db.create_all() atlandı; migration kullanın.")
+
+    # --- FEATURE_FLAGS alias eşleme (legacy anahtarlar için) ---
+    def _sync_feature_aliases(app_: Flask) -> None:
+        try:
+            flags = app_.config.get("FEATURE_FLAGS") or app_.config.get("feature_flags") or {}
+            if isinstance(flags, str):
+                try:
+                    flags = json.loads(flags or "{}")
+                except Exception:
+                    flags = {}
+            if isinstance(flags, dict):
+                for k, v in flags.items():
+                    up = str(k).upper()
+                    # Çoklu alias’lar: route’ların farklı okuma biçimlerine uyum
+                    aliases = [
+                        f"FEATURE_{up}",
+                        f"ENABLE_{up}",
+                        f"FEATURE_{up}_ENABLED",
+                        f"{up}_FEATURE_ENABLED",
+                        f"{up}_ENABLED",
+                        f"FEATURE_FLAG_{up}",
+                    ]
+                    for alias in aliases:
+                        if alias not in app_.config:
+                            app_.config[alias] = v
+                    # lower-case erişimler için de birleştir
+                    lc_aliases = [
+                        f"feature_{up.lower()}",
+                        f"enable_{up.lower()}",
+                        f"feature_{up.lower()}_enabled",
+                        f"{up.lower()}_enabled",
+                    ]
+                    for alias in lc_aliases:
+                        if alias not in app_.config:
+                            app_.config[alias] = v
+        except Exception:
+            pass
+
+    _sync_feature_aliases(app)
+
+    # Alias eşlemeyi sadece create_app sırasında bir kez yapmak yeterli olmayabilir;
+    # testler doğrudan app.config['FEATURE_FLAGS'] set edebiliyor. Bu yüzden her istekte
+    # hafif bir senkron daha yapıyoruz (O(kaç bayrak var) ve idempotent).
+    @app.before_request
+    def _ff_sync_hook():
+        try:
+            _sync_feature_aliases(app)
+        except Exception:
+            pass
+    # -----------------------------------------------------------
 
     # Extensions kayıt
     app.extensions["db"] = db
