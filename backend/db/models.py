@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 # SQLAlchemy instance uygulama genelinde 'backend.db' paketinde tanımlıdır.
 # Bazı ortamlarda 'backend.db.__init__' şeklinde içe aktarmak yeni bir modül
@@ -281,19 +281,6 @@ class PasswordResetToken(db.Model):
     is_used = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     user = db.relationship("User", backref="password_reset_tokens", lazy=True)
-
-
-class DailyUsage(db.Model):
-    """Kullanıcıların günlük API kullanımını takip eder."""
-
-    __tablename__ = "daily_usage"
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    date = Column(Date, nullable=False)
-    analyze_calls = Column(Integer, default=0, nullable=False)
-    llm_queries = Column(Integer, default=0, nullable=False)
-    user = db.relationship("User", backref="daily_usages", lazy=True)
-    __table_args__ = (db.UniqueConstraint("user_id", "date", name="_user_date_uc"),)
 
 
 class SecurityAlarmLog(db.Model):
@@ -663,6 +650,22 @@ class UsageLog(db.Model):
 
     __table_args__ = (
         db.Index("idx_usage_user_action_time", "user_id", "action", "timestamp"),
+    )
+
+# DailyUsage model - günlük kullanım takibi için Redis fallback
+class DailyUsage(db.Model):
+    __tablename__ = "daily_usage"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String(50), nullable=False, index=True)
+    feature_key = Column(String(50), nullable=False, index=True)
+    usage_date = Column(Date, default=date.today, nullable=False, index=True)
+    used_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "feature_key", "usage_date", name="_user_feature_date_uc"),
     )
 
 # --- DRAKS tablolari ---

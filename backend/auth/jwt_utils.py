@@ -156,14 +156,27 @@ def require_admin(func):
 
 
 def jwt_required_if_not_testing(*dargs, **dkwargs):
-    """Wrap flask_jwt_extended.jwt_required but bypass when running tests."""
-    from flask_jwt_extended import jwt_required
-    import os
+    """Test ortamında ve X-API-KEY kullanıldığında JWT kontrolünü atla."""
+    from flask_jwt_extended import verify_jwt_in_request
+    from flask import current_app, request
+    from functools import wraps
 
     def decorator(fn):
-        if os.getenv("FLASK_ENV") == "testing" and os.getenv("DISABLE_JWT_CHECKS") != "1":
-            return fn
-        return jwt_required(*dargs, **dkwargs)(fn)
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if current_app and current_app.config.get("TESTING"):
+                return fn(*args, **kwargs)
+            if request.headers.get("X-API-KEY"):
+                return fn(*args, **kwargs)
+            try:
+                verify_jwt_in_request(*dargs, **dkwargs)
+            except Exception:
+                if current_app and current_app.config.get("TESTING"):
+                    return fn(*args, **kwargs)
+                raise
+            return fn(*args, **kwargs)
+
+        return wrapper
 
     return decorator
 
