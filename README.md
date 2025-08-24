@@ -2,7 +2,7 @@
 
 > **Security-hardening aktif**  
 > Prod/staging kurulumunda WSGI entrypoint olarak **`app.secure_app:app`** kullanın. Bu sarmalayıcı mevcut Flask uygulamasını otomatik bulur ve:
-> - CORS allowlist,
+> - CORS allowlist (`SECURITY_CORS_ALLOWED_ORIGINS` ile yönetilir),
 > - Global rate limit + login özel limit,
 > - HSTS/CSP ve temel güvenlik başlıkları
 > katmanlarını uygular.

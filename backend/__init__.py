@@ -72,11 +72,12 @@ class Config:
     # Cache ve flags
     PRICE_CACHE_TTL = int(os.getenv("PRICE_CACHE_TTL", "300"))
 
-    # CORS
+    # CORS whitelist (env ile yönetilir)
     CORS_ORIGINS = os.getenv(
-        "CORS_ORIGINS",
+        "SECURITY_CORS_ALLOWED_ORIGINS",
         "http://localhost:80,http://localhost:5500,http://127.0.0.1:5500",
     ).split(",")
+    CORS_ALLOW_CREDENTIALS = _bool_env("SECURITY_CORS_ALLOW_CREDENTIALS", False)
 
     # Ortam
     ENV = os.getenv("FLASK_ENV", "development")
@@ -166,7 +167,13 @@ def create_app() -> Flask:
     Config.assert_production_cors_origins()
 
     # Uzantıları başlat
-    CORS(app, supports_credentials=True, origins=Config.CORS_ORIGINS)
+    CORS(
+        app,
+        supports_credentials=Config.CORS_ALLOW_CREDENTIALS,
+        origins=Config.CORS_ORIGINS,
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
     db.init_app(app)
     try:
         limiter.init_app(app)
