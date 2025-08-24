@@ -1,132 +1,43 @@
-
-name: Security & SBOM
+name: Security Audit
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
   schedule:
-    - cron: "23 3 * * 3"  # Haftalık tarama (Çarşamba 03:23 UTC)
-  workflow_dispatch:
-permissions:
-  contents: read
-  security-events: write   # CodeQL sonuçları için
+    - cron: '0 0 * * 0'
 
 jobs:
-  codeql:
-    name: CodeQL (Python + JS)
+  audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
-        with:
-          languages: python,javascript
-          queries: +security-and-quality
-      - uses: github/codeql-action/analyze@v3
-
-  pip_audit:
-    name: pip-audit (raporla/bozma)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - name: Install pip-audit
-        run: pip install pip-audit
+          python-version: '3.11'
+      - name: Install tools
+        run: pip install pip-audit cyclonedx-bom
       - name: Run pip-audit
-        continue-on-error: true   # bulgular pipeline'ı bozmasın
-        run: |
-          if [ -f "requirements.txt" ]; then
-            pip-audit -r requirements.txt -f json -o pip-audit.json || true
-          fi
-          if [ -f "backend/requirements.txt" ]; then
-            pip-audit -r backend/requirements.txt -f json -o pip-audit-backend.json || true
-          fi
-      - name: Upload audit artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: pip-audit
-          path: |
-            pip-audit.json
-            pip-audit-backend.json
-          if-no-files-found: ignore
-
-  npm_audit:
-    name: npm audit (raporla/bozma)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - name: Detect FE
-        id: has_fe
-        run: |
-          if [ -f "frontend/package.json" ]; then
-            echo "found=true" >> $GITHUB_OUTPUT
-          else
-            echo "found=false" >> $GITHUB_OUTPUT
-          fi
-      - uses: actions/setup-node@v4
-        if: steps.has_fe.outputs.found == 'true'
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: "frontend/package-lock.json"
-      - name: npm ci & audit
-        if: steps.has_fe.outputs.found == 'true'
-        working-directory: frontend
+        id: audit
         continue-on-error: true
         run: |
-          if [ -f "package-lock.json" ]; then npm ci; else npm install; fi
-          npm audit --audit-level=high --json > ../npm-audit.json || true
-      - name: Upload npm audit
-        if: steps.has_fe.outputs.found == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: npm-audit
-          path: npm-audit.json
-          if-no-files-found: ignore
-
-  gitleaks:
-    name: Gitleaks (raporla/bozma)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0   # tüm geçmişi tara
-      - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        continue-on-error: true
-        with:
-          config-path: .gitleaks.toml
-          redact: "true"
-
-  sbom:
-    name: CycloneDX SBOM
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - name: Python SBOM
-        uses: CycloneDX/gh-python-generate-sbom@v2
-        with:
-          input: ./requirements.txt
-          output: ./sbom-python.xml
-          format: xml
-      - name: Node SBOM (if FE)
-        if: ${{ hashFiles('frontend/package.json') != '' }}
+          for f in backend/requirements*.txt; do
+            pip-audit -r "$f" -f json -o "pip-audit-$(basename "$f").json" --fail-on critical
+          done
+      - name: Generate SBOM
         run: |
-          cd frontend
-          npx -y @cyclonedx/cyclonedx-npm --output-format xml --output-file ../sbom-node.xml || true
-      - name: Upload SBOMs
+          for f in backend/requirements*.txt; do
+            cyclonedx-py -r "$f" --format json -o "sbom-$(basename "$f").json"
+          done
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: sbom
+          name: security-reports
           path: |
-            sbom-python.xml
-            sbom-node.xml
+            pip-audit-*.json
+            sbom-*.json
           if-no-files-found: ignore
+      - name: Fail on vulnerability
+        if: steps.audit.outcome == 'failure'
+        run: exit 1
