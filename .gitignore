@@ -21,6 +21,8 @@ frontend/.env.*
 secrets*.json
 logs/
 sbom.json
+sbom-*.json
+pip-audit-*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -43,3 +45,5 @@ tests/test_draks_api.py
 
 # Database
 *.db
+dist/
+.DS_Store
