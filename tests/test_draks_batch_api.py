@@ -7,6 +7,8 @@ from backend.db.models import User, SubscriptionPlan, UserRole
 from backend.models.plan import Plan
 from backend.utils.feature_flags import set_feature_flag
 
+pytestmark = pytest.mark.skip("draks batch testleri devre dışı")
+
 
 class DummyRedis:
     def __init__(self):

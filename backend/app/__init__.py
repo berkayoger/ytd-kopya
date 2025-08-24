@@ -7,6 +7,8 @@ import logging
 from .logging_config import configure_json_logging
 from .middleware.request_id import request_id_middleware
 from .health import bp as health_bp
+from .security import security_headers
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 
 def create_app(config_object: str | None = None) -> Flask:
@@ -22,6 +24,13 @@ def create_app(config_object: str | None = None) -> Flask:
 
     # --- Request-ID middleware ---
     request_id_middleware(app)
+
+    # --- Güvenlik başlıkları ---
+    security_headers(app)
+
+    # --- ProxyFix ---
+    if os.getenv("ENABLE_PROXY_FIX", "false").lower() == "true":
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
     # --- Blueprints ---
     app.register_blueprint(health_bp)
