@@ -14,6 +14,8 @@ def admin_client(monkeypatch):
     monkeypatch.setattr("backend.Config.SQLALCHEMY_ENGINE_OPTIONS", {}, raising=False)
     import flask_jwt_extended.view_decorators as vd
     monkeypatch.setattr(vd, "verify_jwt_in_request", lambda *a, **k: None)
+    monkeypatch.setattr("backend.auth.roles.verify_jwt_in_request", lambda optional=False: None)
+    monkeypatch.setattr("backend.auth.roles.current_roles", lambda: {"admin"})
     monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
     app = create_app()
     app.config["TESTING"] = True
