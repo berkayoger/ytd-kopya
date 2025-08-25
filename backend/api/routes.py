@@ -30,7 +30,7 @@ from backend.utils.usage_limits import check_usage_limit, get_usage_status
 from backend.utils.helpers import serialize_user_for_api, add_audit_log
 from backend.utils.plan_limits import get_user_effective_limits, get_all_feature_keys
 from backend.middleware.plan_limits import enforce_plan_limit
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, jwt_required
 
 # API Blueprint'i tanımla
 api_bp = Blueprint('api', __name__)
@@ -65,35 +65,31 @@ BACKEND_PLAN_PRICES = {
 # Limit durumu (UI yardımcı)
 # ---------------------------------------------------------------------------
 @api_bp.route('/limits/status', methods=['GET'])
-@jwt_required()
 def limits_status():
-    try:
-        uid = str(get_jwt_identity())
-        user = User.query.get(uid)
-        if not user:
-            return jsonify({"error": "User not found"}), 404
-
-        feature_keys = get_all_feature_keys()
-        status = {fk: get_usage_status(uid, fk) for fk in feature_keys}
-
-        try:
-            create_log(
-                user_id=uid,
-                username=user.username,
-                ip_address=request.remote_addr or "unknown",
-                action="limits_status",
-                target="/api/limits/status",
-                description="Kullanım limit durumu sorgulandı.",
-                status="success",
-                user_agent=request.headers.get("User-Agent", ""),
-            )
-        except Exception as log_err:
-            logger.warning(f"limits_status log oluşturulamadı: {log_err}")
-
-        return jsonify({"plan": str(user.subscription_level), "features": status}), 200
-    except Exception as e:
-        logger.error(f'limits_status error: {e}')
-        return jsonify({"error": "Failed to fetch limit status"}), 500
+   try:
+       uid = str(get_jwt_identity())
+       user = User.query.get(uid)
+       if not user:
+           return jsonify({"error": "User not found"}), 404
+       feature_keys = get_all_feature_keys()
+       status = {fk: get_usage_status(uid, fk) for fk in feature_keys}
+       try:
+           create_log(
+               user_id=uid,
+               username=user.username,
+               ip_address=request.remote_addr or "unknown",
+               action="limits_status",
+               target="/api/limits/status",
+               description="Kullanım limit durumu sorgulandı.",
+               status="success",
+               user_agent=request.headers.get("User-Agent", ""),
+           )
+       except Exception as log_err:
+           logger.warning(f"limits_status log oluşturulamadı: {log_err}")
+       return jsonify({"plan": str(user.subscription_level), "features": status}), 200
+   except Exception as e:
+       logger.error(f'limits_status error: {e}')
+       return jsonify({"error": "Failed to fetch limit status"}), 500
 
 # Analiz endpoint'i
 @api_bp.route('/analyze_coin/<string:coin_id>', methods=['GET', 'POST'])
