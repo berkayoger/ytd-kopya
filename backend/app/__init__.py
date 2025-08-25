@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from flask import Flask
 import os
+from backend.api.admin.logs import admin_logs_bp
 import logging
 
 from .logging_config import configure_json_logging
@@ -33,6 +34,6 @@ def create_app(config_object: str | None = None) -> Flask:
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
     # --- Blueprints ---
-    app.register_blueprint(health_bp)
+    app.register_blueprint(admin_logs_bp)
 
     return app

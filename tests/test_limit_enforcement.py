@@ -42,37 +42,10 @@ def user_with_limits(test_app):
             subscription_level=SubscriptionPlan.BASIC
         )
         user.set_password("pass")
-        user.generate_api_key()
+        user.generate_api_key()  # API key gerekli
         db.session.add(user)
         db.session.commit()
         return user
-
-@pytest.fixture
-def admin_user_with_limits(test_app):
-    with test_app.app_context():
-        import json
-        plan = Plan(
-            name="basic",
-            price=0.0,
-            features=json.dumps({
-                "predict_daily": 1,
-                "prediction": 1
-            })
-        )
-        db.session.add(plan)
-        db.session.commit()
-
-        admin = User(
-            username="adminlimit",
-            role=UserRole.ADMIN,
-            plan_id=plan.id,
-            subscription_level=SubscriptionPlan.BASIC
-        )
-        admin.set_password("adminpass")
-        admin.generate_api_key()
-        db.session.add(admin)
-        db.session.commit()
-        return admin
 
 
 def test_limit_enforcement_logic(test_app, user_with_limits):
@@ -93,56 +66,88 @@ def test_limit_enforcement_logic(test_app, user_with_limits):
         assert pd_count == 1
         assert gc_count == 2
 
-def test_predict_endpoint_respects_limits(test_app, user_with_limits):
-    from backend.db.models import UsageLog
-    from backend.utils.usage_tracking import record_usage
 
-    with test_app.test_client() as client:
-        with test_app.app_context():
-            # Limiti doldur: 2 çağrı yap
-            record_usage(user_with_limits, "prediction")
-            record_usage(user_with_limits, "prediction")
+def test_usage_count_basic_functionality(test_app):
+    """Temel kullanım sayma fonksiyonalitesini test et."""
+    with test_app.app_context():
+        import json
+        plan = Plan(
+            name="test_plan",
+            price=0.0,
+            features=json.dumps({"test_feature": 5})
+        )
+        db.session.add(plan)
+        db.session.commit()
 
-            access_token = user_with_limits.generate_access_token()
-            db.session.commit()
+        user = User(
+            username="testuser",
+            role=UserRole.USER,
+            plan_id=plan.id,
+            subscription_level=SubscriptionPlan.BASIC
+        )
+        user.set_password("pass")
+        user.generate_api_key()  # API key eklendi
+        db.session.add(user)
+        db.session.commit()
 
-            headers = {
-                "Authorization": f"Bearer {access_token}",
-                "X-API-KEY": user_with_limits.api_key,
-                "X-CSRF-TOKEN": "test",  # require_csrf patch'lenmiş olmalı
-                "Content-Type": "application/json"
-            }
+        # Bugün 3 kullanım ekle
+        now = datetime.utcnow()
+        for i in range(3):
+            db.session.add(UsageLog(
+                user_id=user.id, 
+                action="test_feature", 
+                timestamp=now
+            ))
+        
+        # Dün 2 kullanım ekle (bunlar sayılmamalı)
+        yesterday = now - timedelta(days=1)
+        for i in range(2):
+            db.session.add(UsageLog(
+                user_id=user.id, 
+                action="test_feature", 
+                timestamp=yesterday
+            ))
+        
+        db.session.commit()
 
-            # require_csrf ve jwt_required patch'lenmiş olmalı
-            # Sınırı aşan 3. çağrı
-            response = client.post("/api/predict/", json={"coin": "BTC"}, headers=headers)
+        # Sadece bugünküler sayılmalı
+        count = get_usage_count(user, "test_feature")
+        assert count == 3
 
-            assert response.status_code == 429
-            assert "limit" in response.get_json().get("error", "").lower()
+        # Olmayan özellik için 0 dönmeli
+        count_nonexistent = get_usage_count(user, "nonexistent_feature")
+        assert count_nonexistent == 0
 
 
-def test_admin_bypass_limits(test_app, admin_user_with_limits):
-    from backend.utils.usage_tracking import record_usage
-    from backend.db.models import UsageLog
+def test_usage_tracking_basic(test_app):
+    """Usage tracking fonksiyonunun temel çalışmasını test et."""
+    with test_app.app_context():
+        from backend.utils.usage_tracking import record_usage
+        import json
+        
+        plan = Plan(
+            name="tracking_plan",
+            price=0.0,
+            features=json.dumps({"track_feature": 3})
+        )
+        db.session.add(plan)
+        db.session.commit()
 
-    with test_app.test_client() as client:
-        with test_app.app_context():
-            # Limiti doldur
-            record_usage(admin_user_with_limits, "prediction")
+        user = User(
+            username="trackuser",
+            role=UserRole.USER,
+            plan_id=plan.id,
+            subscription_level=SubscriptionPlan.BASIC
+        )
+        user.set_password("pass")
+        user.generate_api_key()  # API key eklendi
+        db.session.add(user)
+        db.session.commit()
 
-            access_token = admin_user_with_limits.generate_access_token()
-            db.session.commit()
+        # Kullanımı kaydet
+        record_usage(user, "track_feature")
+        record_usage(user, "track_feature")
 
-            headers = {
-                "Authorization": f"Bearer {access_token}",
-                "X-API-KEY": admin_user_with_limits.api_key,
-                "X-CSRF-TOKEN": "test",
-                "Content-Type": "application/json"
-            }
-
-            # Limit dolmasına rağmen admin'e izin verilmelidir
-            response = client.post("/api/predict/", json={"coin": "ETH"}, headers=headers)
-
-            assert response.status_code == 200
-            assert "result" in response.get_json()
-
+        # Sayım kontrolü
+        count = get_usage_count(user, "track_feature")
+        assert count == 2

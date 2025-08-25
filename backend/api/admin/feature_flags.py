@@ -68,10 +68,6 @@ def update_feature_flag(flag_name):
 
 
 @feature_flags_bp.route("/feature-flags/create", methods=["POST"])
-<<<<<<< HEAD
-@jwt_required_if_not_testing()
-=======
->>>>>>> 7ff5221 (Add tests for feature flag creation metadata)
 def create_flag():
     data = request.get_json()
     required_fields = ["name", "enabled"]
@@ -83,58 +79,4 @@ def create_flag():
         description=data.get("description", ""),
         category=data.get("category", "general"),
     )
-<<<<<<< HEAD
-    _log_flag_action("feature_flag_create", f"Yeni flag: {data['name']}")
     return jsonify({"status": "created", "flag": data["name"]})
-
-
-@feature_flags_bp.route("/feature-flags/export", methods=["GET"])
-@jwt_required_if_not_testing()
-def export_flags():
-    """Tüm flag'leri JSON olarak dışa aktar."""
-    from backend.utils.feature_flags import export_all_flags
-
-    try:
-        data = json.loads(export_all_flags())
-        _log_flag_action("feature_flags_export", "Flagler dışa aktarıldı")
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@feature_flags_bp.route("/feature-flags/import", methods=["POST"])
-@jwt_required_if_not_testing()
-def import_flags():
-    """JSON verisinden flag'leri içe aktar."""
-    from backend.utils.feature_flags import import_flags_from_json
-
-    data = request.get_json()
-    try:
-        import_flags_from_json(json.dumps(data))
-        _log_flag_action("feature_flags_import", "Flagler içe aktarıldı")
-        return jsonify({"status": "imported"})
-    except Exception as e:
-        _log_flag_action("feature_flags_import_error", str(e))
-        return jsonify({"error": str(e)}), 400
-
-
-@feature_flags_bp.route("/feature-flags/category/<category>", methods=["GET"])
-@jwt_required_if_not_testing()
-def get_flags_by_category(category):
-    """Belirli kategoriye ait flag'leri döndür."""
-    from backend.utils.feature_flags import get_flags_by_category, get_feature_flag_metadata
-
-    flags = get_flags_by_category(category)
-    enriched = {}
-    for key, val in flags.items():
-        meta = get_feature_flag_metadata(key)
-        enriched[key] = {
-            "enabled": val,
-            "description": meta.get("description", ""),
-            "category": meta.get("category", "general"),
-        }
-    _log_flag_action("feature_flags_list_category", f"Kategori: {category}")
-    return jsonify(enriched)
-=======
-    return jsonify({"status": "created", "flag": data["name"]})
->>>>>>> 7ff5221 (Add tests for feature flag creation metadata)

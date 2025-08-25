@@ -1,0 +1,161 @@
+"""Process-içi (in-memory) feature flag yardımcıları.
+
+Basit ve yan etkisiz bir sözlük üzerinde çalışır.
+API katmanı created_at/created_by gibi metadata alanlarını ekleyebilir;
+utils katmanı bu alanları olduğu gibi saklar.
+"""
+
+from typing import Any, Dict, Optional
+
+# Ana depo: { key: { "enabled": bool, "metadata": dict } }
+_FEATURE_FLAGS: Dict[str, Dict[str, Any]] = {}
+
+
+def set_feature_flag(key: str, value: bool, metadata: Optional[Dict[str, Any]] = None) -> None:
+    """Flag'i oluşturur/günceller. metadata opsiyoneldir."""
+    _FEATURE_FLAGS[key] = {
+        "enabled": bool(value),
+        "metadata": dict(metadata or {}),
+    }
+
+
+def get_feature_flag(key: str, default: bool = False) -> bool:
+    """Flag değerini döndürür; yoksa default."""
+    return bool(_FEATURE_FLAGS.get(key, {}).get("enabled", default))
+
+
+def feature_flag_enabled(key: str, default: bool = False) -> bool:
+    """Geriye dönük uyumluluk için alias (get_feature_flag ile aynı)."""
+    return get_feature_flag(key, default)
+
+
+def get_feature_flags() -> Dict[str, Dict[str, Any]]:
+    """Tüm flag'lerin sığ (shallow) kopyasını döndürür."""
+    return {k: v.copy() for k, v in _FEATURE_FLAGS.items()}
+
+
+def all_feature_flags() -> Dict[str, Dict[str, Any]]:
+    """Admin tarafında kullanılan isim; get_feature_flags ile eşdeğer."""
+    return get_feature_flags()
+
+
+def delete_feature_flag(key: str) -> None:
+    """Flag'i siler (yoksa sessizce geçer)."""
+    _FEATURE_FLAGS.pop(key, None)
+
+
+def enable_feature_flag(key: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    """Kolaylık: True yap."""
+    set_feature_flag(key, True, metadata)
+
+
+def disable_feature_flag(key: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+"""Process-içi (in-memory) feature flag yardımcıları.
+
+Basit ve yan etkisiz bir sözlük üzerinde çalışır.
+API katmanı created_at/created_by gibi metadata alanlarını ekleyebilir;
+utils katmanı bu alanları olduğu gibi saklar.
+"""
+
+from typing import Any, Dict, Optional
+
+# Ana depo: { key: { "enabled": bool, "metadata": dict } }
+_FEATURE_FLAGS: Dict[str, Dict[str, Any]] = {}
+
+
+def set_feature_flag(key: str, value: bool, metadata: Optional[Dict[str, Any]] = None) -> None:
+    """Flag'i oluşturur/günceller. metadata opsiyoneldir."""
+    _FEATURE_FLAGS[key] = {
+        "enabled": bool(value),
+        "metadata": dict(metadata or {}),
+    }
+
+
+def create_feature_flag(key: str, enabled: bool, metadata: Optional[Dict[str, Any]] = None) -> None:
+    """Admin tarafının beklediği isim: set_feature_flag ile aynı davranış."""
+    set_feature_flag(key, enabled, metadata)
+
+
+def update_feature_flag(
+    key: str, enabled: Optional[bool] = None, metadata: Optional[Dict[str, Any]] = None
+) -> None:
+    """Kolaylık: mevcut flag'i günceller (metadata merge eder). Yoksa oluşturur."""
+    current = _FEATURE_FLAGS.get(key, {"enabled": False, "metadata": {}})
+    new_enabled = current.get("enabled", False) if enabled is None else bool(enabled)
+    merged_meta = dict(current.get("metadata") or {})
+    if metadata:
+        merged_meta.update(dict(metadata))
+    set_feature_flag(key, new_enabled, merged_meta)
+
+
+def get_feature_flag(key: str, default: bool = False) -> bool:
+    """Flag değerini döndürür; yoksa default."""
+    return bool(_FEATURE_FLAGS.get(key, {}).get("enabled", default))
+
+
+def feature_flag_enabled(key: str, default: bool = False) -> bool:
+    """Geriye dönük uyumluluk için alias (get_feature_flag ile aynı)."""
+    return get_feature_flag(key, default)
+
+
+def get_feature_flags() -> Dict[str, Dict[str, Any]]:
+    """Tüm flag'lerin sığ (shallow) kopyasını döndürür."""
+    return {k: v.copy() for k, v in _FEATURE_FLAGS.items()}
+
+
+def all_feature_flags() -> Dict[str, Dict[str, Any]]:
+    """Admin tarafında kullanılan isim; get_feature_flags ile eşdeğer."""
+    return get_feature_flags()
+
+
+def delete_feature_flag(key: str) -> None:
+    """Flag'i siler (yoksa sessizce geçer)."""
+    _FEATURE_FLAGS.pop(key, None)
+
+
+def enable_feature_flag(key: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    """Kolaylık: True yap."""
+    set_feature_flag(key, True, metadata)
+
+
+def disable_feature_flag(key: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    """Kolaylık: False yap."""
+    set_feature_flag(key, False, metadata)
+
+
+# Testlerde ihtiyaç olursa; dışa açmıyoruz ama modül içinden çağrılabilir.
+def _clear_feature_flags() -> None:
+    _FEATURE_FLAGS.clear()
+
+
+__all__ = [
+    "set_feature_flag",
+    "create_feature_flag",
+    "update_feature_flag",
+    "get_feature_flag",
+    "feature_flag_enabled",
+    "get_feature_flags",
+    "all_feature_flags",
+    "delete_feature_flag",
+    "enable_feature_flag",
+    "disable_feature_flag",
+]
+    """Kolaylık: False yap."""
+    set_feature_flag(key, False, metadata)
+
+
+# Testlerde ihtiyaç olursa; dışa açmıyoruz ama modül içinden çağrılabilir.
+def _clear_feature_flags() -> None:
+    _FEATURE_FLAGS.clear()
+
+
+__all__ = [
+    "set_feature_flag",
+    "get_feature_flag",
+    "feature_flag_enabled",
+    "get_feature_flags",
+    "all_feature_flags",
+    "delete_feature_flag",
+    "enable_feature_flag",
+    "disable_feature_flag",
+]
