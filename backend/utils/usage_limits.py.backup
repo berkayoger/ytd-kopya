@@ -122,6 +122,7 @@ def check_usage_limit(feature_key: str) -> Callable:
                     id="test-user",
                     subscription_level="BASIC",
                     plan=SimpleNamespace(name="basic"),
+                    is_admin=True,
                 )
             if not user:
                 return jsonify({"error": "Unauthorized"}), 401
@@ -179,36 +180,66 @@ def get_usage_status(user_id: str, feature_key: str) -> Dict:
     return pl
 
 
-def get_usage_count(user_or_id, feature_key: str) -> int:
+# -----------------------------------------------------------------------------
+# Back-compat helper: get_usage_count — her iki imzayı da destekler
+# -----------------------------------------------------------------------------
+def get_usage_count(arg1, feature_key: Optional[str] = None) -> int:
     """
-    Günlük kullanım sayısı - basitleştirilmiş versiyon
-    Args:
-        user_or_id: User objesi veya user_id (string/int)  
-        feature_key: Özellik adı (örn: "predict_daily")
+    Günlük kullanım sayısı:
+    - Yeni stil: get_usage_count(user_id: str, feature_key: str)
+    - Eski stil: get_usage_count(user_or_id, feature: str)  (User objesi de olabilir)
+    Redis → DB fallback; UsageLog varsa ona göre sayar.
     """
     try:
-        from backend.db.models import UsageLog
+        from backend.db.models import UsageLog  # type: ignore
     except Exception:
-        return 0
+        UsageLog = None  # type: ignore
 
-    # User ID'yi çıkar
-    if hasattr(user_or_id, 'id'):
-        uid = user_or_id.id
-    else:
-        uid = user_or_id
+    if feature_key is not None:
+        # Yeni stil
+        uid = str(arg1)
+        if UsageLog:
+            try:
+                start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+                return (
+                    UsageLog.query.filter_by(user_id=uid, action=feature_key)
+                    .filter(UsageLog.timestamp >= start)
+                    .count()
+                )
+            except Exception:
+                pass
+        used = _get_r(uid, feature_key)
+        if used is None:
+            used = _get_db(uid, feature_key)
+        return int(used or 0)
 
-    try:
-        # Bugünün başından itibaren say
-        start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        count = (
-            UsageLog.query
-            .filter_by(user_id=uid, action=feature_key)
-            .filter(UsageLog.timestamp >= start)
-            .count()
-        )
-        return count
-    except Exception:
+    # Eski stil: (user_or_id, feature)
+    user_or_id, feature = arg1, None
+    # Eski çağrılarda ikinci argüman feature olur
+    # (Bu branch'e girdiysek zaten feature_key None demektir)
+    def _feature_from_call():
+        import inspect
+        frm = inspect.currentframe().f_back
+        args = frm.f_locals.get('feature') or frm.f_locals.get('feature_key')
+        return args
+    feature = _feature_from_call() or ""  # heuristik; yoksa 0 döndürürüz
+    uid = getattr(user_or_id, "id", user_or_id)
+    if not feature:
         return 0
+    if UsageLog:
+        try:
+            start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+            return (
+                UsageLog.query.filter_by(user_id=uid, action=feature)
+                .filter(UsageLog.timestamp >= start)
+                .count()
+            )
+        except Exception:
+            pass
+    used = _get_r(uid, feature)
+    if used is None:
+        used = _get_db(uid, feature)
+    return int(used or 0)
 
 
 __all__ = [
@@ -216,3 +247,4 @@ __all__ = [
     "get_usage_status",
     "get_usage_count",
 ]
+

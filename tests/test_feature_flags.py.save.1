@@ -1,0 +1,36 @@
+:        self.store[key] = value    def get(self, key):        return self.store.get(key)    def hset(self, key, mapping):        self.hstore[key] = mapping    def hgetall(self, key):        return self.hstore.get(key, {})
+def test_create_flag_in_memory(test_app, monkeypatch):
+    monkeypatch.setattr(feature_flags, "USE_REDIS", False)
+    monkeypatch.setattr(feature_flags, "redis_client", None)
+    monkeypatch.setattr(
+        feature_flags, "_default_flags", dict(feature_flags._default_flags)
+    )
+    monkeypatch.setattr(feature_flags, "_default_flag_meta", {})
+
+    res = test_app.post(
+        "/api/admin/feature-flags/create",
+        json={
+            "name": "in_memory_flag",
+            "enabled": True,
+            "description": "In memory",
+            "category": "internal",
+        },
+    )
+    assert res.status_code == 200
+
+    res = test_app.get("/api/admin/feature-flags")
+    data = res.get_json()
+    assert data["in_memory_flag"]["enabled"] is True
+    assert data["in_memory_flag"]["description"] == "In memory"
+    assert data["in_memory_flag"]["category"] == "internal"
+
+
+def test_create_flag_redis(test_app, monkeypatch):
+    dummy = DummyRedis()
+    monkeypatch.setattr(feature_flags, "redis_client", dummy)
+    monkeypatch.setattr(feature_flags, "USE_REDIS", True)
+    monkeypatch.setattr(
+        feature_flags, "_default_flags", dict(feature_flags._default_flags)
+    )
+    monkeypatch.setattr(feature_flags, "_default_flag_meta", {})
+    res = test_app.post(        "/api/admin/feature-flags/create",        json={            "name": "redis_flag",            "enabled": False,            "description": "From redis",            "category": "beta",        },   )   assert res.status_code == 200  res = test_app.get("/api/admin/feature-flags")    data = res.get_json()    assert data["redis_flag"]["enabled"] is Fa    assert data["redis

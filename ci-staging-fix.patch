@@ -1,0 +1,385 @@
+*** a/.github/workflows/ci.yml
+--- b/.github/workflows/ci.yml
+@@
+-name: CI
+-
+-on:
+-  pull_request:
+-    branches: [ "main" ]
+-  push:
+-    branches: [ "main" ]
+-
+-jobs:
+-  test:
+-    runs-on: ubuntu-latest
+-    steps:
+-      - uses: actions/checkout@v4
+-      - uses: actions/setup-python@v5
+-        with:
+-          python-version: "3.11"
+-      - name: Install deps & run pytest
+-        working-directory: backend
+-        run: |
+-          python -m pip install --upgrade pip
+-          if [ -f ../requirements.txt ]; then pip install -r ../requirements.txt; fi
+-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+-          if [ -f ../requirements-dev.txt ]; then pip install -r ../requirements-dev.txt; fi
+-          pytest -q || pytest -q -x
+-      - name: Smoke test (health)
+-        env:
+-          SAFE_HEALTH_MODE: "true"
+-        run: bash .github/scripts/smoke_backend.sh
++name: CI
++
++on:
++  pull_request:
++    branches: [ "main" ]
++  push:
++    branches: [ "main" ]
++
++jobs:
++  test:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++      - uses: actions/setup-python@v5
++        with:
++          python-version: "3.11"
++      - name: Install Python deps
++        run: |
++          python -m pip install --upgrade pip
++          # Kök + backend + (varsa) dev gereksinimleri
++          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
++          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
++          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
++      - name: Run pytest from repo root (stable imports)
++        env:
++          PYTHONPATH: .
++          FLASK_ENV: testing
++          # İzole ve hızlı test DB'si
++          DATABASE_URL: sqlite:///:memory:
++          # Test için güvenli placeholder sırlar
++          JWT_SECRET_KEY: test-secret
++          REDIS_URL: redis://localhost:6379/0
++        run: |
++          pytest -q
++      - name: Smoke test (health)
++        env:
++          SAFE_HEALTH_MODE: "true"
++        run: bash .github/scripts/smoke_backend.sh
+*** a/.github/workflows/staging.yml
+--- b/.github/workflows/staging.yml
+@@
+-name: Staging CI/CD
+-
+-on:
+-  push:
+-    branches: [ "main" ]
+-    paths:
+-      - "backend/**"
+-      - "frontend/**"
+-      - "docker-compose.staging.yml"
+-      - "infra/**"
+-      - ".github/workflows/staging.yml"
+-  workflow_dispatch:
+-
+-permissions:
+-  contents: read
+-  packages: write
+-
+-env:
+-  REGISTRY: ghcr.io
+-  IMAGE_BACKEND: ghcr.io/${{ github.repository }}-backend
+-  IMAGE_FRONTEND: ghcr.io/${{ github.repository }}-frontend
+-
+-jobs:
+-  test-backend:
+-    runs-on: ubuntu-latest
+-    services:
+-      postgres:
+-        image: postgres:15
+-        env:
+-          POSTGRES_USER: postgres
+-          POSTGRES_PASSWORD: postgres
+-          POSTGRES_DB: test_db
+-        ports: [ "5432:5432" ]
+-        options: >-
+-          --health-cmd="pg_isready -U postgres -d test_db"
+-          --health-interval=10s --health-timeout=5s --health-retries=5
+-      redis:
+-        image: redis:7-alpine
+-        ports: [ "6379:6379" ]
+-        options: >-
+-          --health-cmd="redis-cli ping"
+-          --health-interval=10s --health-timeout=5s --health-retries=5
+-    env:
+-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/test_db
+-      REDIS_URL: redis://localhost:6379/0
+-    defaults:
+-      run:
+-        working-directory: backend
+-    steps:
+-      - uses: actions/checkout@v4
+-      - uses: actions/setup-python@v5
+-        with:
+-          python-version: "3.11"
+-      - name: Install deps
+-        run: |
+-          python -m pip install --upgrade pip
+-          # Kök + backend + dev requirements (varsa)
+-          if [ -f ../requirements.txt ]; then pip install -r ../requirements.txt; fi
+-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+-          if [ -f ../requirements-dev.txt ]; then pip install -r ../requirements-dev.txt; fi
+-          # pytest yoksa yedek kurulum
+-          python - <<'PY'
+-          import importlib, sys, subprocess
+-          try:
+-              importlib.import_module("pytest")
+-          except ImportError:
+-              sys.exit(subprocess.call([sys.executable, "-m", "pip", "install", "pytest"]))
+-          PY
+-      - name: Run tests
+-        run: |
+-          if [ -d tests ]; then pytest -q || pytest -q -x; else echo "No tests"; fi
+-  build-backend:
+-    needs: test-backend
+-    runs-on: ubuntu-latest
+-    steps:
+-      - uses: actions/checkout@v4
+-      - name: Log in to GHCR
+-        uses: docker/login-action@v3
+-        with:
+-          registry: ${{ env.REGISTRY }}
+-          username: ${{ github.actor }}
+-          password: ${{ secrets.GITHUB_TOKEN }}
+-      - name: Build & push backend
+-        uses: docker/build-push-action@v6
+-        with:
+-          context: .
+-          file: backend/Dockerfile
+-          push: true
+-          tags: |
+-            ${{ env.IMAGE_BACKEND }}:sha-${{ github.sha }}
+-            ${{ env.IMAGE_BACKEND }}:staging
+-          cache-from: type=registry,ref=${{ env.IMAGE_BACKEND }}:buildcache
+-          cache-to: type=registry,ref=${{ env.IMAGE_BACKEND }}:buildcache,mode=max
+-  build-frontend:
+-    # frontend yoksa job tamamen atlanır (skip == success sayılır)
+-    if: ${{ hashFiles('frontend/package.json') != '' }}
+-    runs-on: ubuntu-latest
+-    steps:
+-      - uses: actions/checkout@v4
+-      - name: Log in to GHCR
+-        uses: docker/login-action@v3
+-        with:
+-          registry: ${{ env.REGISTRY }}
+-          username: ${{ github.actor }}
+-          password: ${{ secrets.GITHUB_TOKEN }}
+-      - name: Build & push frontend
+-        uses: docker/build-push-action@v6
+-        with:
+-          context: .
+-          file: frontend/Dockerfile
+-          push: true
+-          tags: |
+-            ${{ env.IMAGE_FRONTEND }}:sha-${{ github.sha }}
+-            ${{ env.IMAGE_FRONTEND }}:staging
+-          cache-from: type=registry,ref=${{ env.IMAGE_FRONTEND }}:buildcache
+-          cache-to: type=registry,ref=${{ env.IMAGE_FRONTEND }}:buildcache,mode=max
+-  deploy-staging:
+-    needs: [ build-backend ]
+-    runs-on: ubuntu-latest
+-    concurrency:
+-      group: staging-deploy
+-      cancel-in-progress: true
+-    steps:
+-      - uses: actions/checkout@v4
+-      - name: Deploy over SSH
+-        uses: appleboy/ssh-action@v1.2.0
+-        with:
+-          host: ${{ secrets.STAGING_SSH_HOST }}
+-          username: ${{ secrets.STAGING_SSH_USER }}
+-          key: ${{ secrets.STAGING_SSH_KEY }}
+-          script_stop: true
+-          script: |
+-            cd ${{ secrets.STAGING_PROJECT_DIR }}
+-            export GITHUB_SHA=${{ github.sha }}
+-            # Image env'lerini compose'a aktar
+-            export BACKEND_IMAGE="${{ env.IMAGE_BACKEND }}:staging"
+-            FRONT_IMAGE="${{ env.IMAGE_FRONTEND }}:staging"
+-            docker login ${{ env.REGISTRY }} -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+-            if docker manifest inspect "$FRONT_IMAGE" >/dev/null 2>&1; then
+-              export COMPOSE_PROFILES=ui
+-              export FRONTEND_IMAGE="$FRONT_IMAGE"
+-              echo "✔ Frontend image found, enabling profile 'ui'"
+-            else
+-              unset COMPOSE_PROFILES
+-              unset FRONTEND_IMAGE
+-              echo "⚠ Frontend image not found; skipping 'ui' profile"
+-            fi
+-            # Pull + Up
+-            docker login ${{ env.REGISTRY }} -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+-            docker compose -f docker-compose.staging.yml pull
+-            docker compose -f docker-compose.staging.yml up -d --remove-orphans
+-            docker image prune -f
++name: Staging CI/CD
++
++on:
++  push:
++    branches: [ "main" ]
++    paths:
++      - "backend/**"
++      - "frontend/**"
++      - "docker-compose.staging.yml"
++      - "infra/**"
++      - ".github/workflows/staging.yml"
++  workflow_dispatch:
++
++permissions:
++  contents: read
++  packages: write
++
++env:
++  REGISTRY: ghcr.io
++  IMAGE_BACKEND: ghcr.io/${{ github.repository }}-backend
++  IMAGE_FRONTEND: ghcr.io/${{ github.repository }}-frontend
++
++jobs:
++  test-backend:
++    runs-on: ubuntu-latest
++    services:
++      postgres:
++        image: postgres:15
++        env:
++          POSTGRES_USER: postgres
++          POSTGRES_PASSWORD: postgres
++          POSTGRES_DB: test_db
++        ports: [ "5432:5432" ]
++        options: >-
++          --health-cmd="pg_isready -U postgres -d test_db"
++          --health-interval=10s --health-timeout=5s --health-retries=5
++      redis:
++        image: redis:7-alpine
++        ports: [ "6379:6379" ]
++        options: >-
++          --health-cmd="redis-cli ping"
++          --health-interval=10s --health-timeout=5s --health-retries=5
++    env:
++      DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/test_db
++      REDIS_URL: redis://localhost:6379/0
++      FLASK_ENV: testing
++      PYTHONPATH: .
++      JWT_SECRET_KEY: test-secret
++    steps:
++      - uses: actions/checkout@v4
++      - uses: actions/setup-python@v5
++        with:
++          python-version: "3.11"
++      - name: Install deps
++        run: |
++          python -m pip install --upgrade pip
++          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
++          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
++          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
++      - name: Run tests (repo root)
++        run: pytest -q
++
++  build-backend:
++    needs: test-backend
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++      - name: Log in to GHCR
++        uses: docker/login-action@v3
++        with:
++          registry: ${{ env.REGISTRY }}
++          username: ${{ github.actor }}
++          password: ${{ secrets.GITHUB_TOKEN }}
++      - name: Build & push backend
++        uses: docker/build-push-action@v6
++        with:
++          context: .
++          file: backend/Dockerfile
++          push: true
++          tags: |
++            ${{ env.IMAGE_BACKEND }}:sha-${{ github.sha }}
++            ${{ env.IMAGE_BACKEND }}:staging
++          cache-from: type=registry,ref=${{ env.IMAGE_BACKEND }}:buildcache
++          cache-to: type=registry,ref=${{ env.IMAGE_BACKEND }}:buildcache,mode=max
++
++  build-frontend:
++    # Frontend yoksa job atlanır (skip == success)
++    if: ${{ hashFiles('frontend/package.json') != '' }}
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++      - name: Log in to GHCR
++        uses: docker/login-action@v3
++        with:
++          registry: ${{ env.REGISTRY }}
++          username: ${{ github.actor }}
++          password: ${{ secrets.GITHUB_TOKEN }}
++      - name: Build & push frontend
++        uses: docker/build-push-action@v6
++        with:
++          context: .
++          file: frontend/Dockerfile
++          push: true
++          tags: |
++            ${{ env.IMAGE_FRONTEND }}:sha-${{ github.sha }}
++            ${{ env.IMAGE_FRONTEND }}:staging
++          cache-from: type=registry,ref=${{ env.IMAGE_FRONTEND }}:buildcache
++          cache-to: type=registry,ref=${{ env.IMAGE_FRONTEND }}:buildcache,mode=max
++
++  deploy-staging:
++    needs: [ build-backend ]
++    runs-on: ubuntu-latest
++    concurrency:
++      group: staging-deploy
++      cancel-in-progress: true
++    steps:
++      - uses: actions/checkout@v4
++      - name: Deploy over SSH
++        uses: appleboy/ssh-action@v1.2.0
++        with:
++          host: ${{ secrets.STAGING_SSH_HOST }}
++          username: ${{ secrets.STAGING_SSH_USER }}
++          key: ${{ secrets.STAGING_SSH_KEY }}
++          script_stop: true
++          script: |
++            cd ${{ secrets.STAGING_PROJECT_DIR }}
++            export GITHUB_SHA=${{ github.sha }}
++            # Image env'lerini compose'a aktar
++            export BACKEND_IMAGE="${{ env.IMAGE_BACKEND }}:staging"
++            FRONT_IMAGE="${{ env.IMAGE_FRONTEND }}:staging"
++            docker login ${{ env.REGISTRY }} -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
++            if docker manifest inspect "$FRONT_IMAGE" >/dev/null 2>&1; then
++              export COMPOSE_PROFILES=ui
++              export FRONTEND_IMAGE="$FRONT_IMAGE"
++              echo "✔ Frontend image found, enabling profile 'ui'"
++            else
++              unset COMPOSE_PROFILES
++              unset FRONTEND_IMAGE
++              echo "⚠ Frontend image not found; skipping 'ui' profile"
++            fi
++            # Pull + Up
++            docker login ${{ env.REGISTRY }} -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
++            docker compose -f docker-compose.staging.yml pull
++            docker compose -f docker-compose.staging.yml up -d --remove-orphans
++            docker image prune -f
+*** /dev/null
+--- b/tests/conftest.py
+@@
++# Test ortamı için güvenli varsayılanlar (CI ve lokal)
++import os
++
++# İzole ve yan etkisiz bir test DB'si
++os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
++os.environ.setdefault("FLASK_ENV", "testing")
++os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
++os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
++
++# Burada bilerek herhangi bir app fixture'ı oluşturmadık;
++# projedeki testler backend.create_app vb. kendi akışını çağırıyorsa
++# bu env değişkenleri yeterli olur. İleride ihtiyaç olursa
++# app fixture'ı ekleyebiliriz.
