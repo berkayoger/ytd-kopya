@@ -115,7 +115,6 @@ def ensure_admin_for_admin_paths() -> Optional[Response]:
         pass
 
     if is_testing:
-        return None
         # Testte: JWT'yi zorunlu tutma (decorator’lar mock’lanmış olabilir)
         try:
             verify_jwt_in_request(optional=True)

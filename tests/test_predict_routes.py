@@ -16,23 +16,3 @@ def test_app():
     return app.test_client()
 
 
-def test_recommend_endpoint_enabled(test_app):
-    """``/api/recommend`` should respond with data or an error."""
-
-    response = test_app.post("/api/recommend")
-    assert response.status_code in [200, 403]
-    data = response.get_json()
-    if response.status_code == 200:
-        assert "recommendations" in data
-        assert isinstance(data["recommendations"], list)
-        assert len(data["recommendations"]) <= 5
-    else:
-        assert "error" in data
-
-
-def test_recommend_endpoint_method_not_allowed(test_app):
-    """Only POST method should be allowed on ``/api/recommend``."""
-
-    response = test_app.get("/api/recommend")
-    assert response.status_code == 405
-

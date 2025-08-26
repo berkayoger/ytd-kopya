@@ -28,130 +28,35 @@ tests/test_admin_promo.py::test_update_expiration_past_date PASSED       [ 11%]
 tests/test_admin_promo.py::test_promo_usage_stats PASSED                 [ 11%]
 tests/test_admin_promo.py::test_promo_code_usage_details PASSED          [ 12%]
 tests/test_admin_promo.py::test_get_user_promos PASSED                   [ 12%]
-tests/test_admin_rbac_guard.py::test_admin_guard_forbids_without_admin PASSED [ 13%]
-tests/test_admin_rbac_guard.py::test_admin_guard_allows_with_admin PASSED [ 14%]
-tests/test_admin_tests_api.py::test_run_tests_success PASSED             [ 14%]
-tests/test_admin_tests_api.py::test_run_tests_forbidden PASSED           [ 15%]
-tests/test_admin_tests_api.py::test_run_tests_nonzero_exit_returns_202 PASSED [ 15%]
-tests/test_admin_tests_api.py::test_status_endpoint PASSED               [ 16%]
-tests/test_admin_tests_api.py::test_history_endpoint PASSED              [ 17%]
-tests/test_admin_tests_api.py::test_history_filters PASSED               [ 17%]
-tests/test_admin_users_list.py::test_admin_list_users PASSED             [ 18%]
-tests/test_advanced_logic.py::test_buy_signal PASSED                     [ 19%]
-tests/test_advanced_logic.py::test_avoid_signal PASSED                   [ 19%]
-tests/test_advanced_logic.py::test_hold_signal_and_build_prediction PASSED [ 20%]
-tests/test_analyze_coin_validation.py::test_analyze_coin_invalid_symbol PASSED [ 20%]
-tests/test_analyze_coin_validation.py::test_analyze_coin_valid_symbol_hits_queue SKIPPED [ 21%]
-tests/test_app_config_security.py::test_validate_config_reports_missing_keys PASSED [ 22%]
-tests/test_app_config_security.py::test_mask_sensitive_values PASSED     [ 22%]
-tests/test_backend_security_headers.py::test_security_headers_present PASSED [ 23%]
-tests/test_batch_security.py::test_symbol_validation_and_admin_approval SKIPPED [ 23%]
-tests/test_batch_security.py::test_admin_grant_then_submit SKIPPED       [ 24%]
-tests/test_batch_security.py::test_timeframe_asset_guard SKIPPED (batch
-güvenlik testleri devre dışı)                                            [ 25%]
-tests/test_batch_security.py::test_rate_limit_string_parsing SKIPPED     [ 25%]
-tests/test_bulk_prediction.py::test_generate_predictions_for_all_coins PASSED [ 26%]
-tests/test_config.py::test_testing_config PASSED                         [ 26%]
-tests/test_config.py::test_price_cache_default PASSED                    [ 27%]
-tests/test_downgrade_task.py::test_downgrade_expired_subscription SKIPPED [ 28%]
-tests/test_draks_advanced_decision.py::test_direction_mismatch_returns_false PASSED [ 28%]
-tests/test_draks_advanced_decision.py::test_regime_scaling_and_caps PASSED [ 29%]
-tests/test_draks_advanced_decision.py::test_live_mode_cap PASSED         [ 30%]
-tests/test_draks_batch_api.py::test_submit_flag_off SKIPPED (draks batch
-testleri devre dışı)                                                     [ 30%]
-tests/test_draks_batch_api.py::test_submit_ok_and_status_results SKIPPED [ 31%]
-tests/test_draks_batch_api.py::test_submit_invalid_input SKIPPED (draks
-batch testleri devre dışı)                                               [ 31%]
-tests/test_draks_batch_api.py::test_rate_limit SKIPPED (draks batch
-testleri devre dışı)                                                     [ 32%]
-tests/test_draks_batch_api.py::test_results_filters SKIPPED (draks batch
-testleri devre dışı)                                                     [ 33%]
-tests/test_draks_copy_evaluate.py::test_copy_eval_ok_and_limit SKIPPED   [ 33%]
-tests/test_email_token.py::test_create_email_token_and_decode PASSED     [ 34%]
-tests/test_email_token.py::test_verify_endpoint_requires_email_token PASSED [ 34%]
-tests/test_engines_registry.py::test_registry_and_basic_run PASSED       [ 35%]
-tests/test_feature_flags.py::test_feature_flag_enabled_true PASSED       [ 36%]
-tests/test_feature_flags.py::test_feature_flag_enabled_false PASSED      [ 36%]
-tests/test_feature_flags.py::test_all_feature_flags PASSED               [ 37%]
-tests/test_feature_flags.py::test_get_feature_flags PASSED               [ 38%]
-tests/test_feature_flags.py::test_update_feature_flag PASSED             [ 38%]
-tests/test_feature_flags.py::test_invalid_update_request PASSED          [ 39%]
-tests/test_feature_flags.py::test_create_flag_in_memory PASSED           [ 39%]
-tests/test_feature_flags.py::test_create_flag_redis PASSED               [ 40%]
-tests/test_forecast_api.py::test_forecast_success SKIPPED (forecast api
-testi devre dışı)                                                        [ 41%]
-tests/test_forecast_api.py::test_forecast_invalid_days SKIPPED (forecast
-api testi devre dışı)                                                    [ 41%]
-tests/test_forecast_api.py::test_forecast_unavailable SKIPPED (forecast
-api testi devre dışı)                                                    [ 42%]
-tests/test_forecast_api.py::test_forecast_access_denied_basic_user SKIPPED [ 42%]
-tests/test_forecast_api.py::test_forecast_access_denied_trial_user SKIPPED [ 43%]
-tests/test_gate.py::test_detect_regime_outputs PASSED                    [ 44%]
-tests/test_limit_enforcement.py::test_limit_enforcement_logic PASSED     [ 44%]
-tests/test_limit_enforcement.py::test_usage_count_basic_functionality PASSED [ 45%]
-tests/test_limit_enforcement.py::test_usage_tracking_basic PASSED        [ 46%]
-tests/test_limit_override.py::test_enforce_limit_with_custom_override PASSED [ 46%]
-tests/test_limit_override.py::test_enforce_limit_fallback_to_plan PASSED [ 47%]
-tests/test_limit_override.py::test_enforce_limit_malformed_json PASSED   [ 47%]
-tests/test_limit_override.py::test_enforce_limit_with_no_limits PASSED   [ 48%]
-tests/test_limit_status_api.py::test_limits_status_endpoint PASSED       [ 49%]
-tests/test_limiting_helpers.py::test_get_plan_rate_limit_defaults PASSED [ 49%]
-tests/test_limiting_helpers.py::test_get_plan_rate_limit_env_override PASSED [ 50%]
-tests/test_limiting_helpers.py::test_rate_limit_key_func_user PASSED     [ 50%]
-tests/test_limiting_helpers.py::test_rate_limit_key_func_ip PASSED       [ 51%]
-tests/test_limits.py::test_enforce_limit_allows_usage PASSED             [ 52%]
-tests/test_limits.py::test_enforce_limit_denies_usage PASSED             [ 52%]
-tests/test_limits.py::test_enforce_limit_with_missing_key_allows PASSED  [ 53%]
-tests/test_limits.py::test_enforce_plan_limit_decorator_behavior PASSED  [ 53%]
-tests/test_limits.py::test_enforce_plan_limit_blocked_usage PASSED       [ 54%]
-tests/test_limits.py::test_enforce_plan_limit_admin_bypass PASSED        [ 55%]
-tests/test_limits.py::test_get_effective_limits_custom_json PASSED       [ 55%]
-tests/test_limits.py::test_get_effective_limits_fallback PASSED          [ 56%]
-tests/test_limits_status.py::test_limits_status_endpoint PASSED          [ 57%]
-tests/test_logger.py::test_create_log_inserts_entry PASSED               [ 57%]
-tests/test_orchestrator.py::test_consensus_basic PASSED                  [ 58%]
-tests/test_password_reset.py::test_generate_and_verify_token PASSED      [ 58%]
-tests/test_placeholder.py::test_placeholder PASSED                       [ 59%]
-tests/test_plan_admin_limits.py::test_update_plan_limits PASSED          [ 60%]
-tests/test_plan_admin_limits.py::test_update_plan_limits_unauthorized_access PASSED [ 60%]
-tests/test_plan_admin_limits.py::test_get_all_plans PASSED               [ 61%]
-tests/test_plan_admin_limits.py::test_create_and_delete_plan PASSED      [ 61%]
-tests/test_plan_admin_limits.py::test_create_plan_success PASSED         [ 62%]
-tests/test_plan_admin_limits.py::test_create_plan_missing_name PASSED    [ 63%]
-tests/test_plan_admin_limits.py::test_delete_plan_success PASSED         [ 63%]
-tests/test_plan_admin_limits.py::test_delete_plan_not_found PASSED       [ 64%]
-tests/test_plan_admin_limits_unauthorized.py::test_create_plan_forbidden SKIPPED [ 65%]
-tests/test_plan_admin_limits_unauthorized.py::test_update_plan_limits_forbidden SKIPPED [ 65%]
-tests/test_plan_admin_limits_unauthorized.py::test_delete_plan_forbidden PASSED [ 66%]
-tests/test_plan_api.py::test_plan_features_and_auth FAILED               [ 66%]
+tests/test_admin_rbac_guard.py::test_admin_guard_forbids_without_admin FAILED [ 13%]
 
 =================================== FAILURES ===================================
-_________________________ test_plan_features_and_auth __________________________
+____________________ test_admin_guard_forbids_without_admin ____________________
 
-monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7901a59a8a10>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7880e978f470>
 
-    def test_plan_features_and_auth(monkeypatch):
-        app = setup_app(monkeypatch)
+    def test_admin_guard_forbids_without_admin(monkeypatch):
+        app = create_app()
+        _add_dummy_admin_route(app)
+    
+        # JWT doğrulamasını no-op yap, roller boş kalsın
+        monkeypatch.setattr(roles_mod, "verify_jwt_in_request", lambda optional=False: None)
+        monkeypatch.setattr(roles_mod, "current_roles", lambda: set())
+    
         client = app.test_client()
-    
-        with app.app_context():
-            p = Plan(name="Test", price=1.0, features=json.dumps({"a": 1}))
-            db.session.add(p)
-            db.session.commit()
-    
-        resp = client.get("/api/admin/plans")
->       assert resp.status_code == 401
-E       assert 200 == 401
+        resp = client.get("/api/admin/__rbac_test", headers={"Authorization": "Bearer test"})
+>       assert resp.status_code == 403
+E       assert 200 == 403
 E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
 
-tests/test_plan_api.py:42: AssertionError
+tests/test_admin_rbac_guard.py:22: AssertionError
 ----------------------------- Captured stderr call -----------------------------
-{"asctime": "2025-08-25 22:48:22,222", "levelname": "INFO", "name": "backend", "message": "App booting with observability metrics enabled.", "pathname": "/workspaces/ytd-kopya/backend/__init__.py", "lineno": 161, "funcName": "create_app"}
-{"asctime": "2025-08-25 22:48:22,329", "levelname": "INFO", "name": "backend", "message": "", "pathname": "/workspaces/ytd-kopya/backend/__init__.py", "lineno": 314, "funcName": "_after", "event": "http_access", "method": "GET", "path": "/api/admin/plans", "status": 200, "request_id": "e2d162bf-1dfe-4580-a589-1526c7581948", "user_id": "test-user", "remote_addr": "127.0.0.1", "latency_sec": 0.0011}
+{"asctime": "2025-08-25 22:55:16,736", "levelname": "INFO", "name": "backend", "message": "App booting with observability metrics enabled.", "pathname": "/workspaces/ytd-kopya/backend/__init__.py", "lineno": 161, "funcName": "create_app"}
+{"asctime": "2025-08-25 22:55:16,794", "levelname": "INFO", "name": "backend", "message": "", "pathname": "/workspaces/ytd-kopya/backend/__init__.py", "lineno": 314, "funcName": "_after", "event": "http_access", "method": "GET", "path": "/api/admin/__rbac_test", "status": 200, "request_id": "01dcca5d-6dc9-42c1-91a6-4a81f5c9edd4", "user_id": "test-user", "remote_addr": "127.0.0.1", "latency_sec": 0.0001}
 ------------------------------ Captured log call -------------------------------
 INFO     backend:__init__.py:161 App booting with observability metrics enabled.
-INFO     backend:__init__.py:314 {'event': 'http_access', 'method': 'GET', 'path': '/api/admin/plans', 'status': 200, 'request_id': 'e2d162bf-1dfe-4580-a589-1526c7581948', 'user_id': 'test-user', 'remote_addr': '127.0.0.1', 'latency_sec': 0.0011}
+INFO     backend:__init__.py:314 {'event': 'http_access', 'method': 'GET', 'path': '/api/admin/__rbac_test', 'status': 200, 'request_id': '01dcca5d-6dc9-42c1-91a6-4a81f5c9edd4', 'user_id': 'test-user', 'remote_addr': '127.0.0.1', 'latency_sec': 0.0001}
 =========================== short test summary info ============================
-FAILED tests/test_plan_api.py::test_plan_features_and_auth - assert 200 == 401
+FAILED tests/test_admin_rbac_guard.py::test_admin_guard_forbids_without_admin
 !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
-=========== 1 failed, 89 passed, 19 skipped, 271 warnings in 10.57s ============
+================== 1 failed, 21 passed, 117 warnings in 5.13s ==================
