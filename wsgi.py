@@ -1,30 +1,44 @@
-import logging
+#!/usr/bin/env python3
 import os
 from loguru import logger
 
-from backend import create_app, socketio
-
 try:
-    from backend.core.services import YTDCryptoSystem  # noqa: F401
-except Exception as exc:  # pragma: no cover
-    logging.getLogger(__name__).warning(
-        "YTDCryptoSystem import atlandı: %s", exc
-    )
-    YTDCryptoSystem = None
-
-app = create_app()
-
-if YTDCryptoSystem:
-    app.ytd_system_instance = YTDCryptoSystem()
-
-
-if __name__ == '__main__':
-    logger.info("Flask uygulaması başlatılıyor.")
-    # CI ve container için varsayılan host'u 0.0.0.0 yap
-    socketio.run(
-        app,
-        host=os.getenv("HOST", "0.0.0.0"),
-        port=int(os.getenv("PORT", 5000)),
-        debug=app.config.get("DEBUG", False),
-        allow_unsafe_werkzeug=True,
-    )
+    from backend import create_app, socketio
+    
+    app = create_app()
+    
+    if __name__ == '__main__':
+        logger.info("Flask uygulaması başlatılıyor.")
+        
+        # Development ortamında basit HTTP server kullan
+        if os.getenv('FLASK_ENV') == 'development':
+            print("🚀 Development mode - HTTP server başlatılıyor...")
+            print("📡 Sunucu: http://localhost:5000")
+            print("⚠️  SocketIO devre dışı (geliştirme için)")
+            
+            # SocketIO olmadan çalıştır
+            app.run(
+                host='0.0.0.0',
+                port=5000,
+                debug=True,
+                use_reloader=True
+            )
+        else:
+            # Production'da SocketIO ile çalıştır
+            logger.info("Production mode - SocketIO server başlatılıyor...")
+            socketio.run(
+                app, 
+                host='0.0.0.0', 
+                port=5000,
+                debug=False,
+                allow_unsafe_werkzeug=True
+            )
+            
+except ImportError as e:
+    logger.error(f"Import hatası: {e}")
+    print("❌ Backend modülleri yüklenemedi!")
+    exit(1)
+except Exception as e:
+    logger.error(f"Uygulama başlatma hatası: {e}")
+    print(f"❌ Hata: {e}")
+    exit(1)

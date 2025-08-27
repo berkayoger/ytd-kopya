@@ -15,7 +15,7 @@ def _get_db_and_model():
     except Exception:
         pass
     try:
-        from backend.models import db as _db, UsageLog as _UsageLog  # type: ignore
+        from backend.extensions import db as _db, UsageLog as _UsageLog  # type: ignore
         return _db, _UsageLog
     except Exception:
         pass
