@@ -207,7 +207,8 @@ def create_app() -> Flask:
     # Dev/Test için otomatik tablo oluşturma (Prod’da migration kullanın)
     with app.app_context():
         if app.config["ENV"].lower() != "production":
-            db.create_all()
+    if os.getenv("FLASK_RUN_CREATE_ALL","0")=="1":
+        db.create_all()
             from backend.db.models import Role, Permission  # lazy import
             if not Role.query.filter_by(name="user").first():
                 db.session.add_all([Role(name="user"), Role(name="admin")])
