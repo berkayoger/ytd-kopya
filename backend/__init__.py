@@ -207,23 +207,21 @@ def create_app() -> Flask:
     # Dev/Test için otomatik tablo oluşturma (Prod’da migration kullanın)
     with app.app_context():
         if app.config["ENV"].lower() != "production":
-    if os.getenv("FLASK_RUN_CREATE_ALL","0")=="1":
-        db.create_all()
-        db.create_all()
-            from backend.db.models import Role, Permission  # lazy import
-            if not Role.query.filter_by(name="user").first():
-                db.session.add_all([Role(name="user"), Role(name="admin")])
-                db.session.commit()
-            if not Permission.query.filter_by(name="admin_access").first():
-                perm = Permission(name="admin_access")
-                db.session.add(perm)
-                db.session.commit()
-                admin_role = Role.query.filter_by(name="admin").first()
-                admin_role.permissions.append(perm)
-                db.session.commit()
+            if os.getenv("FLASK_RUN_CREATE_ALL","0")=="1":
+                db.create_all()
+                from backend.db.models import Role, Permission  # lazy import
+                if not Role.query.filter_by(name="user").first():
+                    db.session.add_all([Role(name="user"), Role(name="admin")])
+                    db.session.commit()
+                if not Permission.query.filter_by(name="admin_access").first():
+                    perm = Permission(name="admin_access")
+                    db.session.add(perm)
+                    db.session.commit()
+                    admin_role = Role.query.filter_by(name="admin").first()
+                    admin_role.permissions.append(perm)
+                    db.session.commit()
         else:
             logger.info("Prod: db.create_all() atlandı; migration kullanın.")
-
     # --- FEATURE_FLAGS alias eşleme (legacy anahtarlar için) ---
     def _sync_feature_aliases(app_: Flask) -> None:
         try:
