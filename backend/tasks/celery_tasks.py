@@ -2,6 +2,9 @@
 
 from datetime import datetime
 import os
+
+# Celery broker configuration
+os.environ.setdefault("CELERY_BROKER_URL", "redis://localhost:6379/0")
 import json
 import traceback
 from dataclasses import asdict

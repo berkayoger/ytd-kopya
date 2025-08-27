@@ -159,3 +159,5 @@ stripe==8.10.0
 #
 # Not: Craftgate için projede stub provider kullanıyoruz (app/billing/providers/stub_craftgate.py).
 # Resmi bir Python SDK/PyPI paketi bulunmadığından craftgate bağımlılığını eklemiyoruz.
+flask-cors==6.0.1
+flask-migrate
