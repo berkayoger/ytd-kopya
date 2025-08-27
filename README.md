@@ -118,6 +118,16 @@ flask db upgrade
 
 2. `.env.example` dosyasını `.env` olarak kopyalayın ve gerekli API anahtarlarını doldurun.
 
+## 🔐 Güvenlik Yapılandırması
+
+Uygulamayı çalıştırmadan önce güvenlik kontrollerini yapın:
+
+```bash
+python scripts/security_check.py
+```
+
+Bu script, JWT token güvenliği, şifreleme anahtarları ve diğer güvenlik ayarlarını kontrol eder.
+
 3. Gerekli konfigürasyon sınıfı `FLASK_ENV` değişkeni ile seçilir. Varsayılan
    değer `development`'tır. Örneğin test ortamı için:
 
@@ -172,6 +182,28 @@ server {
 HTTPS sertifikası için Let's Encrypt (`certbot --nginx`) ve güvenlik için UFW
 kuralları eklemeniz önerilir. Uygulamanın arka planda kalıcı olarak
 çalışması için Supervisor kullanılabilir.
+
+## 🛡️ Güvenlik Özellikleri
+
+Bu uygulama aşağıdaki güvenlik özelliklerini içerir:
+
+- **Gelişmiş JWT Token Yönetimi**: Access ve refresh token'lar ile güvenli kimlik doğrulama
+- **Token Blacklisting**: Çıkış yapıldığında token'ların geçersiz kılınması
+- **Rate Limiting**: API istekleri için hız sınırlandırması
+- **CSRF Koruması**: Cross-Site Request Forgery saldırılarına karşı koruma
+- **Güvenlik Event Logging**: Tüm güvenlik olaylarının kayıt altına alınması
+- **IP ve User Agent Analizi**: Şüpheli aktivitelerin tespit edilmesi
+- **Güçlü Şifre Politikası**: Minimum güvenlik gereksinimleri
+- **Session Yönetimi**: Güvenli oturum işlemleri
+- **Security Headers**: XSS, CSRF ve diğer saldırılara karşı HTTP başlıkları
+
+### Token Güvenliği
+
+- Access token'lar 15 dakika geçerlidir
+- Refresh token'lar 7 gün geçerlidir
+- Token'lar Redis'te blacklist olarak takip edilir
+- Hassas işlemler için fresh token gereksinimi
+- Tüm token'lar unique JTI (JWT ID) içerir
 
 ## Testler
 
