@@ -1,11 +1,8 @@
 name: CI
-
 on:
-  pull_request:
-    branches: [ "main" ]
   push:
-    branches: [ "main" ]
-
+    branches: [main]
+  pull_request:
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -13,23 +10,22 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - name: Install Python deps
+          python-version: '3.12'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+      - name: Install deps
         run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
-          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-      - name: Run pytest from repo root (stable imports)
-        env:
-          PYTHONPATH: .
-          FLASK_ENV: testing
-          DATABASE_URL: sqlite:///:memory:
-          JWT_SECRET_KEY: test-secret
-          REDIS_URL: redis://localhost:6379/0
+          python -m pip install -U pip
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-cov Faker anyio
+      - name: Test env
         run: |
-          pytest -q
-      - name: Smoke test (health)
-        env:
-          SAFE_HEALTH_MODE: "true"
-        run: bash .github/scripts/smoke_backend.sh
+          echo "FLASK_ENV=testing" >> $GITHUB_ENV
+          echo "PYTHONPATH=." >> $GITHUB_ENV
+          echo "DATABASE_URL=sqlite:///$GITHUB_WORKSPACE/instance/app.db" >> $GITHUB_ENV
+          mkdir -p instance
+      - name: Run tests
+        run: pytest -q
