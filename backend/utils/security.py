@@ -1,205 +1,221 @@
-# backend/utils/security.py
-
-import hmac
-import hashlib
-import base64
-import os
-from typing import Optional, Tuple
-from flask import request, jsonify, Response, g
-from loguru import logger
-from redis import Redis
-import bleach
-
-def verify_iyzico_signature(secret: str, data: bytes, signature: str) -> bool:
-    """
-    Iyzico callback imzasını HMAC-SHA256 kullanarak doğrular.
-    
-    Args:
-        secret (str): Iyzico gizli anahtarınız (secret key).
-        data (bytes): Callback'ten gelen ham istek gövdesi (raw request body).
-        signature (str): 'X-Iyzico-Signature' başlığından gelen imza.
-
-    Returns:
-        bool: İmza geçerliyse True, değilse False döner.
-    """
-    if not secret or not signature:
-        return False
-    
-    # Beklenen imzayı hesapla
-    computed_hash = hmac.new(secret.encode('utf-8'), data, hashlib.sha256).digest()
-    expected_signature = base64.b64encode(computed_hash).decode('utf-8')
-
-    # Güvenli karşılaştırma yaparak zamanlama saldırılarını önle
-    return hmac.compare_digest(expected_signature, signature)
-
-def check_iyzico_signature(secret: str) -> Optional[Tuple[Response, int]]:
-    """
-    Wrapper helper: request üzerindeki raw body ve
-    X-Iyzico-Signature header’ını alıp imzayı doğrular.
-    Hata durumunda bir Flask Response nesnesi, başarılıysa None döner.
-    """
-    # Ham gövdeyi al (cache=False → diğer middleware’ler değiştirmediğinden emin oluruz)
-    raw_body = request.get_data(cache=False)
-    
-    # Header’ı farklı formatlarla kontrol et
-    signature = (
-        request.headers.get('X-Iyzico-Signature')
-        or request.headers.get('x-iyzico-signature')
-    )
-    
-    if not verify_iyzico_signature(secret, raw_body, signature):
-        # Başarısız imza denemelerini logla
-        logger.warning(f"Iyzico imza doğrulama başarısız. IP={request.remote_addr}")
-        # Saldırgana sistem içi detay vermek yerine genel cevap
-        return jsonify({"error": "Geçersiz istek"}), 400
-        
-    # Geçerliyse None döndür, devam edilsin
-    return None
-
-def generate_csrf_token() -> str:
-    """
-    Güvenli bir CSRF token'ı oluşturur.
-    """
-    import secrets
-    return secrets.token_hex(16)
-
-# --- DRAKS Batch yardımcıları ---
-
+"""
+Güvenlik middleware'leri - Input validation, XSS koruması, SQL injection önleme
+"""
 import re
+import html
+from functools import wraps
+from flask import request, jsonify
+from typing import Dict, Any, List, Optional
+import logging
 
-_SYMBOL_RE = re.compile(r"^[A-Z0-9./:-]{1,20}$")
-_TIMEFRAME_WHITELIST = {
-    "1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d", "1w"
+logger = logging.getLogger(__name__)
+
+# Güvenli karakter pattern'leri
+SAFE_PATTERNS = {
+    'alphanumeric': re.compile(r'^[a-zA-Z0-9_-]+$'),
+    'email': re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'),
+    'numeric': re.compile(r'^\d+$'),
+    'decimal': re.compile(r'^\d+(\.\d+)?$'),
+    'date': re.compile(r'^\d{4}-\d{2}-\d{2}$'),
+    'safe_string': re.compile(r'^[a-zA-Z0-9\s\-_.,!?()]+$')
 }
-_ASSET_WHITELIST = {"crypto", "equity"}
 
+# Tehlikeli pattern'ler (SQL injection, XSS)
+DANGEROUS_PATTERNS = [
+    re.compile(r'(\b(union|select|insert|update|delete|drop|create|alter|exec|execute)\b)', re.IGNORECASE),
+    re.compile(r'(<script|javascript:|onload=|onerror=|onclick=)', re.IGNORECASE),
+    re.compile(r'(\-\-|\#|\/\*|\*\/)', re.IGNORECASE),
+    re.compile(r'(\'|\"|;|\||&)', re.IGNORECASE)
+]
 
-def validate_symbol(symbol: str) -> bool:
-    """Sembolü büyük harfe çevirip regex ile doğrular."""
-    try:
-        return bool(_SYMBOL_RE.match(str(symbol).upper()))
-    except Exception:
+def sanitize_input(value: str) -> str:
+    """Kullanıcı girdisini HTML escape ve whitespace temizleme ile güvenli hale getirir."""
+    if not isinstance(value, str):
+        return str(value)
+    
+    # HTML escape
+    clean_value = html.escape(value.strip())
+    
+    # Fazla whitespace'leri temizle
+    clean_value = ' '.join(clean_value.split())
+    
+    return clean_value
+
+def validate_input(value: str, pattern_name: str = 'safe_string', max_length: int = 255) -> bool:
+    """Input'u belirlenen pattern'e göre doğrular."""
+    if not value:
+        return True  # Boş değerler kabul edilir
+    
+    # Uzunluk kontrolü
+    if len(value) > max_length:
         return False
+    
+    # Tehlikeli pattern kontrolü
+    for dangerous_pattern in DANGEROUS_PATTERNS:
+        if dangerous_pattern.search(value):
+            logger.warning(f"Dangerous pattern detected in input: {value[:50]}...")
+            return False
+    
+    # Güvenli pattern kontrolü
+    if pattern_name in SAFE_PATTERNS:
+        return SAFE_PATTERNS[pattern_name].match(value) is not None
+    
+    return True
 
+def validate_request_args(validation_rules: Dict[str, Dict[str, Any]]):
+    """Request arguments'larını doğrular."""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            validated_args = {}
+            
+            for param_name, rules in validation_rules.items():
+                value = request.args.get(param_name)
+                
+                # Required kontrolü
+                if rules.get('required', False) and not value:
+                    return jsonify({'error': f'Required parameter missing: {param_name}'}), 400
+                
+                # Default value
+                if not value and 'default' in rules:
+                    value = rules['default']
+                
+                if value:
+                    # Sanitize
+                    clean_value = sanitize_input(value)
+                    
+                    # Validate
+                    pattern = rules.get('pattern', 'safe_string')
+                    max_length = rules.get('max_length', 255)
+                    
+                    if not validate_input(clean_value, pattern, max_length):
+                        logger.warning(f"Invalid input for {param_name}: {value[:50]}...")
+                        return jsonify({'error': f'Invalid parameter format: {param_name}'}), 400
+                    
+                    validated_args[param_name] = clean_value
+                else:
+                    validated_args[param_name] = None
+            
+            # Validated args'ları request object'e ekle
+            request.validated_args = validated_args
+            return f(*args, **kwargs)
+        
+        return decorated_function
+    return decorator
 
-def validate_symbols_list(symbols: list[str], max_count: int) -> list[str]:
-    """Geçerli sembolleri liste olarak döndürür."""
-    out: list[str] = []
-    for s in symbols[:max_count]:
-        su = str(s).upper().strip()
-        if validate_symbol(su):
-            out.append(su)
-    return out
-
-
-def validate_timeframe(tf: str) -> bool:
-    """Desteklenen timeframe'leri kontrol eder."""
-    try:
-        return str(tf) in _TIMEFRAME_WHITELIST
-    except Exception:
-        return False
+# Yaygın validation rule setleri
+COMMON_VALIDATIONS = {
+    'pagination': {
+        'page': {'pattern': 'numeric', 'required': False, 'default': '1', 'max_length': 10},
+        'limit': {'pattern': 'numeric', 'required': False, 'default': '10', 'max_length': 3},
+        'offset': {'pattern': 'numeric', 'required': False, 'max_length': 10}
+    },
+    'search_filter': {
+        'search': {'pattern': 'safe_string', 'required': False, 'max_length': 100},
+        'sort_by': {'pattern': 'alphanumeric', 'required': False, 'max_length': 50},
+        'order': {'pattern': 'alphanumeric', 'required': False, 'max_length': 4}
+    },
+    'date_range': {
+        'start_date': {'pattern': 'date', 'required': False},
+        'end_date': {'pattern': 'date', 'required': False}
+    }
+}
 
 
 def validate_asset(asset: str) -> bool:
-    """Varlık tipini whitelist ile doğrular."""
-    return str(asset).lower() in _ASSET_WHITELIST
+    """Asset ismini doğrular (coin sembolleri için)."""
+    return validate_input(asset, 'alphanumeric', 10)
 
+def validate_timeframe(timeframe: str) -> bool:
+    """Timeframe parametresini doğrular."""
+    valid_timeframes = ['1h', '4h', '1d', '1w', '1m']
+    return timeframe in valid_timeframes
 
-def safe_cache_key(prefix: str, *parts: str) -> str:
-    """Cache anahtarını temizleyip birleştirir."""
-    clean = []
-    for p in parts:
-        x = re.sub(r"[^A-Z0-9./:\-]", "", str(p).upper())
-        clean.append(x[:32])
-    return f"{prefix}:" + ":".join(clean)
-
-# --- Güvenlik Sertleştirme Ekleri ---
-
-def ip_allowed(ip: Optional[str]) -> bool:
-    allow = os.getenv("BATCH_IP_ALLOWLIST", "").strip()
-    if not allow:
+def validate_symbols_list(symbols: str) -> bool:
+    """Virgülle ayrılmış sembol listesini doğrular."""
+    if not symbols:
         return True
-    allowset = {x.strip() for x in allow.split(",") if x.strip()}
-    return (ip or "") in allowset
+    symbol_list = symbols.split(',')
+    return all(validate_input(symbol.strip(), 'alphanumeric', 20) for symbol in symbol_list)
 
-def is_2fa_required() -> bool:
-    return os.getenv("BATCH_REQUIRE_2FA", "false").strip().lower() in {"1","true","yes","on"}
 
-def is_user_2fa_ok() -> bool:
-    """
-    Basit kontrol: Kullanıcı objesinde 'two_factor_enabled' ve 'last_2fa_verified_at' varsayılsın.
-    Yoksa false dönmeyelim; sadece enabled ise son doğrulama var mı diye bakalım.
-    """
-    user = getattr(g, "user", None)
+
+def safe_cache_key(key: str) -> str:
+    """Cache key'i güvenli hale getirir - sadece alphanumeric karakterler."""
+    import hashlib
+    if not key:
+        return 'empty'
+    # Sadece güvenli karakterleri tut, gerisini hash'le
+    safe_chars = re.sub(r'[^a-zA-Z0-9_-]', '', key)
+    if len(safe_chars) < len(key):
+        # Güvenli olmayan karakterler varsa hash ekle
+        hash_part = hashlib.md5(key.encode()).hexdigest()[:8]
+        return f'{safe_chars[:20]}_{hash_part}'
+    return safe_chars[:50]  # Max uzunluk sınırla
+
+
+
+def ip_allowed(ip_address: str) -> bool:
+    """IP adresinin güvenli olup olmadığını kontrol eder."""
+    import ipaddress
+    try:
+        ip = ipaddress.ip_address(ip_address)
+        # Localhost ve private IP'lere izin ver
+        return ip.is_private or ip.is_loopback or str(ip) == '127.0.0.1'
+    except:
+        return False
+
+def check_iyzico_signature(data: str, signature: str, secret_key: str) -> bool:
+    """Iyzico webhook signature'ını doğrular."""
+    import hmac
+    import hashlib
+    import base64
+    
+    try:
+        expected = base64.b64encode(
+            hmac.new(secret_key.encode(), data.encode(), hashlib.sha1).digest()
+        ).decode()
+        return hmac.compare_digest(expected, signature)
+    except:
+        return False
+
+def verify_iyzico_signature(request_data: dict, signature: str, secret_key: str) -> bool:
+    """Iyzico imzasını doğrular."""
+    import json
+    data_string = json.dumps(request_data, separators=(',', ':'), sort_keys=True)
+    return check_iyzico_signature(data_string, signature, secret_key)
+
+
+
+def is_2fa_required(user) -> bool:
+    """Kullanıcı için 2FA gerekli mi kontrol eder."""
     if not user:
         return False
-    enabled = getattr(user, "two_factor_enabled", False)
-    if not enabled:
-        return True  # 2FA aktif değilse, zorunluluk yoksa geç
-    return bool(getattr(user, "last_2fa_verified_at", None))
+    # Admin kullanıcılar için 2FA zorunlu
+    return hasattr(user, 'role') and user.role == 'admin'
 
-def need_admin_approval(symbol_count: int) -> bool:
-    try:
-        thr = int(os.getenv("BATCH_ADMIN_APPROVAL_THRESHOLD", "25"))
-    except Exception:
-        thr = 25
-    return symbol_count >= max(1, thr)
-
-def has_admin_approval(r: Redis, user_id: Optional[str]) -> bool:
-    if not user_id:
+def is_user_2fa_ok(user) -> bool:
+    """Kullanıcının 2FA durumunu kontrol eder."""
+    if not user:
         return False
-    return bool(r.get(f"batch_admin_approval:{user_id}"))
+    # 2FA gerekli değilse OK
+    if not is_2fa_required(user):
+        return True
+    # 2FA gerekli ise kullanıcının 2FA aktif olması gerekir
+    return hasattr(user, 'two_factor_enabled') and user.two_factor_enabled
 
+def need_admin_approval(operation: str) -> bool:
+    """Belirtilen operasyon için admin onayı gerekli mi kontrol eder."""
+    high_risk_operations = ['batch_predict', 'mass_delete', 'data_export']
+    return operation in high_risk_operations
 
-# ----------------------------------------------------------------------------
-# Genel güvenlik yardımcıları
-# ----------------------------------------------------------------------------
-def sanitize_input(text: str, allowed_tags: Optional[list[str]] = None) -> str:
-    """Kullanıcı girdisini XSS saldırılarına karşı temizler."""
-    allowed_tags = allowed_tags or []
-    return bleach.clean(text, tags=allowed_tags, strip=True)
+def has_admin_approval(user, operation: str) -> bool:
+    """Kullanıcının belirtilen operasyon için admin onayı var mı kontrol eder."""
+    if not user:
+        return False
+    # Admin kullanıcılar otomatik onaylı
+    if hasattr(user, 'role') and user.role == 'admin':
+        return True
+    # Normal kullanıcılar için onay kontrol et
+    return hasattr(user, 'approved_operations') and operation in getattr(user, 'approved_operations', [])
 
-
-def validate_file_upload(file) -> tuple[bool, str]:
-    """Yüklenen dosyayı uzantı ve boyut açısından doğrular."""
-    if not file:
-        return False, "Dosya bulunamadı"
-
-    allowed_extensions = {"png", "jpg", "jpeg", "gif", "pdf", "txt", "csv"}
-    filename = getattr(file, "filename", "").lower()
-
-    if "." not in filename or filename.rsplit(".", 1)[1] not in allowed_extensions:
-        return False, "Dosya türüne izin verilmiyor"
-
-    file.seek(0, 2)
-    size = file.tell()
-    file.seek(0)
-
-    if size > 5 * 1024 * 1024:
-        return False, "Dosya çok büyük"
-
-    return True, "Dosya geçerli"
-
-
-def generate_secure_token() -> str:
-    """Kriptografik olarak güvenli bir token üretir."""
-    import secrets
-
-    return secrets.token_urlsafe(32)
-
-
-def hash_api_key(api_key: str) -> bytes:
-    """API anahtarını güvenli şekilde hashler."""
-    import secrets
-
-    salt = secrets.token_bytes(32)
-    pwdhash = hashlib.pbkdf2_hmac("sha256", api_key.encode("utf-8"), salt, 100_000)
-    return salt + pwdhash
-
-
-def verify_api_key(stored_key: bytes, provided_key: str) -> bool:
-    """Sağlanan API anahtarını kayıtlı hash ile karşılaştırır."""
-    salt = stored_key[:32]
-    stored_hash = stored_key[32:]
-    pwdhash = hashlib.pbkdf2_hmac("sha256", provided_key.encode("utf-8"), salt, 100_000)
-    return hmac.compare_digest(pwdhash, stored_hash)

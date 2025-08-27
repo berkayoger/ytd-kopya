@@ -7,6 +7,7 @@ from backend.db.models import PredictionOpportunity
 from datetime import datetime, timedelta
 from backend.utils.helpers import add_audit_log
 import logging
+from backend.utils.security import validate_request_args, COMMON_VALIDATIONS
 
 # Admin paneli tahmin yönetimi için Blueprint tanımı
 predictions_bp = Blueprint("predictions", __name__, url_prefix="/api/admin/predictions")
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 @predictions_bp.route("/", methods=["GET"])
 @jwt_required()
 @admin_required()
+@validate_request_args({**COMMON_VALIDATIONS["pagination"], **COMMON_VALIDATIONS["search_filter"], **COMMON_VALIDATIONS["date_range"]})
 def list_predictions():
     """Tahmin fırsatlarını sayfalı ve filtreli olarak listeler."""
     try:
