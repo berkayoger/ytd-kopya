@@ -104,3 +104,5 @@ __pycache__/
 =2.1.0
 wsgi.py.backup
 migrate_security_backup.py
+backend/app.py
+manage.py
