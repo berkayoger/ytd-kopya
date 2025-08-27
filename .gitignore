@@ -94,3 +94,13 @@ __pycache__/
 manage.py
 backend/app.py
 wsgi.py.backup
+.venv/
+venv/
+instance/
+.env
+__pycache__/
+*.backup
+=1.26.0
+=2.1.0
+wsgi.py.backup
+migrate_security_backup.py
