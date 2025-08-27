@@ -40,3 +40,5 @@ def autodiscover_tasks():
 
 if os.getenv("FLASK_ENV") != "testing":
     autodiscover_tasks()
+from .celery_tasks import run_full_analysis
+from .celery_tasks import run_full_analysis

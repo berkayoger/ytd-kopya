@@ -24,7 +24,12 @@ from flask import current_app
 from loguru import logger
 from requests.adapters import HTTPAdapter
 from requests.exceptions import RequestException
-import pandas_ta as ta
+# import pandas_ta as ta
+
+try:
+    import pandas_ta as ta
+except ImportError:
+    ta = None
 
 # İsteğe bağlı ağır kütüphaneler
 try:
