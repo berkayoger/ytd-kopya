@@ -79,8 +79,6 @@ __pycache__/
 *.backup
 =1.26.0
 =2.1.0
-manage.py
-backend/app.py
 wsgi.py.backup
 migrate_security_backup.py
 .venv/
@@ -91,8 +89,6 @@ __pycache__/
 *.backup
 =1.26.0
 =2.1.0
-manage.py
-backend/app.py
 wsgi.py.backup
 .venv/
 venv/
@@ -104,7 +100,3 @@ __pycache__/
 =2.1.0
 wsgi.py.backup
 migrate_security_backup.py
-backend/app.py
-manage.py
-backend/app.py
-manage.py
