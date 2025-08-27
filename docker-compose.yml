@@ -8,9 +8,54 @@ services:
       - "5000:5000"
     env_file:
       - .env
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./backend:/app
+    environment:
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-generate-secure-key-for-production}
+      - JWT_ACCESS_TOKEN_EXPIRES_MINUTES=${JWT_ACCESS_TOKEN_EXPIRES_MINUTES:-15}
+      - JWT_REFRESH_TOKEN_EXPIRES_DAYS=${JWT_REFRESH_TOKEN_EXPIRES_DAYS:-7}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - BCRYPT_LOG_ROUNDS=${BCRYPT_LOG_ROUNDS:-12}
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:5000/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: >
+      sh -c "if [ -n '$REDIS_PASSWORD' ]; then\n        redis-server --requirepass $REDIS_PASSWORD;\n      else\n        redis-server;\n      fi"
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=ytd_user
+      - POSTGRES_PASSWORD=ytd_password
+      - POSTGRES_DB=ytd_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  token-cleanup:
+    build: ./backend
+    command: celery -A backend.tasks.celery_tasks beat --loglevel=info
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://ytd_user:ytd_password@postgres:5432/ytd_db
+
+volumes:
+  postgres_data:
+  redis_data:
