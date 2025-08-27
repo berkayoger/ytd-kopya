@@ -19,7 +19,15 @@ from sqlalchemy.orm.exc import StaleDataError
 import time # For time.time()
 
 # Modelleri import et
-from backend.db.models import db, User, SubscriptionPlan, DailyUsage, PromoCode, PromoCodeUsage
+from backend.db.models import (
+    db,
+    User,
+    SubscriptionPlan,
+    DailyUsage,
+    PromoCode,
+    PromoCodeUsage,
+    SecurityEvent,
+)
 from backend.constants import SUBSCRIPTION_EXTENSION_DAYS
 
 # Güvenlik dekoratörlerini import et
@@ -700,8 +708,40 @@ def upgrade_plan(user_id):
     )
     return jsonify({"subscription_level": new_plan.name, "status": "upgraded"}), 200
 
+# ---------------------------------------------------------------------------
+# User Activity Endpoint
+# ---------------------------------------------------------------------------
+
+@api_bp.route('/user/activity', methods=['GET'])
+@jwt_required()
+@limiter.limit("30 per hour")
+def get_user_activity():
+    """Return recent security events for the current user."""
+    try:
+        uid = get_jwt_identity()
+        events = (
+            SecurityEvent.query.filter_by(user_id=uid)
+            .order_by(SecurityEvent.timestamp.desc())
+            .limit(50)
+            .all()
+        )
+        activity_data = []
+        for event in events:
+            activity_data.append(
+                {
+                    'event_type': event.event_type,
+                    'timestamp': event.timestamp.isoformat(),
+                    'success': event.success,
+                    'ip_address': event.ip_address[-4:] if event.ip_address else None,
+                    'details': (event.details or {}).get('user_agent_analysis', {}).get('browser') if event.details else None,
+                }
+            )
+        return jsonify({'activity': activity_data})
+    except Exception:
+        return jsonify({'error': 'Failed to retrieve activity'}), 500
+
 # Blueprint'e özel hata yakalama (limiter'ın hata fırlatması durumunda)
-@api_bp.errorhandler(429) 
+@api_bp.errorhandler(429)
 def ratelimit_handler(e):
     logger.warning(f"API Blueprint Rate limit aşıldı: {request.remote_addr} - {e.description}")
     # Audit log
