@@ -158,6 +158,7 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.test_client_class = LegacyTestClient
     app.config.from_object(Config)
+    configure_security(app)
     app.logger.info("App booting with observability metrics enabled.")
 
     # Test ortamı ayarları
@@ -306,6 +307,24 @@ def create_app() -> Flask:
         rid = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         g.request_id = rid
         g._t0 = perf_counter()
+
+    @app.after_request
+    def add_security_headers(response):
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        if app.config.get('ENV') == 'production':
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        csp = ("default-src 'self'; "
+               "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+               "style-src 'self' 'unsafe-inline'; "
+               "font-src 'self'; "
+               "img-src 'self' data: https:; "
+               "connect-src 'self' https://api.coingecko.com; "
+               "frame-ancestors 'none';")
+        response.headers['Content-Security-Policy'] = csp
+        return response
 
     @app.after_request
     def _after(resp):
@@ -526,3 +545,27 @@ def create_app() -> Flask:
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)  # type: ignore
 
     return app
+
+
+def configure_security(app: Flask) -> None:
+    """Configure additional security settings for the Flask app."""
+    if not app.config.get('SECRET_KEY') or app.config['SECRET_KEY'] == 'dev-secret-key':
+        if app.config.get('ENV') == 'production':
+            raise ValueError("SECRET_KEY must be set for production")
+        app.logger.warning("Using default SECRET_KEY. This is insecure for production!")
+
+    jwt_secret = app.config.get('JWT_SECRET_KEY')
+    if not jwt_secret or len(jwt_secret) < 32:
+        if app.config.get('ENV') == 'production':
+            raise ValueError("JWT_SECRET_KEY must be at least 32 characters for production")
+        app.logger.warning("JWT_SECRET_KEY is too short for production use!")
+
+    app.config.update(
+        SESSION_COOKIE_SECURE=app.config.get('ENV') == 'production',
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE='Strict',
+        PERMANENT_SESSION_LIFETIME=timedelta(hours=1),
+    )
+
+    app.config.setdefault('MAX_CONTENT_LENGTH', 16 * 1024 * 1024)
+    app.config.setdefault('SEND_FILE_MAX_AGE_DEFAULT', 31536000)

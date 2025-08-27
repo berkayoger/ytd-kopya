@@ -3,7 +3,14 @@
 import logging
 import os
 from functools import wraps
-from flask import jsonify, request, g
+
+import jwt
+from flask import g, jsonify, request
+
+from .jwt_utils import TokenManager
+from backend.db.models import User, UserRole  # Kullanıcı modelini DB'den çekmek için
+from sqlalchemy.exc import SQLAlchemyError
+
 # Flask-JWT-Extended 4.x sürümlerinde `fresh_jwt_required` fonksiyonu
 # mevcut olmayabilir. Geriye dönük uyumluluk için yoksa `jwt_required`
 # fonksiyonunu kullanıyoruz.
@@ -13,6 +20,7 @@ except Exception:  # pragma: no cover - kutuphane eksikse basit stub kullan
     def fresh_jwt_required(*args, **kwargs):
         def decorator(fn):
             return fn
+
         return decorator
 
     def get_jwt():
@@ -20,11 +28,77 @@ except Exception:  # pragma: no cover - kutuphane eksikse basit stub kullan
 
     def get_jwt_identity():
         return None
-from backend.db.models import User, UserRole  # Kullanıcı modelini DB'den çekmek için
-from sqlalchemy.exc import SQLAlchemyError
 
 # Logger yapılandırması uygulama başlangıcında ayarlanmalı.
 logger = logging.getLogger(__name__)
+
+
+def jwt_required(f=None, *, fresh: bool = False, optional: bool = False):
+    """JWT authentication decorator with enhanced security."""
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            token = _extract_token_from_request()
+
+            if not token:
+                if optional:
+                    g.current_user = None
+                    g.jwt_payload = None
+                    return func(*args, **kwargs)
+                return (
+                    jsonify({"error": "Access token is missing", "code": "MISSING_TOKEN"}),
+                    401,
+                )
+
+            try:
+                payload = TokenManager.verify_token(token, "access")
+
+                if fresh and not payload.get("fresh", False):
+                    return (
+                        jsonify({"error": "Fresh token required for this operation", "code": "FRESH_TOKEN_REQUIRED"}),
+                        401,
+                    )
+
+                user = User.query.get(payload.get("user_id"))
+                if not user or not getattr(user, "is_active", True):
+                    return (
+                        jsonify({"error": "User not found or inactive", "code": "USER_INACTIVE"}),
+                        401,
+                    )
+
+                g.current_user = user
+                g.jwt_payload = payload
+                request.current_user = user
+
+                return func(*args, **kwargs)
+
+            except jwt.InvalidTokenError as e:
+                return (
+                    jsonify({"error": str(e), "code": "INVALID_TOKEN"}),
+                    401,
+                )
+
+        return wrapper
+
+    if f is None:
+        return decorator
+    else:
+        return decorator(f)
+
+
+def _extract_token_from_request() -> str | None:
+    """Extract JWT token from Authorization header or cookies."""
+    token = None
+
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+
+    if not token:
+        token = request.cookies.get("accessToken")
+
+    return token
 
 
 def admin_required():
