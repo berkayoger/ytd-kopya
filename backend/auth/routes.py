@@ -1,5 +1,8 @@
 # File: backend/auth/routes.py
 
+import uuid
+from datetime import datetime, timedelta
+
 from flask import request, jsonify, current_app, g, render_template
 from . import auth_bp  # Blueprint
 from backend.db.models import (
@@ -18,8 +21,6 @@ from backend.utils.email import send_password_reset_email
 from backend.utils.audit import log_action
 from backend.utils.logger import create_log
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from datetime import datetime, timedelta
-import uuid
 import jwt
 
 
@@ -98,6 +99,11 @@ def login_user():
             user_id=user.id,
             refresh_token=generate_password_hash(refresh),
             expires_at=datetime.utcnow() + timedelta(days=current_app.config["REFRESH_TOKEN_EXP_DAYS"]),
+            jti=str(uuid.uuid4()),
+            last_used=datetime.utcnow(),
+            user_agent=user_agent,
+            ip_address=ip_address,
+            is_active=True,
         )
         db.session.add(session)
         db.session.commit()
@@ -154,12 +160,12 @@ def refresh_tokens():
     try:
         payload = jwt.decode(
             token,
-            current_app.config["REFRESH_TOKEN_SECRET"],
+            current_app.config.get("JWT_SECRET_KEY", "fallback-secret"),
             algorithms=["HS256"],
-            issuer=current_app.config.get("JWT_ISSUER", "ytdcrypto"),
-            audience=current_app.config.get("JWT_AUDIENCE", "ytdcrypto_users"),
+            issuer="ytd-crypto-app",
+            audience="ytd-crypto-users",
         )
-        user_id = int(payload.get("sub"))
+        user_id = int(payload.get("user_id"))
     except jwt.PyJWTError:
         return jsonify(error="Invalid token"), 401
 

@@ -8,6 +8,7 @@ python-dotenv
 # Veritabanı (PostgreSQL) ve ORM
 psycopg2-binary
 Flask-SQLAlchemy
+Flask-Migrate==4.0.5
 
 # Arka Plan Görevleri (Celery) ve Mesaj Kuyruğu (Redis)
 celery
@@ -18,6 +19,7 @@ iyzipay
 
 # Kimlik Doğrulama (JWT)
 Flask-JWT-Extended
+PyJWT==2.8.0
 
 # E-posta Gönderimi
 Flask-Mail
@@ -35,6 +37,7 @@ email-validator>=2.1.0
 pyotp>=2.9.0
 pycoingecko>=3.1.0
 passlib>=1.7.4
+cryptography==41.0.7
 
 # Observability / Metrics
 prometheus-client>=0.20.0
