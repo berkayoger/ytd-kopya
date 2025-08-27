@@ -7,7 +7,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'remove_subscription_plan_limits'
-down_revision = 'previous_revision_id'
+down_revision = '20251201_01'
 branch_labels = None
 depends_on = None
 

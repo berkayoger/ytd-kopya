@@ -1,182 +1,198 @@
-# backend/auth/jwt_utils.py
-# Konum: backend/auth/jwt_utils.py
+"""Utility functions and classes for JWT management."""
+
+import hashlib
+import secrets
+from datetime import datetime, timedelta, timezone
+from functools import wraps
 
 import jwt
-import secrets
-import os
-from flask_jwt_extended import jwt_required
-from datetime import datetime, timedelta
-from flask import current_app, request, abort, jsonify
-import logging
+from flask import current_app, request
 
-# Basit blocklist örneği (prod için Redis/DB kullanın)
-_revoked_refresh_tokens = set()
+from ..db.models import TokenBlacklist, User
 
 
-def generate_tokens(user_id, username, role=None):
-    """
-    Access, refresh ve CSRF token üretir.
-    """
-    now = datetime.utcnow()
-    access_payload = {
-        "iss": current_app.config.get("JWT_ISSUER", "ytdcrypto"),
-        "aud": current_app.config.get("JWT_AUDIENCE", "ytdcrypto_users"),
-        "iat": now,
-        "nbf": now,
-        "exp": now + timedelta(minutes=current_app.config["ACCESS_TOKEN_EXP_MINUTES"]),
-        "jti": secrets.token_hex(8),
-        "sub": str(user_id),
-        "username": username
-    }
-    if role:
-        access_payload["role"] = role
+class TokenManager:
+    """Secure JWT token management class"""
 
-    refresh_payload = {
-        "iss": current_app.config.get("JWT_ISSUER", "ytdcrypto"),
-        "aud": current_app.config.get("JWT_AUDIENCE", "ytdcrypto_users"),
-        "iat": now,
-        "nbf": now,
-        "exp": now + timedelta(days=current_app.config["REFRESH_TOKEN_EXP_DAYS"]),
-        "jti": secrets.token_hex(8),
-        "sub": str(user_id)
-    }
+    @staticmethod
+    def _generate_jti() -> str:
+        """Generate a unique JWT ID"""
+        return secrets.token_urlsafe(32)
 
-    access = jwt.encode(access_payload, current_app.config["ACCESS_TOKEN_SECRET"], algorithm="HS256")
-    refresh = jwt.encode(refresh_payload, current_app.config["REFRESH_TOKEN_SECRET"], algorithm="HS256")
-    csrf = secrets.token_hex(32)
+    @staticmethod
+    def _hash_token(token: str) -> str:
+        """Hash token for secure storage"""
+        return hashlib.sha256(token.encode()).hexdigest()
 
-    return access, refresh, csrf
+    @staticmethod
+    def generate_tokens(
+        user_id: int, additional_claims: dict | None = None
+    ) -> dict:
+        """Generate both access and refresh tokens with enhanced security"""
+        now = datetime.now(timezone.utc)
 
+        access_jti = TokenManager._generate_jti()
+        refresh_jti = TokenManager._generate_jti()
 
-def verify_access_token(token):
-    """JWT validasyonu yapar. Geçerliyse payload döner, değilse None."""
-    try:
-        payload = jwt.decode(
-            token,
-            current_app.config["ACCESS_TOKEN_SECRET"],
-            algorithms=["HS256"],
-            issuer=current_app.config.get("JWT_ISSUER"),
-            audience=current_app.config.get("JWT_AUDIENCE")
+        base_payload = {
+            "user_id": user_id,
+            "iat": now,
+            "iss": "ytd-crypto-app",
+            "aud": "ytd-crypto-users",
+        }
+
+        if additional_claims:
+            base_payload.update(additional_claims)
+
+        access_payload = base_payload.copy()
+        access_payload.update(
+            {
+                "exp": now + timedelta(minutes=15),
+                "jti": access_jti,
+                "type": "access",
+                "fresh": True,
+            }
         )
-        return payload
-    except jwt.ExpiredSignatureError:
-        logging.warning("Access token süresi dolmuş.")
-        return None
-    except jwt.InvalidTokenError as e:
-        logging.error(f"Geçersiz access token: {e}")
-        return None
 
-
-def rotate_refresh_token(old_refresh_token):
-    """
-    Refresh token rotasyonu: eski token iptal edilir, yenisi üretilir.
-    """
-    try:
-        payload = jwt.decode(
-            old_refresh_token,
-            current_app.config["REFRESH_TOKEN_SECRET"],
-            algorithms=["HS256"],
-            issuer=current_app.config.get("JWT_ISSUER"),
-            audience=current_app.config.get("JWT_AUDIENCE")
+        refresh_payload = base_payload.copy()
+        refresh_payload.update(
+            {
+                "exp": now + timedelta(days=7),
+                "jti": refresh_jti,
+                "type": "refresh",
+            }
         )
-        jti = payload.get("jti")
-        if jti in _revoked_refresh_tokens:
-            logging.warning("Revoked refresh token kullanıldı.")
-            return None
 
-        # Eski refresh token'i iptal et
-        _revoked_refresh_tokens.add(jti)
+        secret = current_app.config.get(
+            "JWT_SECRET_KEY", current_app.config.get("SECRET_KEY")
+        )
 
-        user_id = payload.get("sub")
-        # Yeni token üret
-        access, refresh, csrf = generate_tokens(user_id, payload.get("username"), payload.get("role"))
-        return access, refresh, csrf
+        access_token = jwt.encode(access_payload, secret, algorithm="HS256")
+        refresh_token = jwt.encode(refresh_payload, secret, algorithm="HS256")
 
-    except jwt.PyJWTError as e:
-        logging.error(f"Refresh token doğrulanamadı: {e}")
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "access_expires": access_payload["exp"],
+            "refresh_expires": refresh_payload["exp"],
+        }
+
+    @staticmethod
+    def verify_token(token: str, token_type: str = "access") -> dict:
+        """Verify JWT token with enhanced security checks"""
+        try:
+            payload = jwt.decode(
+                token,
+                current_app.config.get(
+                    "JWT_SECRET_KEY", current_app.config.get("SECRET_KEY")
+                ),
+                algorithms=["HS256"],
+                audience="ytd-crypto-users",
+                issuer="ytd-crypto-app",
+            )
+
+            if payload.get("type") != token_type:
+                raise jwt.InvalidTokenError(
+                    f"Invalid token type. Expected {token_type}"
+                )
+
+            jti = payload.get("jti")
+            if TokenManager._is_token_blacklisted(jti):
+                raise jwt.InvalidTokenError("Token has been revoked")
+
+            user = User.query.get(payload["user_id"])
+            if not user or not getattr(user, "is_active", True):
+                raise jwt.InvalidTokenError("User not found or inactive")
+
+            return payload
+
+        except jwt.ExpiredSignatureError:
+            raise jwt.InvalidTokenError("Token has expired")
+        except jwt.InvalidTokenError as exc:  # pragma: no cover - re-raise for clarity
+            raise exc
+        except Exception as exc:  # pragma: no cover - unexpected errors
+            raise jwt.InvalidTokenError(f"Token verification failed: {exc}")
+
+    @staticmethod
+    def _is_token_blacklisted(jti: str | None) -> bool:
+        """Check if token is blacklisted"""
+        if not jti:
+            return True
+        return TokenBlacklist.query.filter_by(jti=jti).first() is not None
+
+
+# Legacy compatibility
+def generate_tokens(user_id: int, username: str, role: str | None = None):
+    """Legacy function for backward compatibility"""
+    tokens = TokenManager.generate_tokens(
+        user_id, {"username": username, "role": role}
+    )
+    return tokens["access_token"], tokens["refresh_token"], secrets.token_hex(32)
+
+
+def verify_access_token(token: str):
+    """Legacy function for backward compatibility"""
+    try:
+        return TokenManager.verify_token(token, "access")
+    except jwt.InvalidTokenError:
         return None
 
 
-def require_csrf(func):
-    """
-    CSRF koruma dekoratörü: header'daki X-CSRF-Token ile cookie'deki token'ı compare eder.
-    """
-    from functools import wraps
+def verify_jwt(token: str):
+    """Wrapper around :meth:`TokenManager.verify_token` returning payload or None"""
+    try:
+        return TokenManager.verify_token(token, "access")
+    except jwt.InvalidTokenError:
+        return None
 
+
+def verify_csrf() -> bool:
+    """Validate CSRF token sent via header against cookie"""
+    sent = request.headers.get("X-CSRF-Token")
+    stored = request.cookies.get("csrf-token")
+    return bool(sent and stored and sent == stored)
+
+
+def csrf_required(func):
+    """Decorator enforcing CSRF validation"""
     @wraps(func)
     def wrapper(*args, **kwargs):
         if current_app.config.get("TESTING"):
             return func(*args, **kwargs)
-        sent = request.headers.get("X-CSRF-Token")
-        stored = request.cookies.get("csrf_token")
-        if not sent or not stored or sent != stored:
-            logging.warning("CSRF doğrulaması başarısız.")
-            abort(403)
+        if not verify_csrf():
+            return ({"error": "CSRF token is missing or invalid", "code": "INVALID_CSRF"}, 403)
         return func(*args, **kwargs)
 
     return wrapper
 
 
-def verify_jwt(token: str):
-    """Basit JWT dogrulamasi. Gecerliyse payload dondurur, degilse None."""
-    return verify_access_token(token)
-
-
-def verify_csrf() -> bool:
-    """Incoming istegin CSRF tokenini dogrular."""
-    sent = request.headers.get("X-CSRF-Token")
-    stored = request.cookies.get("csrf_token")
-    return bool(sent and stored and sent == stored)
+# Backwards compatibility aliases
+require_csrf = csrf_required
 
 
 def require_admin(func):
-    """Decorator that ensures the current JWT belongs to an admin user."""
-    from functools import wraps
-    from flask_jwt_extended import get_jwt_identity
-    from backend.db.models import User, UserRole
-    from flask import g
+    """Delegate to admin_required decorator to maintain legacy API"""
+    from .middlewares import admin_required
 
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            if current_app.config.get("TESTING"):
-                return func(*args, **kwargs)
-            user_id = get_jwt_identity()
-            user = User.query.get(user_id) if user_id else None
-            if not user or user.role != UserRole.ADMIN:
-                return jsonify({"error": "Admin yetkisi gereklidir!"}), 403
-            g.user = user
-            return func(*args, **kwargs)
-        except Exception as e:  # pragma: no cover - unexpected errors
-            logging.exception("require_admin: unexpected error: %s", e)
-            return jsonify({"error": "Sunucu hatası."}), 500
-
-    return wrapper
-
+    return admin_required()(func)
 
 
 def jwt_required_if_not_testing(*dargs, **dkwargs):
-    """Test ortamında ve X-API-KEY kullanıldığında JWT kontrolünü atla."""
+    """Skip JWT verification in tests or when X-API-KEY is provided"""
     from flask_jwt_extended import verify_jwt_in_request
-    from flask import current_app, request
-    from functools import wraps
 
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            if current_app and current_app.config.get("TESTING"):
+            if current_app.config.get("TESTING"):
                 return fn(*args, **kwargs)
             if request.headers.get("X-API-KEY"):
                 return fn(*args, **kwargs)
-            try:
-                verify_jwt_in_request(*dargs, **dkwargs)
-            except Exception:
-                if current_app and current_app.config.get("TESTING"):
-                    return fn(*args, **kwargs)
-                raise
+            verify_jwt_in_request(*dargs, **dkwargs)
             return fn(*args, **kwargs)
 
         return wrapper
 
     return decorator
+
 

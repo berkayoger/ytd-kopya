@@ -1,4 +1,5 @@
 import os
+import secrets
 from datetime import timedelta
 
 class BaseConfig:
@@ -39,6 +40,16 @@ class BaseConfig:
     ACCESS_TOKEN_EXP_MINUTES = int(os.getenv("ACCESS_TOKEN_EXP_MINUTES", "15"))
     REFRESH_TOKEN_EXP_DAYS = int(os.getenv("REFRESH_TOKEN_EXP_DAYS", "7"))
     DRAKS_ENGINE_URL = os.getenv("DRAKS_ENGINE_URL", "http://draks-engine:8000")
+
+    # Enhanced JWT configuration
+    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY") or secrets.token_urlsafe(64)
+    JWT_ALGORITHM = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "15")))
+    JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=int(os.getenv("JWT_REFRESH_TOKEN_EXPIRES_DAYS", "7")))
+    JWT_BLACKLIST_ENABLED = True
+    JWT_BLACKLIST_TOKEN_CHECKS = ["access", "refresh"]
+    JWT_ERROR_MESSAGE_KEY = "message"
+    JWT_ACCESS_COOKIE_NAME = "access_token_cookie"
 
 
 class DevelopmentConfig(BaseConfig):
