@@ -98,6 +98,11 @@ def login_user():
             user_id=user.id,
             refresh_token=generate_password_hash(refresh),
             expires_at=datetime.utcnow() + timedelta(days=current_app.config["REFRESH_TOKEN_EXP_DAYS"]),
+            jti=str(uuid.uuid4()),
+            last_used=datetime.utcnow(),
+            user_agent=user_agent,
+            ip_address=ip_address,
+            is_active=True,
         )
         db.session.add(session)
         db.session.commit()

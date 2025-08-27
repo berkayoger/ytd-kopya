@@ -20,6 +20,7 @@ from sqlalchemy import (
     DateTime,
     Date,
     Boolean,
+    JSON,
 )
 
 
@@ -269,7 +270,35 @@ class UserSession(db.Model):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     revoked = Column(Boolean, default=False, nullable=False)
+    jti = Column(String(64), unique=True, nullable=False, index=True)
+    last_used = Column(DateTime, default=datetime.utcnow, nullable=True)
+    user_agent = Column(Text, nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
     user = db.relationship("User", backref="sessions", lazy=True)
+
+
+class TokenBlacklist(db.Model):
+    __tablename__ = "token_blacklist"
+    id = Column(Integer, primary_key=True)
+    jti = Column(String(64), unique=True, nullable=False, index=True)
+    token_type = Column(String(20), nullable=False)
+    blacklisted_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=True, index=True)
+    reason = Column(String(255), nullable=True)
+
+
+class SecurityEvent(db.Model):
+    __tablename__ = "security_events"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    event_type = Column(String(50), nullable=False, index=True)
+    ip_address = Column(String(45), nullable=True, index=True)
+    user_agent = Column(Text, nullable=True)
+    success = Column(Boolean, default=True, nullable=False)
+    details = Column(JSON, nullable=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    user = db.relationship("User", backref="security_events", lazy=True)
 
 
 class PasswordResetToken(db.Model):
