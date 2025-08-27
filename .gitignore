@@ -71,3 +71,15 @@ frontend/.env.*
 !frontend/.env.example
 .env
 ytd-kopya.git/
+.venv/
+venv/
+instance/
+.env
+__pycache__/
+*.backup
+=1.26.0
+=2.1.0
+manage.py
+backend/app.py
+wsgi.py.backup
+migrate_security_backup.py
