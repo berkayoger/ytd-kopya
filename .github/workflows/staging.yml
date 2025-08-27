@@ -83,7 +83,7 @@ jobs:
           cache-from: type=registry,ref=${{ env.IMAGE_BACKEND }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_BACKEND }}:buildcache,mode=max
 
-  build-frontend:
+    if: true
     if: ${{ hashFiles('frontend/package.json') != '' }}
     runs-on: ubuntu-latest
     steps:
