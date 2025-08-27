@@ -38,8 +38,7 @@ pyotp>=2.9.0
 pycoingecko>=3.1.0
 passlib>=1.7.4
 cryptography==41.0.7
-bcrypt
-user-agents
+
 
 # Observability / Metrics
 prometheus-client>=0.20.0

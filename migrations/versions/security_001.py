@@ -1,14 +1,18 @@
 """Add security enhancements
 
 Revision ID: security_001
-Revises: remove_subscription_plan_limits
+
+Revises: 20251201_01
+
 Create Date: 2025-01-01 00:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = 'security_001'
-down_revision = 'remove_subscription_plan_limits'
+
+down_revision = '20251201_01'
+
 branch_labels = None
 depends_on = None
 

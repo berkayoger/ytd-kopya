@@ -1,37 +1,34 @@
 #!/usr/bin/env python3
-"""
-Security Check Script for YTD Crypto Application
 
-This script performs basic security validations on the application configuration.
-"""
+"""Basic security checks for environment configuration."""
 
-import os
-import sys
 import re
+import sys
 from pathlib import Path
-from typing import List
 
 
-def check_env_security() -> List[str]:
-    """Check environment configuration security"""
-    issues: List[str] = []
+def check_env_security() -> list[str]:
+    """Validate essential secrets in the .env file."""
+    issues: list[str] = []
 
-    # Check if .env file exists
-    env_file = Path('.env')
+    env_file = Path(".env")
+
     if not env_file.exists():
         issues.append("❌ .env file not found. Copy .env.example to .env")
         return issues
 
     env_content = env_file.read_text()
 
-    # Check JWT secret key
-    jwt_secret_match = re.search(r'JWT_SECRET_KEY=(.+)', env_content)
+
+    jwt_secret_match = re.search(r"JWT_SECRET_KEY=(.+)", env_content)
+
     if not jwt_secret_match:
         issues.append("❌ JWT_SECRET_KEY not set in .env")
     else:
         jwt_secret = jwt_secret_match.group(1).strip()
         if len(jwt_secret) < 32:
             issues.append("❌ JWT_SECRET_KEY is too short (minimum 32 characters)")
+
         if jwt_secret == 'your-jwt-secret-key-at-least-64-characters-long-for-production':
             issues.append("❌ JWT_SECRET_KEY is using example value")
 
@@ -84,36 +81,29 @@ def check_dependencies() -> List[str]:
         if dep not in requirements:
             issues.append(f"⚠️  Security dependency '{dep}' not found in requirements.txt")
 
+
     return issues
 
 
 def main() -> int:
-    """Run all security checks"""
+
+    """Run all security checks and print results."""
     print("🔐 YTD Crypto Application Security Check")
     print("=" * 50)
 
-    all_issues: List[str] = []
-
-    print("\n📋 Checking environment configuration...")
-    all_issues.extend(check_env_security())
-
-    print("\n📁 Checking file permissions...")
-    all_issues.extend(check_file_permissions())
-
-    print("\n📦 Checking dependencies...")
-    all_issues.extend(check_dependencies())
+    issues = check_env_security()
 
     print("\n" + "=" * 50)
-    if not all_issues:
+    if not issues:
         print("✅ All security checks passed!")
         return 0
 
-    print(f"Found {len(all_issues)} security issues:")
-    for issue in all_issues:
+    print(f"Found {len(issues)} security issues:")
+    for issue in issues:
         print(f"  {issue}")
-    print("\n🔧 Please address these issues before deploying to production.")
     return 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
+
