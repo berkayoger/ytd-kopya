@@ -209,6 +209,7 @@ def create_app() -> Flask:
         if app.config["ENV"].lower() != "production":
     if os.getenv("FLASK_RUN_CREATE_ALL","0")=="1":
         db.create_all()
+        db.create_all()
             from backend.db.models import Role, Permission  # lazy import
             if not Role.query.filter_by(name="user").first():
                 db.session.add_all([Role(name="user"), Role(name="admin")])
