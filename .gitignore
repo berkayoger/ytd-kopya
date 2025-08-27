@@ -106,3 +106,5 @@ wsgi.py.backup
 migrate_security_backup.py
 backend/app.py
 manage.py
+backend/app.py
+manage.py
