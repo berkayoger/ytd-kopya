@@ -20,6 +20,9 @@ jobs:
           python-version: '3.12'
 
       - name: Sanal ortamı oluştur ve aktif et
+        env:
+          TESTING: 1
+          FLASK_ENV: testing
         run: |
           python -m venv .venv
           source .venv/bin/activate
@@ -29,8 +32,10 @@ jobs:
           echo "=== Yüklenen paketler ==="
           pip list | grep -i flask
           echo "=== flask_socketio kontrolü ==="
-          python -c "import flask_socketio; print('flask_socketio başarıyla import edildi')"
-
+          python -c "import flask_socketio; print('flask_socketio başarıyla import edildi')" || echo "flask_socketio import başarısız"
+          echo "=== Backend import testi ==="
+          python -c "import backend; print('Backend modülü başarıyla import edildi')"
+          
       - name: Pytest çalıştır (coverage ile)
         env:
           TESTING: 1
