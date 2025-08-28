@@ -4,3 +4,5 @@ factory_boy
 faker
 locust
 websocket-client
+
+loguru==0.7.2
