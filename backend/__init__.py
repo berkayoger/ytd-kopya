@@ -14,7 +14,11 @@ from flask.testing import FlaskClient
 from flask_cors import CORS
 from sqlalchemy import text
 from celery import Celery
-from flask_socketio import SocketIO, emit
+try:
+    from flask_socketio import SocketIO, emit
+except ImportError:
+    SocketIO = None
+    emit = None
 from redis import Redis
 from werkzeug.middleware.proxy_fix import ProxyFix
 try:
@@ -134,7 +138,7 @@ class Config:
 
 # Global extension instances
 celery_app: Celery = Celery()
-socketio: SocketIO = SocketIO()
+socketio: SocketIO = SocketIO() if SocketIO else None
 
 
 class LegacyTestClient(FlaskClient):
@@ -192,15 +196,17 @@ def create_app() -> Flask:
         pass
     celery_app.conf.update(app.config)
     celery_app.conf.task_time_limit = int(os.getenv("BATCH_JOB_TIMEOUT", "300"))
-    socketio.init_app(
-        app,
-        message_queue=Config.CELERY_BROKER_URL,
-        cors_allowed_origins=Config.CORS_ORIGINS,
-    )
+    if socketio:
+        socketio.init_app(
+            app,
+            message_queue=Config.CELERY_BROKER_URL,
+            cors_allowed_origins=Config.CORS_ORIGINS,
+        )
     # Socket.IO namespace'leri
     try:
         from backend.realtime.batch_ws import init_batch_namespace
-        init_batch_namespace(socketio, app)
+        if socketio:
+            init_batch_namespace(socketio, app)
     except Exception as _e:  # pragma: no cover
         logger.warning(f"Batch WS init skipped: {_e}")
 
@@ -276,7 +282,8 @@ def create_app() -> Flask:
     app.extensions["db"] = db
     app.extensions["limiter"] = limiter
     app.extensions["celery"] = celery_app
-    app.extensions["socketio"] = socketio
+    if socketio:
+        app.extensions["socketio"] = socketio
     app.extensions["redis_client"] = Redis.from_url(app.config.get("REDIS_URL", REDIS_URL))
 
     # Ağır servis (model/analiz) import & instance – CI/Smoke’ta opsiyonel
@@ -508,29 +515,30 @@ def create_app() -> Flask:
         )
 
     # Socket.IO events
-    @socketio.on("connect", namespace="/")
-    def handle_connect():
-        logger.info("WS connected")
-        emit("my response", {"data": "Connected"})
+    if socketio:
+        @socketio.on("connect", namespace="/")
+        def handle_connect():
+            logger.info("WS connected")
+            emit("my response", {"data": "Connected"})
 
-    @socketio.on("connect", namespace="/alerts")
-    @check_usage_limit("realtime_alert")
-    def handle_alerts_connect(auth):
-        api_key = auth.get("api_key") if auth else None
-        user = User.query.filter_by(api_key=api_key).first()
-        if not user or user.subscription_level.value < SubscriptionPlan.PREMIUM.value:
-            logger.warning("Unauthorized WS alerts connection")
-            return False
-        g.user = user
-        logger.info(f"Alerts WS connected: {user.username}")
+        @socketio.on("connect", namespace="/alerts")
+        @check_usage_limit("realtime_alert")
+        def handle_alerts_connect(auth):
+            api_key = auth.get("api_key") if auth else None
+            user = User.query.filter_by(api_key=api_key).first()
+            if not user or user.subscription_level.value < SubscriptionPlan.PREMIUM.value:
+                logger.warning("Unauthorized WS alerts connection")
+                return False
+            g.user = user
+            logger.info(f"Alerts WS connected: {user.username}")
 
-    @socketio.on("disconnect", namespace="/")
-    def handle_disconnect():
-        logger.info("WS disconnected")
+        @socketio.on("disconnect", namespace="/")
+        def handle_disconnect():
+            logger.info("WS disconnected")
 
-    @socketio.on("disconnect", namespace="/alerts")
-    def handle_alerts_disconnect():
-        logger.info("Alerts WS disconnected")
+        @socketio.on("disconnect", namespace="/alerts")
+        def handle_alerts_disconnect():
+            logger.info("Alerts WS disconnected")
 
     # Opsiyonel: scheduler tetikleyicisi (ENV ile aç/kapat)
     if os.getenv("ENABLE_SCHEDULER", "0") == "1":
