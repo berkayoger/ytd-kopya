@@ -30,7 +30,10 @@ try:
 except ImportError:
     import logging
     logger = logging.getLogger(__name__)
-from backend.observability.metrics import prometheus_wsgi_app
+try:
+    from backend.observability.metrics import prometheus_wsgi_app
+except ImportError:
+    prometheus_wsgi_app = None
 from backend.auth.roles import ensure_admin_for_admin_paths
 
 # Proje içi
@@ -371,7 +374,10 @@ def create_app() -> Flask:
             auth = request.authorization
             if not auth or auth.username != u or auth.password != p:
                 return Response("Auth required", 401, {"WWW-Authenticate": 'Basic realm="metrics"'})
-        return Response(b"".join(prometheus_wsgi_app({}, lambda *a, **k: None)), mimetype="text/plain")
+        if prometheus_wsgi_app:
+            return Response(b"".join(prometheus_wsgi_app({}, lambda *a, **k: None)), mimetype="text/plain")
+        else:
+            return Response("Metrics not available", mimetype="text/plain")
 
     # Blueprint’ler
     from backend.auth.routes import auth_bp
