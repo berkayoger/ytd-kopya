@@ -25,7 +25,11 @@ try:
     from dotenv import load_dotenv
 except Exception:  # pragma: no cover
     load_dotenv = None
-from loguru import logger
+try:
+    from loguru import logger
+except ImportError:
+    import logging
+    logger = logging.getLogger(__name__)
 from backend.observability.metrics import prometheus_wsgi_app
 from backend.auth.roles import ensure_admin_for_admin_paths
 
