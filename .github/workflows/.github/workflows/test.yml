@@ -32,6 +32,10 @@ jobs:
           python -c "import flask_socketio; print('flask_socketio başarıyla import edildi')"
 
       - name: Pytest çalıştır (coverage ile)
+        env:
+          TESTING: 1
+          FLASK_ENV: testing
         run: |
           source .venv/bin/activate
           pytest --cov=backend --cov-report=term-missing
+
