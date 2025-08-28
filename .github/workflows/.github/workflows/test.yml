@@ -26,6 +26,10 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
+          echo "=== Yüklenen paketler ==="
+          pip list | grep -i flask
+          echo "=== flask_socketio kontrolü ==="
+          python -c "import flask_socketio; print('flask_socketio başarıyla import edildi')"
 
       - name: Pytest çalıştır (coverage ile)
         run: |
