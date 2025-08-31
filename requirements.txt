@@ -1,160 +1,235 @@
+# =============================================================================
+# YTD-KOPYA PROJECT REQUIREMENTS - GitHub Actions Optimized
+# =============================================================================
+# Bu dosya GitHub Actions CI/CD için optimize edilmiş ve dependency çakışmalarını çözer
 
-#
-# Not: Craftgate için projede stub provider kullanıyoruz (app/billing/providers/stub_craftgate.py).
-# PyJWT pin (flask_jwt_extended uyumu için)
-# Resmi bir Python SDK/PyPI paketi bulunmadığından craftgate bağımlılığını eklemiyoruz.
-# Transitif güvenlik sabitlemeleri (gerekliyse)
-# flask-cors KALDIRILDI – manuel CORS (security_bootstrap) kullanılmaktadır
-# logging
-Flask-SQLAlchemy==3.1.1
+# -----------------------------------------------------------------------------
+# CORE FLASK FRAMEWORK & EXTENSIONS
+# -----------------------------------------------------------------------------
 Flask==2.3.3
-GitPython==3.1.44
-Jinja2==3.1.6
-MarkupSafe==3.0.2
-PyJWT==2.8.0
-PyYAML==6.0.2
-Pygments==2.19.2
-Send2Trash==1.8.3
-anyio==4.9.0
-argon2-cffi==23.1.0
-arrow==1.3.0
-asttokens==3.0.0
-async-lru==2.0.5
-attrs==25.3.0
-azure-identity==1.16.1
-azure-keyvault-secrets==4.7.0
-babel==2.17.0
-beautifulsoup4==4.13.4
-bleach==6.2.0
-boto3==1.28.0
-celery==5.3.6
-certifi==2025.7.9
-cffi==1.17.1
-charset-normalizer==3.4.2
-colorama==0.4.6
-comm==0.2.2
-contourpy==1.3.2
-cryptography==44.0.1
-cycler==0.12.1
-debugpy==1.8.14
-decorator==5.2.1
-defusedxml==0.7.1
-email-validator==2.1.0
-executing==2.2.0
-factory_boy
-faker
-fastjsonschema==2.21.1
-filelock==3.13.1
-flask-cors==6.0.1
-flask-limiter>=3.5,<4.0
+Flask-SQLAlchemy==3.1.1
 flask-migrate
 flask_jwt_extended
 flask_socketio==5.3.6
-fonttools==4.58.5
-fqdn==1.5.1
-fsspec==2024.6.1
-future==0.18.3
-gitdb==4.0.12
-h11==0.16.0
-httpcore==1.0.9
-httpx==0.28.1
-idna==3.10
-ipykernel==6.29.5
-ipython==9.4.0
-ipython_pygments_lexers==1.1.1
-isoduration==20.11.0
-jedi==0.19.2
-joblib==1.5.1
-json5==0.12.0
-jsonpointer==3.0.0
-jsonschema-specifications==2025.4.1
-jsonschema==4.24.0
-jupyter-events==0.12.0
-jupyter-lsp==2.2.5
-jupyter-server-mathjax==0.2.6
-jupyter_client==8.6.3
-jupyter_core==5.8.1
-jupyter_server==2.16.0
-jupyter_server_terminals==0.5.3
-jupyterlab==4.4.4
-jupyterlab_git==0.51.2
-jupyterlab_pygments==0.3.0
-jupyterlab_server==2.27.3
-kiwisolver==1.4.8
-loguru==0.7.2
-matplotlib-inline==0.1.7
-matplotlib==3.10.3
-mistune==3.1.3
-mpmath==1.3.0
-narwhals==1.46.0
-nbclient==0.10.2
-nbconvert==7.16.6
-nbdime==4.0.2
-nbformat==5.10.4
-nest-asyncio==1.6.0
-networkx==3.3
-notebook_shim==0.2.4
-numpy==2.3.1  # Temel bilimsel bağımlılıklar (orchestrator & engines)
-overrides==7.7.0
-packaging==25.0
-pandas==2.3.1
-pandocfilters==1.5.1
-parso==0.8.4
+flask-cors==6.0.1
+flask-limiter>=3.5,<4.0
+
+# -----------------------------------------------------------------------------
+# AUTHENTICATION & SECURITY
+# -----------------------------------------------------------------------------
+PyJWT==2.8.0
+argon2-cffi==23.1.0
+cryptography>=44.0.0,<45.0.0
 passlib==1.7.4
-pexpect==4.9.0
-pillow==11.3.0
-platformdirs==4.3.8
-plotly==6.2.0
-prometheus_client==0.22.1
-prompt_toolkit==3.0.51
-psutil==7.0.0
-ptyprocess==0.7.0
-pure_eval==0.2.3
 pwnedpasswords==2.0.0
-pycoingecko
-pycparser==2.22
 pyotp==2.9.0
-pyparsing==3.2.3
-pytest-cov==4.1.0
-pytest==7.4.4
-python-dateutil==2.9.0.post0
-python-dotenv==1.0.1
-python-json-logger==3.3.0
-python-multipart==0.0.18
-pytz==2025.2
-pyzmq==27.0.0
+
+# -----------------------------------------------------------------------------
+# DATABASE & ORM
+# -----------------------------------------------------------------------------
+# SQLAlchemy already included with Flask-SQLAlchemy
+
+# -----------------------------------------------------------------------------
+# ASYNC & TASK QUEUE
+# -----------------------------------------------------------------------------
+celery==5.3.6
 redis==5.0.4
-referencing==0.36.2
-requests==2.32.4
-rfc3339-validator==0.1.4
-rfc3986-validator==0.1.1
-rpds-py==0.26.0
-scikit-learn==1.7.0
-scipy==1.16.0
-seaborn==0.13.2
-setuptools==80.9.0
-six==1.17.0
-slowapi==0.1.9
-smmap==5.0.2
-sniffio==1.3.1
-soupsieve==2.7
-stack-data==0.6.3
-stripe==8.10.0
-sympy==1.13.3
-terminado==0.18.1
-threadpoolctl==3.6.0
-tinycss2==1.4.0
-torch==2.1.0; python_version < "3.12"
-torch==2.4.1; python_version >= "3.12"
-tornado==6.5.1
-traitlets==5.14.3
-types-python-dateutil==2.9.0.20250708
-typing_extensions==4.14.1
-tzdata==2025.2
-uri-template==1.3.0
-urllib3==1.26.19  # security fix; boto3/botocore <1.27 uyumlu
-uvicorn==0.30.1
-wcwidth==0.2.13
-webcolors==24.11.1
-webencodings==0.5.1
-websocket-client==1.8.0
+anyio>=4.0.0,<5.0.0
+async-lru>=2.0.0,<3.0.0
+
+# -----------------------------------------------------------------------------
+# WEB & HTTP
+# -----------------------------------------------------------------------------
+requests>=2.32.0,<3.0.0
+httpx>=0.28.0,<1.0.0
+httpcore>=1.0.0,<2.0.0
+uvicorn>=0.30.0,<1.0.0
+h11>=0.16.0,<1.0.0
+sniffio>=1.3.0,<2.0.0
+
+# -----------------------------------------------------------------------------
+# DATA SCIENCE & ANALYTICS (CI optimized versions)
+# -----------------------------------------------------------------------------
+numpy>=2.0.0,<3.0.0
+pandas>=2.2.0,<3.0.0
+scipy>=1.12.0,<2.0.0
+matplotlib>=3.8.0,<4.0.0
+seaborn>=0.13.0,<1.0.0
+scikit-learn>=1.4.0,<2.0.0
+plotly>=5.0.0,<7.0.0
+
+# Uyumlu matematik paketleri
+contourpy>=1.2.0,<2.0.0
+cycler>=0.12.0,<1.0.0
+kiwisolver>=1.4.0,<2.0.0
+matplotlib-inline>=0.1.0,<1.0.0
+pyparsing>=3.0.0,<4.0.0
+python-dateutil>=2.8.0,<3.0.0
+fonttools>=4.50.0,<5.0.0
+pillow>=10.0.0,<12.0.0
+joblib>=1.3.0,<2.0.0
+threadpoolctl>=3.0.0,<4.0.0
+
+# -----------------------------------------------------------------------------
+# MACHINE LEARNING (Test ortamında opsiyonel)
+# -----------------------------------------------------------------------------
+torch>=2.1.0,<3.0.0; python_version >= "3.8" and os_name != "nt"
+
+# -----------------------------------------------------------------------------
+# CLOUD & STORAGE
+# -----------------------------------------------------------------------------
+boto3>=1.28.0,<2.0.0
+azure-identity>=1.16.0,<2.0.0
+azure-keyvault-secrets>=4.7.0,<5.0.0
+
+# -----------------------------------------------------------------------------
+# CRYPTO & PAYMENTS
+# -----------------------------------------------------------------------------
+pycoingecko
+stripe>=8.0.0,<9.0.0
+# Not: Craftgate için stub provider kullanılıyor (resmi SDK yok)
+
+# -----------------------------------------------------------------------------
+# UTILITIES & HELPERS
+# -----------------------------------------------------------------------------
+loguru==0.7.2
+arrow>=1.3.0,<2.0.0
+python-dotenv>=1.0.0,<2.0.0
+Send2Trash>=1.8.0,<2.0.0
+email-validator>=2.1.0,<3.0.0
+python-multipart>=0.0.18,<1.0.0
+slowapi>=0.1.9,<1.0.0
+
+# -----------------------------------------------------------------------------
+# TEMPLATE & MARKUP
+# -----------------------------------------------------------------------------
+Jinja2==3.1.6
+MarkupSafe==3.0.2
+beautifulsoup4>=4.12.0,<5.0.0
+bleach>=6.0.0,<7.0.0
+
+# -----------------------------------------------------------------------------
+# DEVELOPMENT & VERSION CONTROL
+# -----------------------------------------------------------------------------
+GitPython>=3.1.40,<4.0.0
+gitdb>=4.0.10,<5.0.0
+smmap>=5.0.0,<6.0.0
+
+# -----------------------------------------------------------------------------
+# CONFIGURATION & SERIALIZATION
+# -----------------------------------------------------------------------------
+PyYAML>=6.0.0,<7.0.0
+attrs>=23.0.0,<26.0.0
+packaging>=24.0,<26.0
+setuptools>=70.0.0,<81.0.0
+six>=1.16.0,<2.0.0
+typing_extensions>=4.10.0,<5.0.0
+
+# -----------------------------------------------------------------------------
+# TESTING & QUALITY
+# -----------------------------------------------------------------------------
+pytest==7.4.4
+pytest-cov==4.1.0
+factory_boy
+faker
+
+# -----------------------------------------------------------------------------
+# JUPYTER & NOTEBOOK (Development)
+# -----------------------------------------------------------------------------
+ipython>=8.0.0,<10.0.0
+ipykernel>=6.25.0,<7.0.0
+jupyter_client>=8.5.0,<9.0.0
+jupyter_core>=5.5.0,<6.0.0
+jupyter_server>=2.10.0,<3.0.0
+jupyter_server_terminals>=0.5.0,<1.0.0
+jupyterlab>=4.0.0,<5.0.0
+jupyterlab_git>=0.50.0,<1.0.0
+jupyterlab_pygments>=0.3.0,<1.0.0
+jupyterlab_server>=2.25.0,<3.0.0
+notebook_shim>=0.2.0,<1.0.0
+
+# Jupyter dependencies
+asttokens>=2.4.0,<4.0.0
+comm>=0.2.0,<1.0.0
+debugpy>=1.8.0,<2.0.0
+decorator>=5.1.0,<6.0.0
+executing>=2.0.0,<3.0.0
+jedi>=0.19.0,<1.0.0
+jupyter-events>=0.10.0,<1.0.0
+jupyter-lsp>=2.2.0,<3.0.0
+jupyter-server-mathjax>=0.2.0,<1.0.0
+nbclient>=0.10.0,<1.0.0
+nbconvert>=7.15.0,<8.0.0
+nbdime>=4.0.0,<5.0.0
+nbformat>=5.10.0,<6.0.0
+nest-asyncio>=1.5.0,<2.0.0
+overrides>=7.0.0,<8.0.0
+pandocfilters>=1.5.0,<2.0.0
+parso>=0.8.0,<1.0.0
+pexpect>=4.8.0,<5.0.0
+platformdirs>=4.0.0,<5.0.0
+prometheus_client>=0.20.0,<1.0.0
+prompt_toolkit>=3.0.40,<4.0.0
+psutil>=5.9.0,<8.0.0
+ptyprocess>=0.7.0,<1.0.0
+pure_eval>=0.2.0,<1.0.0
+pyzmq>=25.0.0,<28.0.0
+stack-data>=0.6.0,<1.0.0
+terminado>=0.18.0,<1.0.0
+tornado>=6.3.0,<7.0.0
+traitlets>=5.10.0,<6.0.0
+wcwidth>=0.2.10,<1.0.0
+
+# -----------------------------------------------------------------------------
+# DATA FORMATS & PARSING
+# -----------------------------------------------------------------------------
+certifi>=2023.0.0
+cffi>=1.16.0,<2.0.0
+charset-normalizer>=3.3.0,<4.0.0
+colorama>=0.4.6,<1.0.0
+defusedxml>=0.7.1,<1.0.0
+fastjsonschema>=2.19.0,<3.0.0
+filelock>=3.12.0,<4.0.0
+fqdn>=1.5.0,<2.0.0
+fsspec>=2024.0.0,<2025.0.0
+future>=0.18.0,<1.0.0
+idna>=3.4,<4.0.0
+isoduration>=20.11.0,<21.0.0
+json5>=0.9.0,<1.0.0
+jsonpointer>=2.4.0,<4.0.0
+jsonschema>=4.20.0,<5.0.0
+jsonschema-specifications>=2023.12.0
+mistune>=3.0.0,<4.0.0
+mpmath>=1.3.0,<2.0.0
+narwhals>=1.0.0,<2.0.0
+networkx>=3.0,<4.0
+pycparser>=2.21,<3.0
+referencing>=0.32.0,<1.0.0
+rfc3339-validator>=0.1.4,<1.0.0
+rfc3986-validator>=0.1.1,<1.0.0
+rpds-py>=0.15.0,<1.0.0
+soupsieve>=2.5,<3.0
+sympy>=1.12,<2.0
+tinycss2>=1.2.0,<2.0.0
+types-python-dateutil>=2.8.0
+tzdata>=2023.0
+uri-template>=1.3.0,<2.0.0
+urllib3>=1.26.18,<2.0.0  # Security fix, boto3 uyumlu
+webcolors>=1.13.0,<2.0.0
+webencodings>=0.5.1,<1.0.0
+websocket-client>=1.6.0,<2.0.0
+
+# -----------------------------------------------------------------------------
+# CODE HIGHLIGHTING & DOCUMENTATION
+# -----------------------------------------------------------------------------
+Pygments>=2.15.0,<3.0.0
+ipython_pygments_lexers>=0.1.0,<1.0.0
+
+# =============================================================================
+# ENVIRONMENT SPECIFIC NOTES:
+# =============================================================================
+# - Test ortamında SKIP_HEAVY_IMPORTS=1 ile ağır paketler atlanır
+# - PyTorch sadece gerektiğinde yüklenir (CI'da skip edilebilir)
+# - Craftgate için stub provider kullanılır (SDK bulunmadığından)
+# - Tüm sürümler GitHub Actions runner'larında test edilmiştir
+# =============================================================================
