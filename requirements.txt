@@ -223,7 +223,6 @@ websocket-client>=1.6.0,<2.0.0
 # CODE HIGHLIGHTING & DOCUMENTATION
 # -----------------------------------------------------------------------------
 Pygments>=2.15.0,<3.0.0
-ipython_pygments_lexers>=0.1.0,<1.0.0
 
 # =============================================================================
 # ENVIRONMENT SPECIFIC NOTES:
