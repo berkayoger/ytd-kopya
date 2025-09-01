@@ -2,6 +2,7 @@ import os
 import secrets
 from datetime import timedelta
 
+
 class BaseConfig:
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///ytd_crypto.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -28,12 +29,13 @@ class BaseConfig:
             "options": {"queue": "default"},
         },
         "check-and-downgrade-subscriptions-daily": {
-            "task": "backend.tasks.celery_tasks.check_and_downgrade_subscriptions",
+            "task": ("backend.tasks.celery_tasks.check_and_downgrade_subscriptions"),
             "schedule": timedelta(days=1),
             "options": {"queue": "default"},
         },
     }
-    CORS_ORIGINS = os.getenv("SECURITY_CORS_ALLOWED_ORIGINS", "*").split(",")
+    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "https://app.example.com")
+    RATELIMIT_STORAGE_URI = os.getenv("RATELIMIT_STORAGE_URI", "memory://")
 
     ACCESS_TOKEN_SECRET = os.getenv("ACCESS_TOKEN_SECRET", "change_me_access")
     REFRESH_TOKEN_SECRET = os.getenv("REFRESH_TOKEN_SECRET", "change_me_refresh")
@@ -44,8 +46,12 @@ class BaseConfig:
     # Enhanced JWT configuration
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY") or secrets.token_urlsafe(64)
     JWT_ALGORITHM = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "15")))
-    JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=int(os.getenv("JWT_REFRESH_TOKEN_EXPIRES_DAYS", "7")))
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(
+        minutes=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "15"))
+    )
+    JWT_REFRESH_TOKEN_EXPIRES = timedelta(
+        days=int(os.getenv("JWT_REFRESH_TOKEN_EXPIRES_DAYS", "7"))
+    )
     JWT_BLACKLIST_ENABLED = True
     JWT_BLACKLIST_TOKEN_CHECKS = ["access", "refresh"]
     JWT_ERROR_MESSAGE_KEY = "message"
@@ -54,19 +60,14 @@ class BaseConfig:
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DEV_DATABASE_URL", "sqlite:///ytd_crypto.db"
-    )
+    SQLALCHEMY_DATABASE_URI = os.getenv("DEV_DATABASE_URL", "sqlite:///ytd_crypto.db")
 
 
 class TestingConfig(BaseConfig):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        "TEST_DATABASE_URL", "sqlite:///:memory:"
-    )
+    SQLALCHEMY_DATABASE_URI = os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:")
     CELERY_TASK_ALWAYS_EAGER = True
 
 
 class ProductionConfig(BaseConfig):
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///ytd_crypto.db")
-
