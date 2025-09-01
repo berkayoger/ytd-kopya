@@ -1,0 +1,8 @@
+[project]
+name = "ytd-kopya"
+version = "0.0.0"
+description = "YTD Crypto backend"
+requires-python = ">=3.10"
+readme = "README.md"
+authors = [{name = "Berkay Oger"}]
+dependencies = []

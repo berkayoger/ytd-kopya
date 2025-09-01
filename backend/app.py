@@ -2,6 +2,11 @@ from backend import create_app
 from backend.app_rate_limit import setup_rate_limit
 from backend.app_security import harden_app
 
+import sys
+
+if sys.version_info < (3, 10):
+    raise RuntimeError("Python 3.10+ gerekiyor; mevcut: %s" % (sys.version.split()[0],))
+
 # optional: correlation id hook
 try:  # pragma: no cover
     from backend.utils.logging import before_request_hook
