@@ -11,18 +11,19 @@ Flask-SQLAlchemy==3.1.1
 flask-migrate
 flask_jwt_extended
 flask_socketio==5.3.6
-flask-cors==6.0.1
-flask-limiter>=3.5,<4.0
+Flask-Cors>=4.0.0
+Flask-Limiter>=3.8.0
 
 # -----------------------------------------------------------------------------
 # AUTHENTICATION & SECURITY
 # -----------------------------------------------------------------------------
-PyJWT==2.8.0
+PyJWT>=2.9.0
 argon2-cffi==23.1.0
 cryptography>=44.0.0,<45.0.0
 passlib==1.7.4
 pwnedpasswords==2.0.0
 pyotp==2.9.0
+pydantic>=2.8.0
 
 # -----------------------------------------------------------------------------
 # DATABASE & ORM
@@ -33,7 +34,7 @@ pyotp==2.9.0
 # ASYNC & TASK QUEUE
 # -----------------------------------------------------------------------------
 celery==5.3.6
-redis==5.0.4
+redis>=5.0.0
 anyio>=4.0.0,<5.0.0
 async-lru>=2.0.0,<3.0.0
 
