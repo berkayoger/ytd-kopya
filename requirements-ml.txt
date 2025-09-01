@@ -1,0 +1,7 @@
+numpy>=2.0,<3.0
+pandas>=2.2,<3.0
+scipy>=1.12,<2.0
+scikit-learn>=1.4,<2.0
+matplotlib>=3.8,<4.0
+seaborn>=0.13,<1.0
+plotly>=5,<6
