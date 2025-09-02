@@ -1,8 +1,7 @@
 """create admin_test_runs table"""
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "20251201_01"
 down_revision = "20251105_01"
@@ -14,7 +13,9 @@ def upgrade():
     op.create_table(
         "admin_test_runs",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()
+        ),
         sa.Column("user_id", sa.String(), nullable=True),
         sa.Column("username", sa.String(), nullable=True),
         sa.Column("suite", sa.String(), nullable=False),
@@ -25,4 +26,3 @@ def upgrade():
 
 def downgrade():
     op.drop_table("admin_test_runs")
-

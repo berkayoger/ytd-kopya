@@ -5,7 +5,8 @@ from datetime import datetime, timedelta
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from backend import create_app, db
-from backend.db.models import PromoCode, PromoCodeUsage, SubscriptionPlan, Role, User
+from backend.db.models import (PromoCode, PromoCodeUsage, Role,
+                               SubscriptionPlan, User)
 
 
 def setup_admin(app):
@@ -36,8 +37,12 @@ def create_promo(app):
 
 def test_update_expiration_success(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
-    monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
-    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    monkeypatch.setattr(
+        "flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f)
+    )
+    monkeypatch.setattr(
+        "backend.auth.middlewares.admin_required", lambda: (lambda f: f)
+    )
     app = create_app()
     client = app.test_client()
     setup_admin(app)
@@ -55,8 +60,12 @@ def test_update_expiration_success(monkeypatch):
 
 def test_update_expiration_past_date(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
-    monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
-    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    monkeypatch.setattr(
+        "flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f)
+    )
+    monkeypatch.setattr(
+        "backend.auth.middlewares.admin_required", lambda: (lambda f: f)
+    )
     app = create_app()
     client = app.test_client()
     setup_admin(app)
@@ -74,16 +83,28 @@ def test_promo_usage_stats(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
     monkeypatch.setattr("backend.Config.SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
     monkeypatch.setattr("backend.Config.SQLALCHEMY_ENGINE_OPTIONS", {}, raising=False)
-    import types, sys
+    import sys
+    import types
+
     sys.modules.setdefault("backend.core.routes", types.ModuleType("routes"))
     sys.modules.setdefault("pandas_ta", types.ModuleType("pandas_ta"))
     services_stub = types.ModuleType("services")
     services_stub.YTDCryptoSystem = object
     sys.modules["backend.core.services"] = services_stub
     import flask_jwt_extended
-    monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
-    monkeypatch.setattr(flask_jwt_extended, "fresh_jwt_required", lambda *a, **k: (lambda f: f), raising=False)
-    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+
+    monkeypatch.setattr(
+        flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f)
+    )
+    monkeypatch.setattr(
+        flask_jwt_extended,
+        "fresh_jwt_required",
+        lambda *a, **k: (lambda f: f),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "backend.auth.middlewares.admin_required", lambda: (lambda f: f)
+    )
     app = create_app()
     client = app.test_client()
     setup_admin(app)
@@ -94,8 +115,12 @@ def test_promo_usage_stats(monkeypatch):
         user1.set_password("p")
         user2 = User(username="u2", api_key="k2", role_id=role.id)
         user2.set_password("p")
-        promo1 = PromoCode(code="CODE1", plan=SubscriptionPlan.BASIC, duration_days=1, max_uses=5)
-        promo2 = PromoCode(code="CODE2", plan=SubscriptionPlan.BASIC, duration_days=1, max_uses=5)
+        promo1 = PromoCode(
+            code="CODE1", plan=SubscriptionPlan.BASIC, duration_days=1, max_uses=5
+        )
+        promo2 = PromoCode(
+            code="CODE2", plan=SubscriptionPlan.BASIC, duration_days=1, max_uses=5
+        )
         db.session.add_all([user1, user2, promo1, promo2])
         db.session.commit()
         usage1 = PromoCodeUsage(promo_code_id=promo1.id, user_id=user1.id)
@@ -134,7 +159,9 @@ def test_promo_code_usage_details(monkeypatch):
     monkeypatch.setattr("backend.Config.SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
     monkeypatch.setattr("backend.Config.SQLALCHEMY_ENGINE_OPTIONS", {}, raising=False)
 
-    import types, sys
+    import sys
+    import types
+
     sys.modules.setdefault("backend.core.routes", types.ModuleType("routes"))
     sys.modules.setdefault("pandas_ta", types.ModuleType("pandas_ta"))
     services_stub = types.ModuleType("services")
@@ -142,9 +169,19 @@ def test_promo_code_usage_details(monkeypatch):
     sys.modules["backend.core.services"] = services_stub
 
     import flask_jwt_extended
-    monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
-    monkeypatch.setattr(flask_jwt_extended, "fresh_jwt_required", lambda *a, **k: (lambda f: f), raising=False)
-    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+
+    monkeypatch.setattr(
+        flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f)
+    )
+    monkeypatch.setattr(
+        flask_jwt_extended,
+        "fresh_jwt_required",
+        lambda *a, **k: (lambda f: f),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "backend.auth.middlewares.admin_required", lambda: (lambda f: f)
+    )
 
     app = create_app()
     client = app.test_client()
@@ -156,7 +193,9 @@ def test_promo_code_usage_details(monkeypatch):
         user1.set_password("p")
         user2 = User(username="u2", api_key="k2", role_id=role.id)
         user2.set_password("p")
-        promo = PromoCode(code="CODEX", plan=SubscriptionPlan.BASIC, duration_days=1, max_uses=5)
+        promo = PromoCode(
+            code="CODEX", plan=SubscriptionPlan.BASIC, duration_days=1, max_uses=5
+        )
         db.session.add_all([user1, user2, promo])
         db.session.commit()
         usage1 = PromoCodeUsage(promo_code_id=promo.id, user_id=user1.id)
@@ -173,8 +212,12 @@ def test_promo_code_usage_details(monkeypatch):
 
 def test_get_user_promos(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
-    monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
-    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    monkeypatch.setattr(
+        "flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f)
+    )
+    monkeypatch.setattr(
+        "backend.auth.middlewares.admin_required", lambda: (lambda f: f)
+    )
     app = create_app()
     client = app.test_client()
     setup_admin(app)
@@ -183,7 +226,13 @@ def test_get_user_promos(monkeypatch):
         role = Role.query.filter_by(name="user").first()
         user = User(username="userx", api_key="keyx", role_id=role.id)
         user.set_password("p")
-        promo1 = PromoCode(code="UU1", plan=SubscriptionPlan.BASIC, duration_days=1, max_uses=1, assigned_user_id=1)
+        promo1 = PromoCode(
+            code="UU1",
+            plan=SubscriptionPlan.BASIC,
+            duration_days=1,
+            max_uses=1,
+            assigned_user_id=1,
+        )
         db.session.add_all([user, promo1])
         db.session.commit()
         promo1.assigned_user_id = user.id

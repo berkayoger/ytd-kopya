@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 def create_log(
     user_id: str,
     username: str,
@@ -9,13 +10,14 @@ def create_log(
     description: str = "",
     status: str = "success",
     source: str = "web",
-    user_agent: str = ""
+    user_agent: str = "",
 ):
     """Persist a simple application log entry."""
+    import datetime
+    from uuid import uuid4
+
     from backend import db
     from backend.models.log import Log
-    from uuid import uuid4
-    import datetime
 
     log = Log(
         id=str(uuid4()),

@@ -2,9 +2,10 @@
 # Pytest için global ayarlar: offline, determinizm, güvenli test ortamı
 
 import os
-import pytest
-from typing import Iterator
 from types import SimpleNamespace
+from typing import Iterator
+
+import pytest
 from flask import Flask, request
 
 # --- Ortam değişkenleri (deterministik & offline) ---------------------------
@@ -27,7 +28,9 @@ def _no_network(monkeypatch):
     monkeypatch.setattr(
         socket,
         "socket",
-        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("Test sırasında ağ engellendi")),
+        lambda *a, **k: (_ for _ in ()).throw(
+            RuntimeError("Test sırasında ağ engellendi")
+        ),
     )
     yield
 
@@ -38,6 +41,7 @@ def _bypass_jwt(monkeypatch):
     # verify_jwt_in_request'i no-op yap
     try:
         import flask_jwt_extended.view_decorators as vd  # type: ignore
+
         monkeypatch.setattr(vd, "verify_jwt_in_request", lambda *a, **k: None)
     except Exception:
         pass
@@ -45,6 +49,7 @@ def _bypass_jwt(monkeypatch):
     # get_jwt_identity() çağrıları "test-user" döndürsün
     try:
         import flask_jwt_extended as jwt  # type: ignore
+
         monkeypatch.setattr(jwt, "get_jwt_identity", lambda: "test-user")
     except Exception:
         pass
@@ -55,6 +60,7 @@ def _bypass_jwt(monkeypatch):
 def _wrap_create_app(monkeypatch):
     try:
         import backend  # type: ignore
+
         orig_create_app = backend.create_app  # type: ignore[attr-defined]
     except Exception:
         return
@@ -66,11 +72,20 @@ def _wrap_create_app(monkeypatch):
         @app.before_request
         def _inject_testing_user():
             # REQUIRE_AUTH_FOR_HEALTH=true ise /health'e dokunma (bazı testler 401 bekliyor)
-            require_auth_health = (os.getenv("REQUIRE_AUTH_FOR_HEALTH", "").lower() in ("1", "true", "yes"))
+            require_auth_health = os.getenv("REQUIRE_AUTH_FOR_HEALTH", "").lower() in (
+                "1",
+                "true",
+                "yes",
+            )
             if require_auth_health and request.path.startswith("/health"):
                 return
-            from flask import g, current_app
-            if current_app and current_app.config.get("TESTING") and not getattr(g, "user", None):
+            from flask import current_app, g
+
+            if (
+                current_app
+                and current_app.config.get("TESTING")
+                and not getattr(g, "user", None)
+            ):
                 g.user = SimpleNamespace(
                     id="test-user",
                     subscription_level="BASIC",
@@ -103,11 +118,20 @@ def _patch_flask_test_client(monkeypatch):
 
         @app.before_request
         def _inject_testing_user():
-            require_auth_health = (os.getenv("REQUIRE_AUTH_FOR_HEALTH", "").lower() in ("1", "true", "yes"))
+            require_auth_health = os.getenv("REQUIRE_AUTH_FOR_HEALTH", "").lower() in (
+                "1",
+                "true",
+                "yes",
+            )
             if require_auth_health and request.path.startswith("/health"):
                 return
-            from flask import g, current_app
-            if current_app and current_app.config.get("TESTING") and not getattr(g, "user", None):
+            from flask import current_app, g
+
+            if (
+                current_app
+                and current_app.config.get("TESTING")
+                and not getattr(g, "user", None)
+            ):
                 g.user = SimpleNamespace(
                     id="test-user",
                     subscription_level="BASIC",
@@ -161,6 +185,7 @@ def app():
 
         # SQLAlchemy extension ekle
         from flask_sqlalchemy import SQLAlchemy
+
         _db = SQLAlchemy()
         _db.init_app(_app)
         if not hasattr(_app, "extensions"):
@@ -170,6 +195,7 @@ def app():
         # Logs blueprint'ini mutlaka eklemeyi dene
         try:
             from backend.api.admin.logs import admin_logs_bp  # type: ignore
+
             _app.register_blueprint(admin_logs_bp)
         except Exception as e:  # pragma: no cover
             _app.logger.warning(f"admin_logs_bp fallback register failed: {e}")
@@ -185,7 +211,9 @@ def app():
         try:
             rules = {r.rule for r in _app.url_map.iter_rules()}
             if "/api/admin/logs" not in rules:
-                from backend.api.admin.logs import admin_logs_bp  # type: ignore
+                from backend.api.admin.logs import \
+                    admin_logs_bp  # type: ignore
+
                 _app.register_blueprint(admin_logs_bp)
         except Exception:
             pass
@@ -210,13 +238,16 @@ def db(app):
       - backend.models içindeki tüm alt-modülleri import eder (tablolar kaydolur),
       - 'logs' tablosu yoksa minimal bir Log modeli oluşturup create_all yapar.
     """
-    from flask_sqlalchemy import SQLAlchemy
-    from sqlalchemy import inspect, func
     import importlib
     import pkgutil
 
+    from flask_sqlalchemy import SQLAlchemy
+    from sqlalchemy import func, inspect
+
     # DB ayarları (in-memory)
-    app.config.setdefault("SQLALCHEMY_DATABASE_URI", os.getenv("DATABASE_URL", "sqlite:///:memory:"))
+    app.config.setdefault(
+        "SQLALCHEMY_DATABASE_URI", os.getenv("DATABASE_URL", "sqlite:///:memory:")
+    )
     app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
 
     sqlalchemy_db = None
@@ -224,7 +255,11 @@ def db(app):
     # 1) App extensions üzerinden
     try:
         ext = getattr(app, "extensions", {})
-        if isinstance(ext, dict) and "sqlalchemy" in ext and isinstance(ext["sqlalchemy"], SQLAlchemy):
+        if (
+            isinstance(ext, dict)
+            and "sqlalchemy" in ext
+            and isinstance(ext["sqlalchemy"], SQLAlchemy)
+        ):
             sqlalchemy_db = ext["sqlalchemy"]
     except Exception:
         pass
@@ -294,7 +329,9 @@ def db(app):
             class Log(sqlalchemy_db.Model):  # type: ignore
                 __tablename__ = "logs"
                 id = sqlalchemy_db.Column(sqlalchemy_db.String(36), primary_key=True)
-                timestamp = sqlalchemy_db.Column(sqlalchemy_db.DateTime, server_default=func.now())
+                timestamp = sqlalchemy_db.Column(
+                    sqlalchemy_db.DateTime, server_default=func.now()
+                )
                 user_id = sqlalchemy_db.Column(sqlalchemy_db.String(64), nullable=True)
                 username = sqlalchemy_db.Column(sqlalchemy_db.String(128))
                 ip_address = sqlalchemy_db.Column(sqlalchemy_db.String(64))
@@ -303,7 +340,9 @@ def db(app):
                 description = sqlalchemy_db.Column(sqlalchemy_db.Text)
                 status = sqlalchemy_db.Column(sqlalchemy_db.String(32))
                 source = sqlalchemy_db.Column(sqlalchemy_db.String(64), nullable=True)
-                user_agent = sqlalchemy_db.Column(sqlalchemy_db.String(256), nullable=True)
+                user_agent = sqlalchemy_db.Column(
+                    sqlalchemy_db.String(256), nullable=True
+                )
 
             sqlalchemy_db.create_all()
 

@@ -5,7 +5,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from backend import create_app, db
 from backend.db.models import TechnicalIndicator
-from backend.tasks.strategic_recommender import generate_ta_based_recommendation
+from backend.tasks.strategic_recommender import \
+    generate_ta_based_recommendation
 
 
 def test_generate_ta_based_recommendation(monkeypatch):

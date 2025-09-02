@@ -1,11 +1,12 @@
 import os
 import sys
+
 import pytest
-from flask import request, jsonify
+from flask import jsonify, request
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from backend import create_app, db
-from backend.db.models import Role, Permission, User, UserRole
+from backend.db.models import Permission, Role, User, UserRole
 
 
 def fake_admin_required():
@@ -16,7 +17,9 @@ def fake_admin_required():
             if not user or user.role != UserRole.ADMIN:
                 return jsonify({"error": "Admin yetkisi gereklidir!"}), 403
             return fn(*args, **kwargs)
+
         return decorated
+
     return wrapper
 
 
@@ -59,7 +62,12 @@ def test_admin_permission_granted(monkeypatch):
     client = app.test_client()
     with app.app_context():
         admin_role = Role.query.filter_by(name="admin").first()
-        admin = User(username="admintest", api_key="adminkey", role_id=admin_role.id, role=UserRole.ADMIN)
+        admin = User(
+            username="admintest",
+            api_key="adminkey",
+            role_id=admin_role.id,
+            role=UserRole.ADMIN,
+        )
         admin.set_password("pass")
         db.session.add(admin)
         db.session.commit()

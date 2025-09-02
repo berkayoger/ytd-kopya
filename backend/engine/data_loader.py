@@ -1,5 +1,6 @@
-import pandas as pd
 from datetime import datetime, timedelta
+
+import pandas as pd
 
 
 def load_sample_price_data(symbol="BTC", hours=48):

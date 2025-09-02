@@ -18,7 +18,9 @@ def test_admin_guard_forbids_without_admin(monkeypatch):
     monkeypatch.setattr(roles_mod, "current_roles", lambda: set())
 
     client = app.test_client()
-    resp = client.get("/api/admin/__rbac_test", headers={"Authorization": "Bearer test"})
+    resp = client.get(
+        "/api/admin/__rbac_test", headers={"Authorization": "Bearer test"}
+    )
     assert resp.status_code == 403
     assert resp.json["error"] == "forbidden"
 
@@ -32,6 +34,8 @@ def test_admin_guard_allows_with_admin(monkeypatch):
     monkeypatch.setattr(roles_mod, "current_roles", lambda: {"admin"})
 
     client = app.test_client()
-    resp = client.get("/api/admin/__rbac_test", headers={"Authorization": "Bearer test"})
+    resp = client.get(
+        "/api/admin/__rbac_test", headers={"Authorization": "Bearer test"}
+    )
     assert resp.status_code == 200
     assert resp.data.decode() == "ok"

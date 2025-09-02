@@ -1,5 +1,7 @@
 import pytest
+
 from backend import create_app, db
+
 
 @pytest.fixture
 def app(monkeypatch):
@@ -11,6 +13,7 @@ def app(monkeypatch):
         yield app
         db.session.remove()
         db.drop_all()
+
 
 def test_draks_health_works(app, monkeypatch):
     client = app.test_client()

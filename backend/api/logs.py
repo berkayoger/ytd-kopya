@@ -1,7 +1,6 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
 
 from backend.models.log import Log
-
 
 logs_bp = Blueprint("logs", __name__, url_prefix="/api/admin/logs")
 
@@ -19,10 +18,8 @@ def get_logs():
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 10))
 
-    pagination = (
-        query.order_by(Log.timestamp.desc()).paginate(
-            page=page, per_page=per_page, error_out=False
-        )
+    pagination = query.order_by(Log.timestamp.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
     )
 
     return jsonify(
@@ -33,4 +30,3 @@ def get_logs():
             "logs": [log.to_dict() for log in pagination.items],
         }
     )
-

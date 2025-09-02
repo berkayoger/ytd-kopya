@@ -1,7 +1,9 @@
-import pytest
 import json
+
 import pytest
+
 from backend import create_app, db
+
 
 @pytest.fixture
 def unauthorized_client(monkeypatch):
@@ -11,6 +13,7 @@ def unauthorized_client(monkeypatch):
     monkeypatch.setattr("backend.auth.jwt_utils.require_csrf", lambda f: f)
 
     import sys
+
     sys.modules.pop("backend.api.plan_admin_limits", None)
 
     app = create_app()
@@ -32,6 +35,7 @@ def test_create_plan_forbidden(unauthorized_client):
         assert response.status_code in (401, 403)
     except Exception as e:
         from flask_jwt_extended.exceptions import NoAuthorizationError
+
         assert isinstance(e, NoAuthorizationError)
 
 
@@ -40,6 +44,7 @@ def test_update_plan_limits_forbidden(unauthorized_client):
     # Create dummy plan as admin manually
     with unauthorized_client.application.app_context():
         from backend.models.plan import Plan
+
         p = Plan(name="temp", price=0, features=json.dumps({"predict": 1}))
         db.session.add(p)
         db.session.commit()
@@ -47,12 +52,12 @@ def test_update_plan_limits_forbidden(unauthorized_client):
 
     try:
         response = unauthorized_client.post(
-            f"/api/plans/{plan_id}/update-limits",
-            json={"predict": 999}
+            f"/api/plans/{plan_id}/update-limits", json={"predict": 999}
         )
         assert response.status_code in (401, 403)
     except Exception as e:
         from flask_jwt_extended.exceptions import NoAuthorizationError
+
         assert isinstance(e, NoAuthorizationError)
 
 
@@ -62,4 +67,5 @@ def test_delete_plan_forbidden(unauthorized_client):
         assert response.status_code in (401, 403)
     except Exception as e:
         from flask_jwt_extended.exceptions import NoAuthorizationError
+
         assert isinstance(e, NoAuthorizationError)

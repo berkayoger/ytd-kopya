@@ -1,11 +1,12 @@
-from flask import request
-from backend.db import db
-from backend.db.models import AuditLog
 import os
-
-import requests
 import smtplib
 from email.mime.text import MIMEText
+
+import requests
+from flask import request
+
+from backend.db import db
+from backend.db.models import AuditLog
 
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 ADMIN_ALERT_EMAIL = os.getenv("ADMIN_ALERT_EMAIL")
@@ -50,7 +51,10 @@ def log_action(user=None, action: str = "", details=None) -> None:
                 mail["Subject"] = f"ALERT: {action}"
                 mail["From"] = "noreply@ytdcrypto.com"
                 mail["To"] = ADMIN_ALERT_EMAIL
-                with smtplib.SMTP(os.getenv("MAIL_SERVER", "localhost"), int(os.getenv("MAIL_PORT", 25))) as server:
+                with smtplib.SMTP(
+                    os.getenv("MAIL_SERVER", "localhost"),
+                    int(os.getenv("MAIL_PORT", 25)),
+                ) as server:
                     if os.getenv("MAIL_USE_TLS", "false").lower() == "true":
                         server.starttls()
                     username = os.getenv("MAIL_USERNAME")

@@ -1,5 +1,5 @@
-from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
 
 # Oturumların commit sonrasında boşalmaması için expire_on_commit=False
 # kullanılır. Testlerde nesnelerin oturum dışında da kullanılabilmesi için

@@ -1,10 +1,11 @@
-import pytest
+import json
 from datetime import datetime
+
+import pytest
 
 from backend import create_app, db
 from backend.db.models import DraksDecision, DraksSignalRun
 from backend.utils.feature_flags import set_feature_flag
-import json
 
 
 @pytest.fixture
@@ -13,10 +14,15 @@ def admin_client(monkeypatch):
     monkeypatch.setattr("backend.Config.SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
     monkeypatch.setattr("backend.Config.SQLALCHEMY_ENGINE_OPTIONS", {}, raising=False)
     import flask_jwt_extended.view_decorators as vd
+
     monkeypatch.setattr(vd, "verify_jwt_in_request", lambda *a, **k: None)
-    monkeypatch.setattr("backend.auth.roles.verify_jwt_in_request", lambda optional=False: None)
+    monkeypatch.setattr(
+        "backend.auth.roles.verify_jwt_in_request", lambda optional=False: None
+    )
     monkeypatch.setattr("backend.auth.roles.current_roles", lambda: {"admin"})
-    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    monkeypatch.setattr(
+        "backend.auth.middlewares.admin_required", lambda: (lambda f: f)
+    )
     app = create_app()
     app.config["TESTING"] = True
     with app.app_context():
@@ -81,4 +87,3 @@ def test_list_signals(admin_client):
     jd = d.get_json()
     assert jd["symbol"] == "BTC/USDT"
     assert "regime_probs" in jd and "weights" in jd
-

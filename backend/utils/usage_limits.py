@@ -1,12 +1,12 @@
 # backend/utils/usage_limits.py
 from __future__ import annotations
 
+from datetime import date, datetime, timedelta
 from functools import wraps
-from typing import Callable, Dict, Optional
-from datetime import datetime, timedelta, date
-
-from flask import jsonify, g, current_app
 from types import SimpleNamespace
+from typing import Callable, Dict, Optional
+
+from flask import current_app, g, jsonify
 
 from backend.utils.plan_limits import get_user_effective_limits
 
@@ -14,13 +14,16 @@ from backend.utils.plan_limits import get_user_effective_limits
 def _resolve_user():
     try:
         from backend.db.models import User  # local import (döngü engelle)
+
         if hasattr(g, "user") and isinstance(getattr(g, "user", None), User):
             return g.user
     except Exception:
         pass
     try:
         from flask_jwt_extended import get_jwt_identity  # type: ignore
+
         from backend.db.models import User
+
         uid = get_jwt_identity()
         if uid:
             return User.query.get(uid)
@@ -43,7 +46,9 @@ def _rk(uid: str, fk: str) -> str:
 
 def _ttl_midnight() -> int:
     now = datetime.utcnow()
-    tomorrow = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow = (now + timedelta(days=1)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
     return max(60, int((tomorrow - now).total_seconds()))
 
 
@@ -75,14 +80,19 @@ def _get_r(uid: str, fk: str) -> Optional[int]:
 
 
 def _inc_db(uid: str, fk: str) -> int:
-    from backend.db.models import db, DailyUsage  # local import
+    from backend.db.models import DailyUsage, db  # local import
+
     today_date = date.today()
-    row = DailyUsage.query.filter_by(user_id=uid, feature_key=fk, usage_date=today_date).first()
+    row = DailyUsage.query.filter_by(
+        user_id=uid, feature_key=fk, usage_date=today_date
+    ).first()
     if row:
         row.used_count = (row.used_count or 0) + 1
         row.updated_at = datetime.utcnow()
     else:
-        row = DailyUsage(user_id=uid, feature_key=fk, usage_date=today_date, used_count=1)
+        row = DailyUsage(
+            user_id=uid, feature_key=fk, usage_date=today_date, used_count=1
+        )
         db.session.add(row)
     db.session.commit()
     return int(row.used_count)
@@ -90,8 +100,11 @@ def _inc_db(uid: str, fk: str) -> int:
 
 def _get_db(uid: str, fk: str) -> int:
     from backend.db.models import DailyUsage  # local import
+
     today_date = date.today()
-    row = DailyUsage.query.filter_by(user_id=uid, feature_key=fk, usage_date=today_date).first()
+    row = DailyUsage.query.filter_by(
+        user_id=uid, feature_key=fk, usage_date=today_date
+    ).first()
     return int(row.used_count) if row else 0
 
 
@@ -126,7 +139,9 @@ def check_usage_limit(feature_key: str) -> Callable:
             if not user:
                 return jsonify({"error": "Unauthorized"}), 401
 
-            eff = get_user_effective_limits(user_id=str(user.id), feature_key=feature_key)
+            eff = get_user_effective_limits(
+                user_id=str(user.id), feature_key=feature_key
+            )
             quota = int(eff.get("daily_quota", 0))
 
             used = _inc_r(str(user.id), feature_key)
@@ -183,7 +198,7 @@ def get_usage_count(user_or_id, feature_key: str) -> int:
     """
     Günlük kullanım sayısı - basitleştirilmiş versiyon
     Args:
-        user_or_id: User objesi veya user_id (string/int)  
+        user_or_id: User objesi veya user_id (string/int)
         feature_key: Özellik adı (örn: "predict_daily")
     """
     try:
@@ -192,7 +207,7 @@ def get_usage_count(user_or_id, feature_key: str) -> int:
         return 0
 
     # User ID'yi çıkar
-    if hasattr(user_or_id, 'id'):
+    if hasattr(user_or_id, "id"):
         uid = user_or_id.id
     else:
         uid = user_or_id
@@ -201,8 +216,7 @@ def get_usage_count(user_or_id, feature_key: str) -> int:
         # Bugünün başından itibaren say
         start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         count = (
-            UsageLog.query
-            .filter_by(user_id=uid, action=feature_key)
+            UsageLog.query.filter_by(user_id=uid, action=feature_key)
             .filter(UsageLog.timestamp >= start)
             .count()
         )

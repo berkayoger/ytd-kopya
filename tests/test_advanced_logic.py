@@ -1,9 +1,11 @@
 import os
 import sys
+
 import pandas as pd
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from backend.engine.rules import advanced_decision_logic, make_reliable_prediction
+from backend.engine.rules import (advanced_decision_logic,
+                                  make_reliable_prediction)
 
 
 def test_buy_signal():

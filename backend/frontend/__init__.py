@@ -6,7 +6,7 @@ from flask import Blueprint
 # Bu blueprint, React/Vue/Angular gibi bir SPA'nın (Single Page Application)
 # build edilmiş statik dosyalarını (index.html, css, js) sunmak için kullanılır.
 #
-# 'static_folder': Frontend'in build edildiği klasörün yolu. 
+# 'static_folder': Frontend'in build edildiği klasörün yolu.
 #                  Genellikle 'build/static' veya benzeri bir yapıdadır.
 # 'template_folder': 'index.html' dosyasının bulunduğu klasör.
 #
@@ -14,10 +14,7 @@ from flask import Blueprint
 # Örneğin, projenizin kök dizininde bir 'frontend/build' klasörü varsa,
 # yollar '../frontend/build/static' gibi göreceli olabilir.
 frontend_bp = Blueprint(
-    'frontend', 
-    __name__,
-    template_folder='build',
-    static_folder='build/static'
+    "frontend", __name__, template_folder="build", static_folder="build/static"
 )
 
 # Bu Blueprint'e bağlı route'ları import ediyoruz.

@@ -1,5 +1,7 @@
 from datetime import datetime
+
 from backend.db import db
+
 
 class PendingPlan(db.Model):
     __tablename__ = "pending_plans"

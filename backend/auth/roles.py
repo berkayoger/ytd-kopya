@@ -15,16 +15,13 @@ Notlar
 
 from __future__ import annotations
 
-from typing import Iterable, Optional, Set, Union
 from types import SimpleNamespace
-from flask import g, request, jsonify, current_app
-from flask.wrappers import Response
+from typing import Iterable, Optional, Set, Union
 
+from flask import current_app, g, jsonify, request
+from flask.wrappers import Response
 # Bu semboller testlerde monkeypatch edildiği için import seviyesinde tutuyoruz
-from flask_jwt_extended import (
-    verify_jwt_in_request,
-    get_jwt,
-)
+from flask_jwt_extended import get_jwt, verify_jwt_in_request
 
 __all__ = [
     "current_roles",

@@ -7,7 +7,11 @@ Kullanım:
   python scripts/ensure_env_keys.py --check   # sadece raporla, exit 1 eksik varsa
   python scripts/ensure_env_keys.py --apply   # eksikleri ekle ve kaydet
 """
-import argparse, os, sys, re, textwrap
+import argparse
+import os
+import re
+import sys
+import textwrap
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -61,43 +65,75 @@ REQUIRED_KEYS = {
     "SEED_PLANS": "BASIC:999:TRY:month,PRO:2999:TRY:month,PREMIUM:4999:TRY:month",
 }
 
-SECTION_HEADER = textwrap.dedent("""\
+SECTION_HEADER = textwrap.dedent(
+    """\
 
 # ================= Added by ensure_env_keys.py =================
 # Aşağıdaki anahtarlar yeni özellikler için gereklidir. Üretimde gerçek sırları
 # AWS Secrets Manager / Azure Key Vault üzerinden sağlayın.
-""")
+"""
+)
 
 KEY_ORDER = [
     # Görsel blok sırası (mantıksal gruplama)
-    "SECRET_PROVIDER","JWT_SECRET_NAME","AZURE_KEY_VAULT_URL",
-    "ACCESS_TOKEN_EXPIRES_MINUTES","REFRESH_TOKEN_EXPIRES_DAYS",
-    "JWT_KEY_VERSION","JWT_ROTATION_INTERVAL_DAYS","CSRF_SECRET","TOTP_ISSUER_NAME","EMAIL_FROM",
-    "DATABASE_SSL_MODE","DATABASE_CONNECTION_POOL_SIZE",
-    "REDIS_URL","REDIS_SSL_ENABLED",
-    "SECURE_HEADERS_ENABLED","HSTS_MAX_AGE","CSP_POLICY",
-    "SECURITY_CORS_ALLOWED_ORIGINS","SECURITY_CORS_ALLOW_CREDENTIALS",
-    "RATE_LIMIT_DEFAULT","LOGIN_RATE_LIMIT","LOGIN_MAX_ATTEMPTS","LOGIN_LOCKOUT_DURATION_MINUTES",
+    "SECRET_PROVIDER",
+    "JWT_SECRET_NAME",
+    "AZURE_KEY_VAULT_URL",
+    "ACCESS_TOKEN_EXPIRES_MINUTES",
+    "REFRESH_TOKEN_EXPIRES_DAYS",
+    "JWT_KEY_VERSION",
+    "JWT_ROTATION_INTERVAL_DAYS",
+    "CSRF_SECRET",
+    "TOTP_ISSUER_NAME",
+    "EMAIL_FROM",
+    "DATABASE_SSL_MODE",
+    "DATABASE_CONNECTION_POOL_SIZE",
+    "REDIS_URL",
+    "REDIS_SSL_ENABLED",
+    "SECURE_HEADERS_ENABLED",
+    "HSTS_MAX_AGE",
+    "CSP_POLICY",
+    "SECURITY_CORS_ALLOWED_ORIGINS",
+    "SECURITY_CORS_ALLOW_CREDENTIALS",
+    "RATE_LIMIT_DEFAULT",
+    "LOGIN_RATE_LIMIT",
+    "LOGIN_MAX_ATTEMPTS",
+    "LOGIN_LOCKOUT_DURATION_MINUTES",
     "WSGI_APP",
-    "BILLING_PROVIDER","SITE_URL","CHECKOUT_SUCCESS_PATH","CHECKOUT_CANCEL_PATH",
-    "STRIPE_SECRET_KEY","STRIPE_WEBHOOK_SECRET","STRIPE_BILLING_PORTAL_RETURN_URL",
-    "CRAFTGATE_API_KEY","CRAFTGATE_SECRET_KEY","CRAFTGATE_MERCHANT_ID","CRAFTGATE_WEBHOOK_SECRET",
+    "BILLING_PROVIDER",
+    "SITE_URL",
+    "CHECKOUT_SUCCESS_PATH",
+    "CHECKOUT_CANCEL_PATH",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_BILLING_PORTAL_RETURN_URL",
+    "CRAFTGATE_API_KEY",
+    "CRAFTGATE_SECRET_KEY",
+    "CRAFTGATE_MERCHANT_ID",
+    "CRAFTGATE_WEBHOOK_SECRET",
     "SEED_PLANS",
 ]
+
 
 def parse_keys(lines):
     env = {}
     for ln in lines:
-        if ln.strip().startswith("#"): continue
-        m = re.match(r'^([A-Z0-9_]+)=(.*)$', ln.strip())
+        if ln.strip().startswith("#"):
+            continue
+        m = re.match(r"^([A-Z0-9_]+)=(.*)$", ln.strip())
         if m:
             env[m.group(1)] = m.group(2)
     return env
 
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--apply", action="store_true", help="Eksik anahtarları ekle ve kaydet")
-    ap.add_argument("--check", action="store_true", help="Sadece doğrula; eksik varsa exit 1")
+    ap.add_argument(
+        "--apply", action="store_true", help="Eksik anahtarları ekle ve kaydet"
+    )
+    ap.add_argument(
+        "--check", action="store_true", help="Sadece doğrula; eksik varsa exit 1"
+    )
     ap.add_argument("--file", default=str(ENV_EXAMPLE), help="Hedef .env.example yolu")
     args = ap.parse_args()
 
@@ -126,11 +162,15 @@ def main():
     if missing:
         out.append(SECTION_HEADER.rstrip("\n"))
         for k in KEY_ORDER:
-            if k in existing: continue
+            if k in existing:
+                continue
             v = REQUIRED_KEYS[k]
             out.append(f"{k}={v}")
     path.write_text("\n".join(out) + "\n", encoding="utf-8")
-    print(f"✔ Güncellendi: {path} (eklenen anahtarlar: {', '.join(missing) if missing else 'yok'})")
+    print(
+        f"✔ Güncellendi: {path} (eklenen anahtarlar: {', '.join(missing) if missing else 'yok'})"
+    )
+
 
 if __name__ == "__main__":
     main()

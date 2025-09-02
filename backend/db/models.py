@@ -1,28 +1,17 @@
-from datetime import datetime, timedelta, date
+import uuid
+from datetime import date, datetime, timedelta
+from enum import Enum
+
+from sqlalchemy import JSON, Boolean, Column, Date, DateTime
+from sqlalchemy import Enum as SqlEnum
+from sqlalchemy import Float, ForeignKey, Integer, String, Table, Text
+from werkzeug.security import check_password_hash, generate_password_hash
 
 # SQLAlchemy instance uygulama genelinde 'backend.db' paketinde tanımlıdır.
 # Bazı ortamlarda 'backend.db.__init__' şeklinde içe aktarmak yeni bir modül
 # oluşturabildiğinden, tekil nesnenin kullanılması için doğrudan paket
 # üzerinden içe aktarma yapılır.
 from backend.db import db
-from werkzeug.security import generate_password_hash, check_password_hash
-import uuid
-from enum import Enum
-from sqlalchemy import Enum as SqlEnum
-from sqlalchemy import (
-    Table,
-    Column,
-    Integer,
-    ForeignKey,
-    String,
-    Float,
-    Text,
-    DateTime,
-    Date,
-    Boolean,
-    JSON,
-)
-
 
 # --- Enums ---
 
@@ -42,6 +31,7 @@ class SubscriptionPlanLimits:
     @staticmethod
     def get_limits(plan: SubscriptionPlan) -> dict:
         from backend.utils.plan_limits import PLAN_LIMITS
+
         return PLAN_LIMITS.get(plan.name.lower(), {})
 
 
@@ -179,7 +169,9 @@ class User(db.Model):
         from backend.db.models import UsageLog
 
         if key == "prediction":
-            return UsageLog.query.filter_by(user_id=self.id, action="prediction").count()
+            return UsageLog.query.filter_by(
+                user_id=self.id, action="prediction"
+            ).count()
         elif key == "download":
             return UsageLog.query.filter_by(user_id=self.id, action="download").count()
         return UsageLog.query.filter_by(user_id=self.id, action=key).count()
@@ -190,14 +182,18 @@ class User(db.Model):
             "username": self.username,
             "email": self.email,
             "role": self.role.name if self.role else None,
-            "subscription_level": self.subscription_level.name
-            if self.subscription_level
-            else None,
+            "subscription_level": (
+                self.subscription_level.name if self.subscription_level else None
+            ),
             "is_active": self.is_active,
             "plan": self.plan.to_dict() if self.plan else None,
-            "plan_expire_at": self.plan_expire_at.isoformat() if self.plan_expire_at else None,
+            "plan_expire_at": (
+                self.plan_expire_at.isoformat() if self.plan_expire_at else None
+            ),
             "boost_features": self.boost_features,
-            "boost_expire_at": self.boost_expire_at.isoformat() if self.boost_expire_at else None,
+            "boost_expire_at": (
+                self.boost_expire_at.isoformat() if self.boost_expire_at else None
+            ),
             "custom_features": self.custom_features,
         }
 
@@ -283,7 +279,9 @@ class TokenBlacklist(db.Model):
     id = Column(Integer, primary_key=True)
     jti = Column(String(64), unique=True, nullable=False, index=True)
     token_type = Column(String(20), nullable=False)
-    blacklisted_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    blacklisted_at = Column(
+        DateTime, default=datetime.utcnow, nullable=False, index=True
+    )
     expires_at = Column(DateTime, nullable=True, index=True)
     reason = Column(String(255), nullable=True)
 
@@ -678,7 +676,9 @@ class UsageLog(db.Model):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    action = Column(String(120), nullable=False, index=True)  # örn: 'predict_daily', 'api_request_daily'
+    action = Column(
+        String(120), nullable=False, index=True
+    )  # örn: 'predict_daily', 'api_request_daily'
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
 
     user = db.relationship("User", backref="usage_logs")
@@ -686,6 +686,7 @@ class UsageLog(db.Model):
     __table_args__ = (
         db.Index("idx_usage_user_action_time", "user_id", "action", "timestamp"),
     )
+
 
 # DailyUsage model - günlük kullanım takibi için Redis fallback
 class DailyUsage(db.Model):
@@ -700,8 +701,11 @@ class DailyUsage(db.Model):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (
-        db.UniqueConstraint("user_id", "feature_key", "usage_date", name="_user_feature_date_uc"),
+        db.UniqueConstraint(
+            "user_id", "feature_key", "usage_date", name="_user_feature_date_uc"
+        ),
     )
+
 
 # --- DRAKS tablolari ---
 class DraksSignalRun(db.Model):
@@ -727,6 +731,7 @@ class DraksDecision(db.Model):
     reasons = Column(Text)  # JSON string
     raw_response = Column(Text)  # JSON string
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
 
 class DatabaseBackup(db.Model):
     """Stores database backup metadata."""
@@ -756,4 +761,3 @@ class SystemEvent(db.Model):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     user = db.relationship("User", lazy=True)
-

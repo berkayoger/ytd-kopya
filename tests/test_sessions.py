@@ -4,7 +4,7 @@ from http.cookies import SimpleCookie
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from backend import create_app, db
-from backend.db.models import User, Role, UserSession
+from backend.db.models import Role, User, UserSession
 from backend.models.log import Log
 
 

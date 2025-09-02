@@ -1,5 +1,7 @@
 from datetime import datetime
+
 from backend.db import db
+
 
 class PlanHistory(db.Model):
     __tablename__ = "plan_history"

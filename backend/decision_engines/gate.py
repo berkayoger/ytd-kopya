@@ -50,4 +50,3 @@ def detect_regime(ohlcv: pd.DataFrame, atr_window: int = 14) -> RegimeResult:
         label = "mixed"
 
     return RegimeResult({"label": label, "trend_strength": t, "vol_pct": v})
-

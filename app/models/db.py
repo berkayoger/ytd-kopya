@@ -6,7 +6,6 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import OperationalError
 
-
 db: SQLAlchemy = SQLAlchemy(session_options={"autoflush": False})
 
 
@@ -35,7 +34,9 @@ class Plan(db.Model):
 class Customer(db.Model):
     __tablename__ = "customers"
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
-    user_id = db.Column(db.String(36), db.ForeignKey("auth_users.id"), nullable=False, index=True)
+    user_id = db.Column(
+        db.String(36), db.ForeignKey("auth_users.id"), nullable=False, index=True
+    )
     provider = db.Column(db.String(32), nullable=False)
     provider_customer_id = db.Column(db.String(128), nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -44,7 +45,9 @@ class Customer(db.Model):
 class Subscription(db.Model):
     __tablename__ = "subscriptions"
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
-    user_id = db.Column(db.String(36), db.ForeignKey("auth_users.id"), nullable=False, index=True)
+    user_id = db.Column(
+        db.String(36), db.ForeignKey("auth_users.id"), nullable=False, index=True
+    )
     plan_id = db.Column(db.String(36), db.ForeignKey("plans.id"), nullable=False)
     provider = db.Column(db.String(32), nullable=False)
     provider_sub_id = db.Column(db.String(128), nullable=False, index=True)
@@ -57,7 +60,9 @@ class Subscription(db.Model):
 class Invoice(db.Model):
     __tablename__ = "invoices"
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
-    user_id = db.Column(db.String(36), db.ForeignKey("auth_users.id"), nullable=False, index=True)
+    user_id = db.Column(
+        db.String(36), db.ForeignKey("auth_users.id"), nullable=False, index=True
+    )
     provider_invoice_id = db.Column(db.String(128), nullable=False, index=True)
     amount_minor = db.Column(db.Integer, nullable=False)
     currency = db.Column(db.String(8), nullable=False)
@@ -111,4 +116,3 @@ def seed_plans(app) -> None:
                     )
                 )
         db.session.commit()
-

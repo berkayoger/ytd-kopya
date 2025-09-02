@@ -13,7 +13,8 @@ def test_create_prediction_from_decision(monkeypatch):
     app = create_app()
     with app.app_context():
         monkeypatch.setattr(
-            "backend.tasks.strategic_recommender.fetch_current_price", lambda symbol: 100.0
+            "backend.tasks.strategic_recommender.fetch_current_price",
+            lambda symbol: 100.0,
         )
         indicators = {
             "rsi": 25,
@@ -35,7 +36,8 @@ def test_create_prediction_from_decision_no_buy(monkeypatch):
     app = create_app()
     with app.app_context():
         monkeypatch.setattr(
-            "backend.tasks.strategic_recommender.fetch_current_price", lambda symbol: 100.0
+            "backend.tasks.strategic_recommender.fetch_current_price",
+            lambda symbol: 100.0,
         )
         indicators = {
             "rsi": 80,
@@ -48,4 +50,3 @@ def test_create_prediction_from_decision_no_buy(monkeypatch):
         result = create_prediction_from_decision("bitcoin", indicators)
         assert result is None
         assert PredictionOpportunity.query.count() == 0
-

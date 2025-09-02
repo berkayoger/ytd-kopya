@@ -19,4 +19,3 @@ def parse_rate_string(s: str, default: str = "2/hour") -> str:
         return f"{n_int}/{per}"
     except Exception:
         return default
-

@@ -2,9 +2,9 @@ import pandas as pd
 import pandas_ta as ta
 import requests
 
-
 # CoinGecko API üzerinden geçmiş fiyat verisi çekme
 # Proxy restrictions may block network access, so fall back to sample data
+
 
 def fetch_ohlc_data(coin_id="bitcoin", vs_currency="usd", days=7):
     """Fetch hourly OHLC data from CoinGecko or return sample data."""

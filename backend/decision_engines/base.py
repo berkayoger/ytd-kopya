@@ -36,6 +36,7 @@ class BaseDecisionEngine:
 
     engine_id: str = "BASE"
 
-    def run(self, request: DecisionRequest) -> DecisionResult:  # pragma: no cover - soyut
+    def run(
+        self, request: DecisionRequest
+    ) -> DecisionResult:  # pragma: no cover - soyut
         raise NotImplementedError
-

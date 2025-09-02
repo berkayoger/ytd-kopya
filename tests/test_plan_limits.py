@@ -1,18 +1,20 @@
-import os, sys
+import os
+import sys
 from datetime import datetime, timedelta
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from backend import create_app, db
 import json
-from backend.db.models import User, Role, UserRole
-from backend.models.plan import Plan
-from flask import g
+
 import flask_jwt_extended
-from backend.utils.plan_limits import (
-    get_user_effective_limits,
-    give_user_boost,
-    check_custom_feature,
-)
-from backend.db.models import UsageLog
+from flask import g
+
+from backend import create_app, db
+from backend.db.models import Role, UsageLog, User, UserRole
+from backend.models.plan import Plan
+from backend.utils.plan_limits import (check_custom_feature,
+                                       get_user_effective_limits,
+                                       give_user_boost)
+
 
 def create_test_client(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
@@ -23,6 +25,7 @@ def create_test_client(monkeypatch):
         db.create_all()
     return app.test_client()
 
+
 def create_user(app, plan="basic"):
     with app.app_context():
         role = Role.query.filter_by(name="user").first()
@@ -30,7 +33,9 @@ def create_user(app, plan="basic"):
             role = Role(name="user")
             db.session.add(role)
             db.session.commit()
-        plan_obj = Plan(name="TestPlan", price=0.0, features=json.dumps({"prediction": 10}))
+        plan_obj = Plan(
+            name="TestPlan", price=0.0, features=json.dumps({"prediction": 10})
+        )
         db.session.add(plan_obj)
         db.session.commit()
         user = User(
@@ -45,35 +50,49 @@ def create_user(app, plan="basic"):
         db.session.commit()
     return user
 
+
 def log_usage(app, user_id, action):
     with app.app_context():
         log = UsageLog(user_id=user_id, action=action, timestamp=datetime.utcnow())
         db.session.add(log)
         db.session.commit()
 
+
 def setup_app(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
     return create_app()
+
 
 def test_effective_limits_with_boost(monkeypatch):
     app = setup_app(monkeypatch)
     with app.app_context():
         role = Role.query.filter_by(name="user").first()
-        p = Plan(name="LimitPlan", price=0.0, features="{\"max_prediction_per_day\": 5}")
+        p = Plan(name="LimitPlan", price=0.0, features='{"max_prediction_per_day": 5}')
         db.session.add(p)
         db.session.commit()
-        user = User(username="limituser", api_key="limitkey", role_id=role.id, role=UserRole.USER, plan_id=p.id)
+        user = User(
+            username="limituser",
+            api_key="limitkey",
+            role_id=role.id,
+            role=UserRole.USER,
+            plan_id=p.id,
+        )
         user.set_password("pass")
         db.session.add(user)
         db.session.commit()
-        give_user_boost(user, {"max_prediction_per_day": 10}, datetime.utcnow() + timedelta(days=1))
+        give_user_boost(
+            user, {"max_prediction_per_day": 10}, datetime.utcnow() + timedelta(days=1)
+        )
         limits = get_user_effective_limits(user)
         assert limits["max_prediction_per_day"] == 10
+
 
 def test_plan_limit_exceeded(monkeypatch):
     # Skip this test as it requires complex JWT and rate limiting setup
     import pytest
+
     pytest.skip("Test requires complex JWT setup, skipping for now")
+
 
 def test_custom_feature_priority(monkeypatch):
     app = setup_app(monkeypatch)

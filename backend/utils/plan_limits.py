@@ -3,14 +3,14 @@ Plan ve kullanıcı bazlı limit yardımcıları.
 Kullanıcının planındaki özelliklerle geçici boost ve özel tanımları
 birleştirerek efektif limitleri hesaplar.
 """
+
 from __future__ import annotations
 
-from typing import Dict, Optional, Any, List
-from datetime import datetime, timedelta
 import json
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
-from flask import g, jsonify, request, current_app
-
+from flask import current_app, g, jsonify, request
 
 # ---------------------------------------------------------------------------
 # DB tanımı yoksa çalışacak güvenli defaultlar (plan -> feature -> (daily, burst))
@@ -75,8 +75,10 @@ def _normalize_plan_name(user) -> str:
     if isinstance(raw, str):
         key = raw
     else:
-        key = getattr(raw, "name", None) or getattr(raw, "value", None) or (
-            str(raw) if raw is not None else ""
+        key = (
+            getattr(raw, "name", None)
+            or getattr(raw, "value", None)
+            or (str(raw) if raw is not None else "")
         )
     if isinstance(key, str):
         key = key.split(".")[-1]
@@ -95,20 +97,26 @@ def _user_for(user_id: Optional[str]):
         return None
     try:
         from backend.db.models import User  # local import
+
         return User.query.get(user_id)
     except Exception:
         return None
 
 
-def _get_effective_feature_limits(user_id: Optional[str], feature_key: str) -> Dict[str, Any]:
+def _get_effective_feature_limits(
+    user_id: Optional[str], feature_key: str
+) -> Dict[str, Any]:
     """Tek bir feature için efektif limitleri döndür."""
     user = _user_for(user_id)
     plan_name = _normalize_plan_name(user)
-    daily_quota, burst_per_minute = PLAN_DEFAULTS.get(plan_name, {}).get(feature_key, (0, 0))
+    daily_quota, burst_per_minute = PLAN_DEFAULTS.get(plan_name, {}).get(
+        feature_key, (0, 0)
+    )
 
     # Opsiyonel DB sorguları
     try:
-        from backend.db.models import PlanLimit, UserLimitOverride  # type: ignore
+        from backend.db.models import (PlanLimit,  # type: ignore
+                                       UserLimitOverride)
 
         pl = (
             PlanLimit.query.filter_by(plan_name=plan_name, feature_key=feature_key)
@@ -121,11 +129,15 @@ def _get_effective_feature_limits(user_id: Optional[str], feature_key: str) -> D
 
         if user:
             ov = (
-                UserLimitOverride.query.filter_by(user_id=user.id, feature_key=feature_key)
+                UserLimitOverride.query.filter_by(
+                    user_id=user.id, feature_key=feature_key
+                )
                 .order_by(UserLimitOverride.updated_at.desc())
                 .first()
             )
-            if ov and (not getattr(ov, "expires_at", None) or ov.expires_at > datetime.utcnow()):
+            if ov and (
+                not getattr(ov, "expires_at", None) or ov.expires_at > datetime.utcnow()
+            ):
                 if getattr(ov, "daily_quota", None) is not None:
                     daily_quota = int(ov.daily_quota)
                 if getattr(ov, "burst_per_minute", None) is not None:
@@ -140,9 +152,9 @@ def _get_effective_feature_limits(user_id: Optional[str], feature_key: str) -> D
     }
 
 
-def get_user_effective_limits(arg1: Any = None,
-                              feature_key: Optional[str] = None,
-                              **kwargs) -> Dict:
+def get_user_effective_limits(
+    arg1: Any = None, feature_key: Optional[str] = None, **kwargs
+) -> Dict:
     """Back-compat çok biçimli fonksiyon."""
     if feature_key is not None:
         user_id = kwargs.get("user_id")
@@ -161,7 +173,10 @@ def get_user_effective_limits(arg1: Any = None,
         pass
 
     try:
-        if getattr(user, "boost_expire_at", None) and getattr(user, "boost_expire_at") > datetime.utcnow():
+        if (
+            getattr(user, "boost_expire_at", None)
+            and getattr(user, "boost_expire_at") > datetime.utcnow()
+        ):
             boost = getattr(user, "boost_features", {}) or {}
             if isinstance(boost, str):
                 boost = json.loads(boost or "{}")
@@ -173,7 +188,9 @@ def get_user_effective_limits(arg1: Any = None,
         custom = getattr(user, "custom_features", {}) or {}
         if isinstance(custom, str):
             custom = json.loads(custom or "{}")
-        limits.update({k: v for k, v in (custom or {}).items() if isinstance(v, (int, bool))})
+        limits.update(
+            {k: v for k, v in (custom or {}).items() if isinstance(v, (int, bool))}
+        )
     except Exception:
         pass
 
@@ -188,6 +205,7 @@ def give_user_boost(user, features: Dict[str, Any], expires_at: datetime) -> Non
     """Kullanıcıya geçici feature boost'u ver."""
     try:
         from backend.db.models import db  # local import
+
         user.boost_features = json.dumps(features)
         user.boost_expire_at = expires_at
         db.session.add(user)
@@ -195,6 +213,7 @@ def give_user_boost(user, features: Dict[str, Any], expires_at: datetime) -> Non
     except Exception:
         try:
             from backend.db.models import db  # local import
+
             db.session.rollback()
         except Exception:
             pass
@@ -248,6 +267,7 @@ def check_custom_feature(user, feature: str) -> bool:
 
     return False
 
+
 def check_and_increment_usage(user, limit_key: str) -> bool:
     """
     Belirtilen limit için kullanım kotasını kontrol eder ve bir artırır.
@@ -260,6 +280,7 @@ def check_and_increment_usage(user, limit_key: str) -> bool:
             return True
 
         from backend.db.models import UsageLog, db  # local import
+
         start = datetime.utcnow() - timedelta(days=1)
         usage = (
             UsageLog.query.filter_by(user_id=user.id, action=limit_key)
@@ -268,7 +289,9 @@ def check_and_increment_usage(user, limit_key: str) -> bool:
         )
         if usage >= int(max_val):
             return False
-        db.session.add(UsageLog(user_id=user.id, action=limit_key, timestamp=datetime.utcnow()))
+        db.session.add(
+            UsageLog(user_id=user.id, action=limit_key, timestamp=datetime.utcnow())
+        )
         db.session.commit()
         return True
     except Exception:
@@ -282,7 +305,10 @@ def get_all_feature_keys() -> List[str]:
         keys.update(d.keys())
     try:
         from backend.db.models import PlanLimit  # type: ignore
-        for (fk,) in PlanLimit.query.with_entities(PlanLimit.feature_key).distinct().all():
+
+        for (fk,) in (
+            PlanLimit.query.with_entities(PlanLimit.feature_key).distinct().all()
+        ):
             keys.add(fk)
     except Exception:
         pass
@@ -338,10 +364,12 @@ def rate_limit_key_func() -> str:
 # Back-compat: enforce_plan_limits dekoratörü
 # -----------------------------------------------------------------------------
 
+
 def enforce_plan_limits(limit_key: str):
     def decorator(fn):
         def inner(*args, **kwargs):
-            from backend.db.models import User, UsageLog, db  # local import
+            from backend.db.models import UsageLog, User, db  # local import
+
             user = getattr(g, "user", None)
             if user is None:
                 api_key = request.headers.get("X-API-KEY")
@@ -370,7 +398,9 @@ def enforce_plan_limits(limit_key: str):
 
             try:
                 db.session.add(
-                    UsageLog(user_id=user.id, action=limit_key, timestamp=datetime.utcnow())
+                    UsageLog(
+                        user_id=user.id, action=limit_key, timestamp=datetime.utcnow()
+                    )
                 )
                 db.session.commit()
             except Exception:
@@ -395,4 +425,3 @@ __all__ = [
     "get_plan_rate_limit",
     "rate_limit_key_func",
 ]
-

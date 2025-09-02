@@ -1,8 +1,10 @@
+import bleach
 from flask import Flask
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-import bleach
+
 from backend.utils.logger import create_log
+
 from .core.error_handlers import register_error_handlers
 
 
@@ -31,7 +33,9 @@ def create_app() -> Flask:
         """Temel güvenlik başlıklarını ayarla"""
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
-        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Referrer-Policy", "strict-origin-when-cross-origin"
+        )
         return response
 
     @app.template_filter("sanitize")
@@ -40,7 +44,11 @@ def create_app() -> Flask:
         if not text:
             return ""
         allowed = {"a": ["href", "title"]}
-        return bleach.clean(text, tags=["p", "br", "strong", "em", "u", "a"], attributes=allowed, strip=True)
+        return bleach.clean(
+            text,
+            tags=["p", "br", "strong", "em", "u", "a"],
+            attributes=allowed,
+            strip=True,
+        )
 
     return app
-

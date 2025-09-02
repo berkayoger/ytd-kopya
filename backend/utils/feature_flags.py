@@ -20,7 +20,8 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 
 # -----------------------------------------------------------------------------
 # Global konfigürasyon
@@ -30,6 +31,7 @@ def _bool_env(v: Optional[str], default: bool = False) -> bool:
         return default
     return v.strip().lower() in ("1", "true", "yes", "on")
 
+
 USE_REDIS: bool = _bool_env(os.getenv("FEATURE_FLAGS_USE_REDIS"), False)
 
 redis_client = None  # tests monkeypatch edebiliyor
@@ -37,7 +39,9 @@ if USE_REDIS:
     try:
         import redis  # type: ignore
 
-        redis_client = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+        redis_client = redis.from_url(
+            os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        )
     except Exception:
         # Redis yoksa bellek içi fallback
         redis_client = None
@@ -51,10 +55,12 @@ if USE_REDIS:
 def _now_iso() -> str:
     return datetime.utcnow().isoformat()
 
+
 _default_flags: Dict[str, bool] = {
     # Testler 'recommendation_enabled' bayrağının True olmasını bekliyor
     "recommendation_enabled": True,
     # Projede sık kullanılan ikinci bir örnek
+    "health_check": True,
     "draks": True,
 }
 
@@ -89,7 +95,11 @@ def _get_all_known_names() -> set[str]:
             # KEYS prod için pahalı olabilir; test ve küçük kullanım için yeterli
             for k in redis_client.keys("ff:*"):
                 try:
-                    ks = k.decode("utf-8") if isinstance(k, (bytes, bytearray)) else str(k)
+                    ks = (
+                        k.decode("utf-8")
+                        if isinstance(k, (bytes, bytearray))
+                        else str(k)
+                    )
                 except Exception:
                     ks = str(k)
                 if ks.startswith("ff:"):
@@ -166,9 +176,9 @@ def get_feature_flags() -> list[dict]:
 # --- create / update / delete ------------------------------------------------
 def create_feature_flag(
     flag_name: Optional[str] = None,
+    enabled: Optional[bool] = False,
     *,
     name: Optional[str] = None,
-    enabled: bool = False,
     description: str = "",
     category: str = "general",
     created_by: Optional[str] = None,

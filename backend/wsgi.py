@@ -6,21 +6,22 @@ Dayanıklı WSGI loader:
 Ek güvenlik: SAFE_HEALTH_MODE=true ise hiçbir import denenmez, doğrudan
 minimal health app döner (CI smoke gibi ortamlar için).
 """
+
 from __future__ import annotations
+
 import importlib
 import os
 from typing import Any
 
 DEFAULT_CANDIDATES = (
-    "backend.app:create_app,"
-    "backend.app:app,"
-    "app:create_app,"
-    "app:app"
+    "backend.app:create_app," "backend.app:app," "app:create_app," "app:app"
 )
+
 
 def _minimal_health_app():
     # Ağır importlardan bağımsız, her koşulda yanıt veren app
     from flask import Flask, jsonify
+
     app = Flask("health-only")
 
     @app.get("/healthz")
@@ -34,6 +35,7 @@ def _minimal_health_app():
 
     return app
 
+
 def _try_load(cand: str) -> Any | None:
     mod, _, attr = cand.partition(":")
     try:
@@ -44,6 +46,7 @@ def _try_load(cand: str) -> Any | None:
         # Debug için istersen burada print bırakabilirsin:
         # print(f"[wsgi] import failed for {cand}: {exc}")
         return None
+
 
 def load_app() -> Any:
     # CI / smoke gibi ortamlarda garantili health yanıtı ver
@@ -61,11 +64,13 @@ def load_app() -> Any:
     # Fallback: minimal app ki health endpoint'leri çalışsın
     return _minimal_health_app()
 
+
 app = load_app()
 
 # Varsa gerçek health blueprint'i ekle (opsiyonel). Hata olursa sus.
 try:
     from backend.health import bp as health_bp  # type: ignore
+
     paths = {str(r.rule) for r in app.url_map.iter_rules()}
     if "/healthz" not in paths or "/readiness" not in paths:
         app.register_blueprint(health_bp)

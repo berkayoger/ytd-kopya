@@ -3,40 +3,37 @@
 import uuid
 from datetime import datetime, timedelta
 
-from flask import request, jsonify, current_app, g, render_template
-from . import auth_bp  # Blueprint
-from backend.db.models import (
-    db,
-    User,
-    SubscriptionPlan,
-    PasswordResetToken,
-    UserSession,
-)
-from werkzeug.security import generate_password_hash, check_password_hash
-from .jwt_utils import generate_tokens, verify_jwt, verify_csrf
-from loguru import logger
-from backend import limiter
-from backend.utils.token_helper import generate_reset_token, verify_reset_token
-from backend.utils.email import send_password_reset_email
-from backend.utils.audit import log_action
-from backend.utils.logger import create_log
-from flask_jwt_extended import jwt_required, get_jwt_identity
 import jwt
+from flask import current_app, g, jsonify, render_template, request
+from flask_jwt_extended import get_jwt_identity, jwt_required
+from loguru import logger
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from backend import limiter
+from backend.db.models import (PasswordResetToken, SubscriptionPlan, User,
+                               UserSession, db)
+from backend.utils.audit import log_action
+from backend.utils.email import send_password_reset_email
+from backend.utils.logger import create_log
+from backend.utils.token_helper import generate_reset_token, verify_reset_token
+
+from . import auth_bp  # Blueprint
+from .jwt_utils import generate_tokens, verify_csrf, verify_jwt
 
 
 # Basit kayıt formu sayfası
-@auth_bp.route('/register', methods=['GET'], endpoint='register')
+@auth_bp.route("/register", methods=["GET"], endpoint="register")
 def register_page():
     """Render the registration page."""
-    return render_template('register.html')
+    return render_template("register.html")
 
 
-@auth_bp.route('/register', methods=['POST'])
+@auth_bp.route("/register", methods=["POST"])
 @limiter.limit("5/minute")
 def register_user():
     data = request.get_json() or {}
-    username = data.get('username', '').strip()
-    password = data.get('password', '')
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
 
     if not username or not password:
         return jsonify(error="Kullanıcı adı ve şifre gerekli."), 400
@@ -46,12 +43,13 @@ def register_user():
             return jsonify(error="Kullanıcı adı zaten mevcut."), 409
 
         from backend.db.models import Role
-        role = Role.query.filter_by(name='user').first()
+
+        role = Role.query.filter_by(name="user").first()
 
         new_user = User(
             username=username,
             subscription_level=SubscriptionPlan.FREE,
-            role_id=role.id if role else None
+            role_id=role.id if role else None,
         )
         new_user.set_password(password)
         new_api_key = new_user.generate_api_key()
@@ -60,12 +58,15 @@ def register_user():
         db.session.commit()
 
         logger.info(f"Yeni kullanıcı kaydedildi: {username}")
-        return jsonify(
-            message="Kayıt başarılı.",
-            username=username,
-            api_key=new_api_key,
-            subscription_level=new_user.subscription_level.value
-        ), 201
+        return (
+            jsonify(
+                message="Kayıt başarılı.",
+                username=username,
+                api_key=new_api_key,
+                subscription_level=new_user.subscription_level.value,
+            ),
+            201,
+        )
 
     except Exception as e:
         logger.exception("Kayıt sırasında hata oluştu")
@@ -73,12 +74,12 @@ def register_user():
         return jsonify(error="Sunucu hatası. Lütfen daha sonra tekrar deneyin."), 500
 
 
-@auth_bp.route('/login', methods=['POST'])
+@auth_bp.route("/login", methods=["POST"])
 @limiter.limit("10/minute")
 def login_user():
     data = request.get_json() or {}
-    username = data.get('username', '').strip()
-    password = data.get('password', '')
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
 
     user_agent = request.headers.get("User-Agent", "")
     ip_address = request.remote_addr or "unknown"
@@ -91,14 +92,13 @@ def login_user():
         if not user or not user.check_password(password):
             return jsonify(error="Geçersiz kullanıcı adı veya şifre."), 401
 
-        access, refresh, csrf = generate_tokens(
-            user.id, user.username, user.role.value
-        )
+        access, refresh, csrf = generate_tokens(user.id, user.username, user.role.value)
 
         session = UserSession(
             user_id=user.id,
             refresh_token=generate_password_hash(refresh),
-            expires_at=datetime.utcnow() + timedelta(days=current_app.config["REFRESH_TOKEN_EXP_DAYS"]),
+            expires_at=datetime.utcnow()
+            + timedelta(days=current_app.config["REFRESH_TOKEN_EXP_DAYS"]),
             jti=str(uuid.uuid4()),
             last_used=datetime.utcnow(),
             user_agent=user_agent,
@@ -112,7 +112,7 @@ def login_user():
             message="Giriş başarılı.",
             username=username,
             api_key=user.api_key,
-            subscription_level=user.subscription_level.value
+            subscription_level=user.subscription_level.value,
         )
         secure = not current_app.debug
         max_age_access = current_app.config["ACCESS_TOKEN_EXP_MINUTES"] * 60
@@ -120,16 +120,28 @@ def login_user():
 
         # refreshToken önce yazılır; testlerde headers.get('Set-Cookie') bunu yakalar
         response.set_cookie(
-            "refreshToken", refresh,
-            httponly=True, secure=secure, samesite="Strict", max_age=max_age_refresh
+            "refreshToken",
+            refresh,
+            httponly=True,
+            secure=secure,
+            samesite="Strict",
+            max_age=max_age_refresh,
         )
         response.set_cookie(
-            "accessToken", access,
-            httponly=True, secure=secure, samesite="Strict", max_age=max_age_access
+            "accessToken",
+            access,
+            httponly=True,
+            secure=secure,
+            samesite="Strict",
+            max_age=max_age_access,
         )
         response.set_cookie(
-            "csrf-token", csrf,
-            httponly=False, secure=secure, samesite="Strict", max_age=max_age_refresh
+            "csrf-token",
+            csrf,
+            httponly=False,
+            secure=secure,
+            samesite="Strict",
+            max_age=max_age_refresh,
         )
 
         logger.info(f"Kullanıcı girişi başarılı: {username}")
@@ -152,9 +164,9 @@ def login_user():
         return jsonify(error="Sunucu hatası. Lütfen daha sonra tekrar deneyin."), 500
 
 
-@auth_bp.route('/refresh', methods=['POST'])
+@auth_bp.route("/refresh", methods=["POST"])
 def refresh_tokens():
-    token = request.cookies.get('refreshToken')
+    token = request.cookies.get("refreshToken")
     if not token:
         return jsonify(error="Refresh token missing"), 401
     try:
@@ -173,9 +185,13 @@ def refresh_tokens():
     if not session or not check_password_hash(session.refresh_token, token):
         return jsonify(error="Invalid token"), 401
 
-    access, new_refresh, csrf = generate_tokens(user_id, payload.get("username"), payload.get("role"))
+    access, new_refresh, csrf = generate_tokens(
+        user_id, payload.get("username"), payload.get("role")
+    )
     session.refresh_token = generate_password_hash(new_refresh)
-    session.expires_at = datetime.utcnow() + timedelta(days=current_app.config["REFRESH_TOKEN_EXP_DAYS"])
+    session.expires_at = datetime.utcnow() + timedelta(
+        days=current_app.config["REFRESH_TOKEN_EXP_DAYS"]
+    )
     db.session.commit()
 
     response = jsonify(message="Refreshed")
@@ -183,35 +199,47 @@ def refresh_tokens():
     max_age_access = current_app.config["ACCESS_TOKEN_EXP_MINUTES"] * 60
     max_age_refresh = current_app.config["REFRESH_TOKEN_EXP_DAYS"] * 86400
     response.set_cookie(
-        "refreshToken", new_refresh,
-        httponly=True, secure=secure, samesite="Strict", max_age=max_age_refresh
+        "refreshToken",
+        new_refresh,
+        httponly=True,
+        secure=secure,
+        samesite="Strict",
+        max_age=max_age_refresh,
     )
     response.set_cookie(
-        "accessToken", access,
-        httponly=True, secure=secure, samesite="Strict", max_age=max_age_access
+        "accessToken",
+        access,
+        httponly=True,
+        secure=secure,
+        samesite="Strict",
+        max_age=max_age_access,
     )
     response.set_cookie(
-        "csrf-token", csrf,
-        httponly=False, secure=secure, samesite="Strict", max_age=max_age_refresh
+        "csrf-token",
+        csrf,
+        httponly=False,
+        secure=secure,
+        samesite="Strict",
+        max_age=max_age_refresh,
     )
     return response, 200
 
 
-@auth_bp.route('/check-username', methods=['GET'])
+@auth_bp.route("/check-username", methods=["GET"])
 @limiter.limit("30/minute")
 def check_username_availability():
-    username = request.args.get('username', '').strip()
+    username = request.args.get("username", "").strip()
     if not username:
         return jsonify(error="Kullanıcı adı gerekli."), 400
     exists = bool(User.query.filter_by(username=username).first())
     return jsonify(available=not exists), 200
 
 
-@auth_bp.route('/request_password_reset', methods=['POST'])
+@auth_bp.route("/request_password_reset", methods=["POST"])
 @limiter.limit("5/hour")
 def request_password_reset():
     data = request.get_json() or {}
-    identifier = data.get('identifier', '').strip()
+    identifier = data.get("identifier", "").strip()
     if not identifier:
         return jsonify(error="Kullanıcı adı veya e-posta gerekli."), 400
 
@@ -219,39 +247,53 @@ def request_password_reset():
         user = User.query.filter_by(username=identifier).first()
         if not user:
             logger.warning(f"Şifre sıfırlama: kullanıcı bulunamadı: {identifier}")
-            return jsonify(message="Şifre sıfırlama talimatları e-posta adresinize gönderildi."), 200
+            return (
+                jsonify(
+                    message="Şifre sıfırlama talimatları e-posta adresinize gönderildi."
+                ),
+                200,
+            )
 
-        existing = PasswordResetToken.query.filter_by(
-            user_id=user.id, is_used=False
-        ).filter(PasswordResetToken.expires_at > datetime.utcnow()).first()
+        existing = (
+            PasswordResetToken.query.filter_by(user_id=user.id, is_used=False)
+            .filter(PasswordResetToken.expires_at > datetime.utcnow())
+            .first()
+        )
         if existing:
-            return jsonify(message="Zaten aktif bir şifre sıfırlama talimatı gönderildi."), 200
+            return (
+                jsonify(message="Zaten aktif bir şifre sıfırlama talimatı gönderildi."),
+                200,
+            )
 
         token = str(uuid.uuid4())
         expires_at = datetime.utcnow() + timedelta(hours=1)
         reset = PasswordResetToken(
-            user_id=user.id, reset_token=token,
-            expires_at=expires_at, is_used=False
+            user_id=user.id, reset_token=token, expires_at=expires_at, is_used=False
         )
         db.session.add(reset)
         db.session.commit()
 
-        current_app.extensions['celery'].send_task(
-            'backend.tasks.send_reset_email', args=[user.email, token]
+        current_app.extensions["celery"].send_task(
+            "backend.tasks.send_reset_email", args=[user.email, token]
         )
         logger.info(f"Şifre sıfırlama token oluşturuldu: ID={user.id}")
-        return jsonify(message="Şifre sıfırlama talimatları e-posta adresinize gönderildi."), 200
+        return (
+            jsonify(
+                message="Şifre sıfırlama talimatları e-posta adresinize gönderildi."
+            ),
+            200,
+        )
 
     except Exception:
         logger.exception("Şifre sıfırlama isteğinde hata oluştu")
         return jsonify(error="Sunucu hatası. Lütfen daha sonra tekrar deneyin."), 500
 
 
-@auth_bp.route('/forgot-password', methods=['POST'])
+@auth_bp.route("/forgot-password", methods=["POST"])
 @limiter.limit("5/hour")
 def forgot_password():
     data = request.get_json() or {}
-    email = data.get('email')
+    email = data.get("email")
     if not email:
         return jsonify({"error": "E-posta gerekli"}), 400
 
@@ -274,11 +316,11 @@ def forgot_password():
     return jsonify({"message": "Eğer hesap varsa, e-posta gönderildi."}), 200
 
 
-@auth_bp.route('/reset-password', methods=['POST'])
+@auth_bp.route("/reset-password", methods=["POST"])
 def reset_password():
     data = request.get_json() or {}
-    token = data.get('token')
-    new_password = data.get('password')
+    token = data.get("token")
+    new_password = data.get("password")
 
     if not token or not new_password:
         return jsonify({"error": "Eksik veri"}), 400
@@ -287,7 +329,9 @@ def reset_password():
     if not email:
         return jsonify({"error": "Geçersiz veya süresi dolmuş link"}), 400
 
-    reset_entry = PasswordResetToken.query.filter_by(reset_token=token, is_used=False).first()
+    reset_entry = PasswordResetToken.query.filter_by(
+        reset_token=token, is_used=False
+    ).first()
     if not reset_entry or reset_entry.expires_at < datetime.utcnow():
         return jsonify({"error": "Geçersiz veya süresi dolmuş link"}), 400
 

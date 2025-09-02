@@ -12,7 +12,11 @@ def advanced_decision_logic(indicators: dict) -> dict:
         else:
             score -= 1
 
-    if indicators.get("price") and indicators.get("sma_10") and indicators["price"] > indicators["sma_10"]:
+    if (
+        indicators.get("price")
+        and indicators.get("sma_10")
+        and indicators["price"] > indicators["sma_10"]
+    ):
         score += 1
 
     if indicators.get("prev_predictions_success_rate", 0) > 0.7:
@@ -39,4 +43,3 @@ def advanced_decision_logic(indicators: dict) -> dict:
         )
 
     return result
-

@@ -1,11 +1,14 @@
 from __future__ import annotations
-from flask import Blueprint, request, jsonify, g
+
+import json
+
+from flask import Blueprint, g, jsonify, request
 from flask_jwt_extended import jwt_required
+
 from backend.auth.middlewares import admin_required
 from backend.db.models import DraksDecision, DraksSignalRun
 from backend.utils.feature_flags import feature_flag_enabled
 from backend.utils.logger import create_log
-import json
 
 admin_draks_bp = Blueprint("admin_draks", __name__, url_prefix="/api/admin/draks")
 
@@ -137,4 +140,3 @@ def get_signal_detail(row_id: int):
         "created_at": r.created_at.isoformat() + "Z",
     }
     return jsonify(body), 200
-

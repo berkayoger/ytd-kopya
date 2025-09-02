@@ -1,27 +1,34 @@
+import importlib.util
 import os
 import pathlib
-import importlib.util
+import sys
+import types
+
 import pytest
 
 from app import create_app
-from app.models.db import db, User, _attach_db
-import types
-import sys
+from app.models.db import User, _attach_db, db
 
 # Güvenlik modülünü uygulama paketi yüklenmeden dinamik olarak yükle
-SECURITY_PATH = pathlib.Path(__file__).resolve().parents[1] / "app" / "core" / "security.py"
+SECURITY_PATH = (
+    pathlib.Path(__file__).resolve().parents[1] / "app" / "core" / "security.py"
+)
 spec = importlib.util.spec_from_file_location("security", SECURITY_PATH)
 security = importlib.util.module_from_spec(spec)
 # Azure bağımlılıkları için sahte modüller ekleyelim
 sys.modules.setdefault("azure", types.ModuleType("azure"))
 sys.modules.setdefault("azure.identity", types.ModuleType("azure.identity"))
 sys.modules.setdefault("azure.keyvault", types.ModuleType("azure.keyvault"))
-sys.modules.setdefault("azure.keyvault.secrets", types.ModuleType("azure.keyvault.secrets"))
+sys.modules.setdefault(
+    "azure.keyvault.secrets", types.ModuleType("azure.keyvault.secrets")
+)
 sys.modules["azure.identity"].DefaultAzureCredential = object
+
 
 class _DummySecretClient:
     def __init__(self, *a, **k):
         pass
+
 
 sys.modules["azure.keyvault.secrets"].SecretClient = _DummySecretClient
 
@@ -32,12 +39,15 @@ def test_create_email_token_and_decode(monkeypatch):
     # Ortamı test moduna ayarlıyoruz
     monkeypatch.setenv("SECRET_PROVIDER", "env")
     monkeypatch.setenv("JWT_SECRET", "test-secret")
+
     # Redis istemcisini sahte nesne ile değiştiriyoruz
     class _DummyRedis:
         def exists(self, key):
             return 0
+
     security._redis_client = lambda: _DummyRedis()
     import app.core.security as core_sec
+
     core_sec._redis_client = lambda: _DummyRedis()
 
     token = security.create_email_token(subject="42")
@@ -59,17 +69,20 @@ def test_verify_endpoint_requires_email_token(monkeypatch):
     class _DummyRedis:
         def exists(self, key):
             return 0
+
         def setex(self, *args, **kwargs):
             return 1
 
     security._redis_client = lambda: _DummyRedis()
     import app.core.security as core_sec
+
     core_sec._redis_client = lambda: _DummyRedis()
 
     # Uygulamayı oluştur ve gerekli bileşenleri bağla
     app = create_app()
     _attach_db(app)
     from app.authx.api import bp as auth_bp
+
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     client = app.test_client()
 

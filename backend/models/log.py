@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, String, DateTime
+from sqlalchemy import Column, DateTime, String
 
 from backend.db import db
 
@@ -38,4 +38,3 @@ class Log(db.Model):
             "source": self.source,
             "user_agent": self.user_agent,
         }
-

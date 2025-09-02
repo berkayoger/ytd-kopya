@@ -1,35 +1,42 @@
-import os
-import uuid
-import secrets
 import hashlib
 import hmac
+import os
 import re
+import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import jwt  # PyJWT
-from passlib.context import CryptContext
 from argon2 import PasswordHasher
-import pwnedpasswords
-import boto3
-from azure.keyvault.secrets import SecretClient
 from azure.identity import DefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
+from passlib.context import CryptContext
+
+import boto3
+import pwnedpasswords
+
 # FastAPI yoksa bağımlılık yaratmamak için graceful fallback:
 try:
     from fastapi import HTTPException, status
 except Exception:  # pragma: no cover
+
     class HTTPException(Exception):
         def __init__(self, status_code: int, detail: str):
             super().__init__(detail)
             self.status_code = status_code
             self.detail = detail
+
     class status:
         HTTP_401_UNAUTHORIZED = 401
         HTTP_422_UNPROCESSABLE_ENTITY = 422
         HTTP_500_INTERNAL_SERVER_ERROR = 500
-import redis
+
+
 import pyotp
-from email_validator import validate_email, EmailNotValidError
+import redis
+
+from email_validator import EmailNotValidError, validate_email
 
 # ============================
 # Argon2 Password Hashing
@@ -38,23 +45,22 @@ pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 # Enhanced password hasher with Argon2
 ph = PasswordHasher(
-    time_cost=2,
-    memory_cost=65536,
-    parallelism=4,
-    hash_len=32,
-    salt_len=16
+    time_cost=2, memory_cost=65536, parallelism=4, hash_len=32, salt_len=16
 )
+
 
 def get_password_hash(password: str) -> str:
     """Hash password using Argon2 (passlib wrapper for migration safety)."""
     # Use passlib context to allow algorithm agility.
     return pwd_context.hash(password)
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
         return pwd_context.verify(plain_password, hashed_password)
     except Exception:
         return False
+
 
 # ============================
 # Password Policy Validation
@@ -67,47 +73,54 @@ class PasswordPolicy:
     REQUIRE_SPECIAL = True
     SPECIAL_CHARS = "!@#$%^&*()_+-=[]{}|;:,.<>?"
     MAX_CONSECUTIVE_CHARS = 3
-    COMMON_PATTERNS = [
-        r'password', r'12345', r'qwerty', r'admin', r'letmein'
-    ]
-    
+    COMMON_PATTERNS = [r"password", r"12345", r"qwerty", r"admin", r"letmein"]
+
     @classmethod
     def validate(cls, password: str) -> Tuple[bool, str]:
         if len(password) < cls.MIN_LENGTH:
             return False, f"Password must be at least {cls.MIN_LENGTH} characters"
-        
-        if cls.REQUIRE_UPPERCASE and not re.search(r'[A-Z]', password):
+
+        if cls.REQUIRE_UPPERCASE and not re.search(r"[A-Z]", password):
             return False, "Password must contain at least one uppercase letter"
-        
-        if cls.REQUIRE_LOWERCASE and not re.search(r'[a-z]', password):
+
+        if cls.REQUIRE_LOWERCASE and not re.search(r"[a-z]", password):
             return False, "Password must contain at least one lowercase letter"
-        
-        if cls.REQUIRE_DIGIT and not re.search(r'\d', password):
+
+        if cls.REQUIRE_DIGIT and not re.search(r"\d", password):
             return False, "Password must contain at least one digit"
-        
+
         if cls.REQUIRE_SPECIAL and not any(c in cls.SPECIAL_CHARS for c in password):
             return False, "Password must contain at least one special character"
-        
+
         # Check for consecutive characters
         for i in range(len(password) - cls.MAX_CONSECUTIVE_CHARS):
-            if password[i:i+cls.MAX_CONSECUTIVE_CHARS+1] == password[i] * (cls.MAX_CONSECUTIVE_CHARS+1):
-                return False, f"Password cannot contain more than {cls.MAX_CONSECUTIVE_CHARS} consecutive identical characters"
-        
+            if password[i : i + cls.MAX_CONSECUTIVE_CHARS + 1] == password[i] * (
+                cls.MAX_CONSECUTIVE_CHARS + 1
+            ):
+                return (
+                    False,
+                    f"Password cannot contain more than {cls.MAX_CONSECUTIVE_CHARS} consecutive identical characters",
+                )
+
         # Check common patterns
         password_lower = password.lower()
         for pattern in cls.COMMON_PATTERNS:
             if re.search(pattern, password_lower):
                 return False, "Password contains common patterns"
-        
+
         # Check pwned passwords (do not block on outage)
         try:
             times_pwned = pwnedpasswords.check(password)
             if times_pwned > 0:
-                return False, f"This password has been exposed in {times_pwned} breaches"
+                return (
+                    False,
+                    f"This password has been exposed in {times_pwned} breaches",
+                )
         except Exception:
             pass
-        
+
         return True, "Password is valid"
+
 
 # ============================
 # Email Validation
@@ -117,7 +130,9 @@ def validate_and_normalize_email(email: str) -> str:
         v = validate_email(email, check_deliverability=False)
         return v.normalized
     except EmailNotValidError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
+        )
 
 
 # ============================
@@ -125,22 +140,21 @@ def validate_and_normalize_email(email: str) -> str:
 # ============================
 class SecretManager:
     """Manages secrets using AWS Secrets Manager or Azure Key Vault (or env fallback)."""
-    
+
     def __init__(self, provider: str = "aws"):
         self.provider = provider
         self.jwt_secret_name = os.getenv("JWT_SECRET_NAME", "jwt-secret")
         if provider == "aws":
-            self.secrets_client = boto3.client('secretsmanager')
+            self.secrets_client = boto3.client("secretsmanager")
         elif provider == "azure":
             credential = DefaultAzureCredential()
             self.secret_client = SecretClient(
-                vault_url=os.getenv("AZURE_KEY_VAULT_URL", ""),
-                credential=credential
+                vault_url=os.getenv("AZURE_KEY_VAULT_URL", ""), credential=credential
             )
         else:
             # env provider
             pass
-    
+
     def get_jwt_secret(self, version: Optional[int] = None) -> str:
         """Get JWT secret from secure storage with rotation support."""
         provider = self.provider
@@ -153,13 +167,15 @@ class SecretManager:
                 else:
                     kwargs["VersionStage"] = "AWSCURRENT"
                 response = self.secrets_client.get_secret_value(**kwargs)
-                return response['SecretString']
+                return response["SecretString"]
             except Exception as e:
                 raise HTTPException(500, f"Failed to retrieve JWT secret: {str(e)}")
         elif provider == "azure":
             try:
                 if version:
-                    secret = self.secret_client.get_secret(self.jwt_secret_name, version=str(version))
+                    secret = self.secret_client.get_secret(
+                        self.jwt_secret_name, version=str(version)
+                    )
                 else:
                     secret = self.secret_client.get_secret(self.jwt_secret_name)
                 return secret.value
@@ -170,14 +186,13 @@ class SecretManager:
             if not secret:
                 raise HTTPException(500, "JWT_SECRET not configured for provider=env")
             return secret
-    
+
     def rotate_jwt_secret(self) -> str:
         """Rotate JWT secret (AWS only inline here)."""
         new_secret = secrets.token_urlsafe(64)
         if self.provider == "aws":
             self.secrets_client.update_secret(
-                SecretId=self.jwt_secret_name,
-                SecretString=new_secret
+                SecretId=self.jwt_secret_name, SecretString=new_secret
             )
         # Azure rotation should be handled via Key Vault set_secret
         elif self.provider == "azure":
@@ -212,9 +227,11 @@ def record_failed_login(identifier: str) -> int:
         r.setex(f"auth:lock:{identifier}", lockout_min * 60, "1")
     return cnt
 
+
 def is_locked(identifier: str) -> bool:
     r = _redis_client()
     return r.exists(f"auth:lock:{identifier}") == 1
+
 
 def reset_login_failures(identifier: str) -> None:
     r = _redis_client()
@@ -235,7 +252,10 @@ def generate_csrf_token(session_id: str) -> str:
     sig = hmac.new(secret.encode(), data.encode(), hashlib.sha256).hexdigest()
     return f"{data}.{sig}"
 
-def validate_csrf_token(token: str, session_id: str, max_age_seconds: int = 7200) -> bool:
+
+def validate_csrf_token(
+    token: str, session_id: str, max_age_seconds: int = 7200
+) -> bool:
     try:
         secret = os.getenv("CSRF_SECRET")
         parts = token.split(".")
@@ -261,9 +281,11 @@ def validate_csrf_token(token: str, session_id: str, max_age_seconds: int = 7200
 def generate_totp_secret() -> str:
     return pyotp.random_base32()
 
+
 def get_totp_uri(email: str, secret: str) -> str:
     issuer = os.getenv("TOTP_ISSUER_NAME", "YTD-Crypto")
     return pyotp.TOTP(secret).provisioning_uri(name=email, issuer_name=issuer)
+
 
 def verify_totp(code: str, secret: str, valid_window: int = 1) -> bool:
     try:
@@ -277,19 +299,24 @@ def verify_totp(code: str, secret: str, valid_window: int = 1) -> bool:
 # ============================
 ALGORITHM = "HS512"
 
+
 def _secret_manager() -> SecretManager:
     provider = os.getenv("SECRET_PROVIDER", "aws")
     return SecretManager(provider=provider)
 
+
 def _jwt_exp(minutes: int = 15) -> datetime:
     return datetime.now(timezone.utc) + timedelta(minutes=minutes)
+
 
 def _jwt_days(days: int) -> datetime:
     return datetime.now(timezone.utc) + timedelta(days=days)
 
+
 def _encode_jwt(claims: Dict[str, Any], version: int) -> str:
     secret = _secret_manager().get_jwt_secret(version=version)
     return jwt.encode(claims, secret, algorithm=ALGORITHM)
+
 
 def _try_decode_with_versions(token: str, versions: Tuple[int, ...]) -> Dict[str, Any]:
     last_err: Optional[Exception] = None
@@ -303,20 +330,30 @@ def _try_decode_with_versions(token: str, versions: Tuple[int, ...]) -> Dict[str
         except Exception as e:
             last_err = e
             continue
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
+    )
+
 
 def _jti_blacklist_key(jti: str) -> str:
     return f"jwt:revoked:{jti}"
+
 
 def revoke_token(jti: str, exp: int) -> None:
     """Blacklist a token JTI until its expiry (epoch seconds)."""
     ttl = max(0, exp - int(datetime.now(timezone.utc).timestamp()))
     _redis_client().setex(_jti_blacklist_key(jti), ttl, "1")
 
+
 def is_token_revoked(jti: str) -> bool:
     return _redis_client().exists(_jti_blacklist_key(jti)) == 1
 
-def create_access_token(subject: str, extra: Optional[Dict[str, Any]] = None, expires_minutes: Optional[int] = None) -> str:
+
+def create_access_token(
+    subject: str,
+    extra: Optional[Dict[str, Any]] = None,
+    expires_minutes: Optional[int] = None,
+) -> str:
     """Create a short-lived access token."""
     ver = int(os.getenv("JWT_KEY_VERSION", "1"))
     exp_m = int(expires_minutes or os.getenv("ACCESS_TOKEN_EXPIRES_MINUTES", "15"))
@@ -333,7 +370,12 @@ def create_access_token(subject: str, extra: Optional[Dict[str, Any]] = None, ex
         claims.update(extra)
     return _encode_jwt(claims, version=ver)
 
-def create_refresh_token(subject: str, extra: Optional[Dict[str, Any]] = None, expires_days: Optional[int] = None) -> str:
+
+def create_refresh_token(
+    subject: str,
+    extra: Optional[Dict[str, Any]] = None,
+    expires_days: Optional[int] = None,
+) -> str:
     ver = int(os.getenv("JWT_KEY_VERSION", "1"))
     exp_d = int(expires_days or os.getenv("REFRESH_TOKEN_EXPIRES_DAYS", "30"))
     now = datetime.now(timezone.utc)
@@ -349,10 +391,13 @@ def create_refresh_token(subject: str, extra: Optional[Dict[str, Any]] = None, e
         claims.update(extra)
     return _encode_jwt(claims, version=ver)
 
+
 def create_email_token(subject: str, expires_minutes: Optional[int] = None) -> str:
     """E-posta doğrulama tokenı üret."""
     ver = int(os.getenv("JWT_KEY_VERSION", "1"))
-    exp_m = int(expires_minutes or os.getenv("EMAIL_TOKEN_EXPIRES_MINUTES", str(60 * 24)))
+    exp_m = int(
+        expires_minutes or os.getenv("EMAIL_TOKEN_EXPIRES_MINUTES", str(60 * 24))
+    )
     now = datetime.now(timezone.utc)
     claims: Dict[str, Any] = {
         "sub": str(subject),
@@ -364,22 +409,33 @@ def create_email_token(subject: str, expires_minutes: Optional[int] = None) -> s
     }
     return _encode_jwt(claims, version=ver)
 
+
 def generate_tokens(user_id: str) -> Tuple[str, str]:
     """Belirtilen kullanıcı için access ve refresh token üret."""
     access = create_access_token(subject=str(user_id))
     refresh = create_refresh_token(subject=str(user_id))
     return access, refresh
 
+
 def decode_token(token: str, require_type: Optional[str] = None) -> Dict[str, Any]:
     """Decode token trying current and previous key versions (graceful rotation)."""
     cur = int(os.getenv("JWT_KEY_VERSION", "1"))
     prev = max(1, cur - 1)
-    payload = _try_decode_with_versions(token, (cur, prev)) if cur > 1 else _try_decode_with_versions(token, (cur,))
+    payload = (
+        _try_decode_with_versions(token, (cur, prev))
+        if cur > 1
+        else _try_decode_with_versions(token, (cur,))
+    )
     if require_type and payload.get("t") != require_type:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type"
+        )
     if is_token_revoked(payload.get("jti", "")):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked"
+        )
     return payload
+
 
 def rotate_refresh_token(refresh_token: str) -> str:
     payload = decode_token(refresh_token, require_type="refresh")
@@ -387,5 +443,6 @@ def rotate_refresh_token(refresh_token: str) -> str:
     revoke_token(payload["jti"], payload["exp"])
     # Issue new token for the same subject
     return create_refresh_token(subject=payload["sub"])
+
 
 # End of module

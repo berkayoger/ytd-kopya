@@ -1,14 +1,13 @@
-from flask import request, jsonify, g
-from loguru import logger
+from flask import g, jsonify, request
 from flask_jwt_extended import jwt_required
+from loguru import logger
 
 from backend.auth.jwt_utils import require_csrf
+from backend.core import core_bp
 from backend.middleware.plan_limits import enforce_plan_limit
 from backend.services.decision_engine import generate_recommendation
 from backend.utils.feature_flags import feature_flag_enabled
 from backend.utils.usage_tracking import record_usage
-
-from backend.core import core_bp
 
 
 @core_bp.route("/predict", methods=["POST"])
@@ -34,4 +33,3 @@ def predict():
     except Exception:
         logger.exception("Predict hatası")
         return jsonify({"error": "Sunucu hatası"}), 500
-

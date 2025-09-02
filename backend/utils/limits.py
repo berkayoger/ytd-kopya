@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Optional, Tuple, Any, Dict
+from typing import Any, Dict, Optional, Tuple
+
 
 # -----------------------------------------------------------------------------
 # DB ve Model yardımcıları
@@ -10,12 +11,16 @@ from typing import Optional, Tuple, Any, Dict
 def _get_db_and_model():
     """UsageLog ve db objesine ulaş."""
     try:
-        from backend.db.models import db as _db, UsageLog as _UsageLog  # type: ignore
+        from backend.db.models import UsageLog as _UsageLog
+        from backend.db.models import db as _db  # type: ignore
+
         return _db, _UsageLog
     except Exception:
         pass
     try:
-        from backend.extensions import db as _db, UsageLog as _UsageLog  # type: ignore
+        from backend.extensions import UsageLog as _UsageLog
+        from backend.extensions import db as _db  # type: ignore
+
         return _db, _UsageLog
     except Exception:
         pass
@@ -31,10 +36,14 @@ _ACTION_WINDOWS: Dict[str, str] = {
     "generate_chart": "daily",
 }
 
+
 def _resolve_window(action: str) -> str:
     return _ACTION_WINDOWS.get(action, "daily")
 
-def _window_for_action(action: str, now: Optional[datetime] = None) -> Tuple[datetime, datetime]:
+
+def _window_for_action(
+    action: str, now: Optional[datetime] = None
+) -> Tuple[datetime, datetime]:
     now = now or datetime.utcnow()
     window = _resolve_window(action)
 
@@ -76,7 +85,9 @@ def get_usage_count(user: Any, action: str, now: Optional[datetime] = None) -> i
     q = UsageLog.query.filter(UsageLog.user_id == user_id, UsageLog.action == action)
 
     # Kolon tespiti ve pencere filtresi
-    time_col = getattr(UsageLog, "timestamp", None) or getattr(UsageLog, "created_at", None)
+    time_col = getattr(UsageLog, "timestamp", None) or getattr(
+        UsageLog, "created_at", None
+    )
     if time_col is not None:
         start, end = _window_for_action(action, now)
         q = q.filter(time_col >= start, time_col < end)
@@ -87,7 +98,9 @@ def get_usage_count(user: Any, action: str, now: Optional[datetime] = None) -> i
         return 0
 
 
-def increment_usage(user: Any, action: str, ts: Optional[datetime] = None, **extra) -> None:
+def increment_usage(
+    user: Any, action: str, ts: Optional[datetime] = None, **extra
+) -> None:
     """
     Yeni UsageLog ekle. UsageLog.query.session / db.session üzerinden commit edilir.
     """
@@ -136,6 +149,7 @@ def _as_dict(obj: Any) -> Dict[str, Any]:
     except Exception:
         return {}
 
+
 def _extract_plan_limits(user: Any) -> Dict[str, Any]:
     plan = getattr(user, "plan", None)
     if plan is not None:
@@ -154,7 +168,10 @@ def _extract_plan_limits(user: Any) -> Dict[str, Any]:
         return d
     return {}
 
-def get_plan_limit(user: Any, action: str, default: Optional[int] = None) -> Optional[int]:
+
+def get_plan_limit(
+    user: Any, action: str, default: Optional[int] = None
+) -> Optional[int]:
     limits = _extract_plan_limits(user)
     if not limits:
         return default
@@ -170,6 +187,7 @@ def get_plan_limit(user: Any, action: str, default: Optional[int] = None) -> Opt
             return int(limits[k])
     return default
 
+
 def remaining_quota(
     user: Any,
     action: str,
@@ -181,6 +199,7 @@ def remaining_quota(
         return None
     used = get_usage_count(user, action, now=now)
     return max(limit_val - used, 0)
+
 
 def enforce_limit(
     user: Any,

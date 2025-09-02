@@ -1,5 +1,7 @@
 from datetime import datetime
+
 from backend.db import db
+
 
 class PriceHistory(db.Model):
     __tablename__ = "price_history"

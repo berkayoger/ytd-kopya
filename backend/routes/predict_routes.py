@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import random
+
 import pandas as pd
-from flask import Blueprint, jsonify, request, g
+from flask import Blueprint, g, jsonify, request
 from flask_limiter.util import get_remote_address
 
 from backend import limiter

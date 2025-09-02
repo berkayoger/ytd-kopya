@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import Dict, Tuple
 
 """
@@ -11,7 +12,7 @@ Bu modül copy/evaluate çıktısını ek kısıtlarla iyileştirir:
  - bir sorun olursa temel mantığa geri dönüş
 """
 
-DEFAULT_THRESH_BUY = 0.015   # BUY için minimum skor
+DEFAULT_THRESH_BUY = 0.015  # BUY için minimum skor
 DEFAULT_THRESH_SELL = 0.015  # SELL için minimum skor
 
 
@@ -29,7 +30,9 @@ def _regime_mult(regime_probs: Dict[str, float]) -> float:
 
 
 def _direction_match(decision: str, side: str) -> bool:
-    return (decision == "LONG" and side == "BUY") or (decision == "SHORT" and side == "SELL")
+    return (decision == "LONG" and side == "BUY") or (
+        decision == "SHORT" and side == "SELL"
+    )
 
 
 def advanced_decision_logic(

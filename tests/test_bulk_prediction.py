@@ -26,7 +26,9 @@ def test_generate_predictions_for_all_coins(monkeypatch):
             "generate_ta_based_recommendation",
             lambda symbol: {"symbol": symbol.upper()},
         )
-        monkeypatch.setattr(bulk_prediction, "fetch_current_price", lambda symbol: 100.0)
+        monkeypatch.setattr(
+            bulk_prediction, "fetch_current_price", lambda symbol: 100.0
+        )
 
         created = bulk_prediction.generate_predictions_for_all_coins(limit=2)
         assert set(created) == {"BITCOIN", "ETHEREUM"}

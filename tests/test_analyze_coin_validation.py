@@ -12,15 +12,22 @@ from backend.db.models import SubscriptionPlan
 def _noop_decorator(*args, **kwargs):
     """Her şeyi olduğu gibi dönen sahte decorator."""
     from flask import g
+
     def _wrap_func(func):
         def _inner(*a, **k):
-            g.user = SimpleNamespace(id="u1", username="coinuser", subscription_level=SubscriptionPlan.BASIC)
+            g.user = SimpleNamespace(
+                id="u1", username="coinuser", subscription_level=SubscriptionPlan.BASIC
+            )
             return func(*a, **k)
+
         return _inner
+
     if args and callable(args[0]) and len(args) == 1 and not kwargs:
         return _wrap_func(args[0])
+
     def _wrap(f):
         return _wrap_func(f)
+
     return _wrap
 
 
@@ -52,7 +59,9 @@ def setup_app(monkeypatch):
     )
     # JWT gerekliliğini kaldır
     monkeypatch.setattr(
-        "flask_jwt_extended.jwt_required", lambda *_a, **_k: _noop_decorator, raising=False
+        "flask_jwt_extended.jwt_required",
+        lambda *_a, **_k: _noop_decorator,
+        raising=False,
     )
     # rate limit → no‑op
     monkeypatch.setattr(
@@ -87,13 +96,16 @@ def setup_app(monkeypatch):
     @app.before_request
     def _inject_g_user():
         from flask import g
+
         g.user = SimpleNamespace(
             id="u1",
             username="coinuser",
             subscription_level=SubscriptionPlan.BASIC,
         )
+
     # Dekorasyonları kaldır ve no-op ile sar
     import backend.api.routes as routes
+
     base_fn = routes.analyze_coin_api
     while hasattr(base_fn, "__wrapped__"):
         base_fn = base_fn.__wrapped__
@@ -124,4 +136,3 @@ def test_analyze_coin_valid_symbol_hits_queue(monkeypatch):
 
     resp = client.get("/api/analyze_coin/BTC")
     assert resp.status_code in (200, 202, 201, 204)
-

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from typing import Any, Dict
+
 import numpy as np
 import pandas as pd
 
-from ..registry import register_engine
 from ..base import BaseDecisionEngine, DecisionRequest, DecisionResult
+from ..registry import register_engine
 from ..utils import daily_volatility
 
 
@@ -19,6 +20,7 @@ class KM1MomentumEMACrossover(BaseDecisionEngine):
     KM1: Momentum / EMA crossover (varsayılan: 12/48)
     Trend gücü = (ema_fast - ema_slow)/close
     """
+
     engine_id = "KM1"
 
     def run(self, request: DecisionRequest) -> DecisionResult:
@@ -35,8 +37,22 @@ class KM1MomentumEMACrossover(BaseDecisionEngine):
         trend = (ema_fast - ema_slow) / (close + 1e-12)
         t = float(trend.iloc[-1]) if len(trend) else 0.0
 
-        cross_up = bool((ema_fast.iloc[-2] <= ema_slow.iloc[-2]) and (ema_fast.iloc[-1] > ema_slow.iloc[-1])) if len(df) > 2 else False
-        cross_dn = bool((ema_fast.iloc[-2] >= ema_slow.iloc[-2]) and (ema_fast.iloc[-1] < ema_slow.iloc[-1])) if len(df) > 2 else False
+        cross_up = (
+            bool(
+                (ema_fast.iloc[-2] <= ema_slow.iloc[-2])
+                and (ema_fast.iloc[-1] > ema_slow.iloc[-1])
+            )
+            if len(df) > 2
+            else False
+        )
+        cross_dn = (
+            bool(
+                (ema_fast.iloc[-2] >= ema_slow.iloc[-2])
+                and (ema_fast.iloc[-1] < ema_slow.iloc[-1])
+            )
+            if len(df) > 2
+            else False
+        )
 
         action = "hold"
         if t > 0:

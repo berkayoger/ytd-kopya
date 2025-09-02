@@ -1,6 +1,7 @@
 """Tests for feature flag system."""
 
 import os
+
 os.environ["FLASK_ENV"] = "testing"
 import pytest
 from flask import Flask

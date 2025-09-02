@@ -1,7 +1,9 @@
-import pytest
-from backend.models.log import Log
 from datetime import datetime, timedelta
 from uuid import uuid4
+
+import pytest
+
+from backend.models.log import Log
 
 
 def create_log_entry(db, username="admin", action="login"):

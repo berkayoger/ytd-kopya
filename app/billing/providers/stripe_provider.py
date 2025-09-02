@@ -2,7 +2,7 @@ import os
 
 import stripe
 
-from .base import BillingProvider, CheckoutSession, BillingPortal
+from .base import BillingPortal, BillingProvider, CheckoutSession
 
 
 class StripeProvider(BillingProvider):
@@ -14,7 +14,9 @@ class StripeProvider(BillingProvider):
             raise RuntimeError("STRIPE_SECRET_KEY not set")
         stripe.api_key = sk
 
-    def create_checkout_session(self, *, customer_id, plan, success_url, cancel_url, metadata=None) -> CheckoutSession:
+    def create_checkout_session(
+        self, *, customer_id, plan, success_url, cancel_url, metadata=None
+    ) -> CheckoutSession:
         interval = plan["interval"]
         unit_amount = plan["price_minor"]
         currency = plan["currency"].lower()
@@ -42,12 +44,17 @@ class StripeProvider(BillingProvider):
         sess = stripe.checkout.Session.create(**params)
         return CheckoutSession(url=sess.url)
 
-    def create_billing_portal(self, *, customer_id: str, return_url: str) -> BillingPortal:
-        sess = stripe.billing_portal.Session.create(customer=customer_id, return_url=return_url)
+    def create_billing_portal(
+        self, *, customer_id: str, return_url: str
+    ) -> BillingPortal:
+        sess = stripe.billing_portal.Session.create(
+            customer=customer_id, return_url=return_url
+        )
         return BillingPortal(url=sess.url)
 
     def verify_and_parse_webhook(self, *, payload: bytes, sig_header: str):
         secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-        event = stripe.Webhook.construct_event(payload=payload, sig_header=sig_header, secret=secret)
+        event = stripe.Webhook.construct_event(
+            payload=payload, sig_header=sig_header, secret=secret
+        )
         return event["type"], event["data"]["object"], event["id"]
-

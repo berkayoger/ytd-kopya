@@ -1,5 +1,5 @@
-from itsdangerous import URLSafeTimedSerializer
 from flask import current_app
+from itsdangerous import URLSafeTimedSerializer
 
 
 def _get_serializer():

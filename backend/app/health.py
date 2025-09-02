@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, g, request
-import time
 import logging
 import os
+import time
+
+from flask import Blueprint, g, jsonify, request
 
 from backend.utils.feature_flags import feature_flag_enabled
 from backend.utils.logger import create_log
 
 try:
-    from backend.auth.jwt_utils import jwt_required_if_not_testing  # opsiyonel kullanım
+    from backend.auth.jwt_utils import \
+        jwt_required_if_not_testing  # opsiyonel kullanım
 except Exception:  # pragma: no cover
     jwt_required_if_not_testing = None
 
@@ -39,7 +41,10 @@ def _log_health(action: str) -> None:
 
 def _maybe_auth(func):
     """REQUIRE_AUTH_FOR_HEALTH=true ise auth uygula."""
-    if os.getenv("REQUIRE_AUTH_FOR_HEALTH", "false").lower() in {"1", "true", "yes"} and jwt_required_if_not_testing:
+    if (
+        os.getenv("REQUIRE_AUTH_FOR_HEALTH", "false").lower() in {"1", "true", "yes"}
+        and jwt_required_if_not_testing
+    ):
         return jwt_required_if_not_testing()(func)
     return func
 

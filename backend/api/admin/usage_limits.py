@@ -1,7 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
+
 from backend.auth.middlewares import admin_required
-from backend.db.models import db, UsageLimitModel
+from backend.db.models import UsageLimitModel, db
 
 admin_usage_bp = Blueprint(
     "admin_usage",

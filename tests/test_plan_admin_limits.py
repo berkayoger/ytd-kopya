@@ -1,4 +1,5 @@
 import json
+
 import flask_jwt_extended
 import pytest
 from flask import jsonify
@@ -54,6 +55,7 @@ def unauthorized_app(monkeypatch):
     monkeypatch.setattr("backend.auth.jwt_utils.require_csrf", lambda f: f)
 
     import sys
+
     from backend.auth import jwt_utils
 
     def deny_decorator(func):

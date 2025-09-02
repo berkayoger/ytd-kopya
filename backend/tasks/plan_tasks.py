@@ -1,12 +1,12 @@
-from datetime import datetime
 import logging
+from datetime import datetime
 
 from flask import current_app
 
 from backend import celery_app, create_app, db
 from backend.db.models import User, UserRole
-from backend.models.plan import Plan
 from backend.models.pending_plan import PendingPlan
+from backend.models.plan import Plan
 from backend.models.plan_history import PlanHistory
 from backend.utils.helpers import add_audit_log
 
@@ -24,14 +24,12 @@ def auto_downgrade_expired_plans():
         if not free_plan:
             logger.warning("Free plan not found; skipping downgrade")
             return
-        users = (
-            User.query.filter(
-                User.plan_expire_at != None,
-                User.plan_expire_at < now,
-                User.plan_id != free_plan.id,
-                User.role == UserRole.USER,
-            ).all()
-        )
+        users = User.query.filter(
+            User.plan_expire_at != None,
+            User.plan_expire_at < now,
+            User.plan_id != free_plan.id,
+            User.role == UserRole.USER,
+        ).all()
         for u in users:
             old_plan = u.plan_id
             u.plan_id = free_plan.id
@@ -56,6 +54,7 @@ def auto_expire_boosts():
             u.boost_expire_at = None
             db.session.commit()
             logger.info("Expired boost cleared for user %s", u.username)
+
 
 @celery_app.task
 def activate_pending_plans():

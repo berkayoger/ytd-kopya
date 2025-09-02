@@ -1,11 +1,11 @@
 # File: backend/core/services.py
 
-import os
-import json
 import base64
+import json
+import os
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
-from dataclasses import dataclass
 
 try:
     import yaml  # YAML konfigleri
@@ -18,12 +18,13 @@ except Exception:  # pragma: no cover
     np = None
 
 import pandas as pd
-import requests
 import redis
+import requests
 from flask import current_app
 from loguru import logger
 from requests.adapters import HTTPAdapter
 from requests.exceptions import RequestException
+
 # import pandas_ta as ta
 
 try:
@@ -42,12 +43,11 @@ try:
 except ImportError:
     _pipeline = None
 
-from backend.db import db
-from backend.db.models import ABHData, DBHData, User, SubscriptionPlan
 from backend.constants import BASIC_ALLOWED_COINS, BASIC_WEEKLY_VIEW_LIMIT
-from backend.utils.helpers import bulk_insert_records
+from backend.db import db
+from backend.db.models import ABHData, DBHData, SubscriptionPlan, User
 from backend.tasks import run_full_analysis  # Celery task
-
+from backend.utils.helpers import bulk_insert_records
 
 # Karar kurallarını yükle (YAML veya Flask config içinden)
 RULES_CONFIG: Dict[str, Any] = {}

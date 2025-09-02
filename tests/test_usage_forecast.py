@@ -1,14 +1,16 @@
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
+
 from backend import create_app, db
-from backend.db.models import User, UsageLog, UserRole
+from backend.db.models import UsageLog, User, UserRole
 
 
 @pytest.fixture
 def test_app(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
     app = create_app()
-    app.config['TESTING'] = True
+    app.config["TESTING"] = True
 
     with app.app_context():
         db.create_all()
@@ -34,16 +36,20 @@ def test_get_usage_count(test_app, test_user):
     with test_app.app_context():
         now = datetime.utcnow()
         yesterday = now - timedelta(days=1)
-        db.session.add_all([
-            UsageLog(user_id=test_user.id, action="predict_daily", timestamp=now),
-            UsageLog(user_id=test_user.id, action="predict_daily", timestamp=now),
-            UsageLog(user_id=test_user.id, action="predict_daily", timestamp=yesterday),
-            UsageLog(user_id=test_user.id, action="export", timestamp=now),
-            UsageLog(user_id=test_user.id, action="generate_chart", timestamp=now),
-            UsageLog(user_id=test_user.id, action="generate_chart", timestamp=now),
-            UsageLog(user_id=test_user.id, action="forecast", timestamp=now),
-            UsageLog(user_id=test_user.id, action="forecast", timestamp=now),
-        ])
+        db.session.add_all(
+            [
+                UsageLog(user_id=test_user.id, action="predict_daily", timestamp=now),
+                UsageLog(user_id=test_user.id, action="predict_daily", timestamp=now),
+                UsageLog(
+                    user_id=test_user.id, action="predict_daily", timestamp=yesterday
+                ),
+                UsageLog(user_id=test_user.id, action="export", timestamp=now),
+                UsageLog(user_id=test_user.id, action="generate_chart", timestamp=now),
+                UsageLog(user_id=test_user.id, action="generate_chart", timestamp=now),
+                UsageLog(user_id=test_user.id, action="forecast", timestamp=now),
+                UsageLog(user_id=test_user.id, action="forecast", timestamp=now),
+            ]
+        )
         db.session.commit()
 
         count_today = get_usage_count(test_user, "predict_daily")

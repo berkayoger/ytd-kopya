@@ -1,11 +1,16 @@
 from __future__ import annotations
-import os, time
+
+import os
+import time
 from contextlib import contextmanager
 from typing import Iterable, Optional
-from prometheus_client import Counter, Histogram, Gauge, CollectorRegistry, CONTENT_TYPE_LATEST, generate_latest
+
+from prometheus_client import (CONTENT_TYPE_LATEST, CollectorRegistry, Counter,
+                               Gauge, Histogram, generate_latest)
 
 # Custom registry so we can export only our app metrics if needed
 REGISTRY = CollectorRegistry()
+
 
 def _latency_buckets_from_env() -> Optional[Iterable[float]]:
     raw = os.getenv("METRICS_LATENCY_BUCKETS", "").strip()
@@ -16,6 +21,7 @@ def _latency_buckets_from_env() -> Optional[Iterable[float]]:
     except Exception:
         return None
 
+
 _latency_buckets = _latency_buckets_from_env()
 
 REQUEST_LATENCY = Histogram(
@@ -23,10 +29,23 @@ REQUEST_LATENCY = Histogram(
     "Request latency in seconds.",
     ["route"],
     registry=REGISTRY,
-    buckets=_latency_buckets or (
-        0.01, 0.025, 0.05, 0.075, 0.1,
-        0.2, 0.3, 0.5, 0.75, 1.0,
-        2.0, 3.0, 5.0, 8.0, 13.0
+    buckets=_latency_buckets
+    or (
+        0.01,
+        0.025,
+        0.05,
+        0.075,
+        0.1,
+        0.2,
+        0.3,
+        0.5,
+        0.75,
+        1.0,
+        2.0,
+        3.0,
+        5.0,
+        8.0,
+        13.0,
     ),
 )
 
@@ -135,6 +154,9 @@ def prometheus_wsgi_app(environ, start_response):
     """Minimal WSGI app returning metrics content. Use with Flask via a wrapper route."""
     data = generate_latest(REGISTRY)
     status = "200 OK"
-    headers = [("Content-Type", CONTENT_TYPE_LATEST), ("Content-Length", str(len(data)))]
+    headers = [
+        ("Content-Type", CONTENT_TYPE_LATEST),
+        ("Content-Length", str(len(data))),
+    ]
     start_response(status, headers)
     return [data]

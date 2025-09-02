@@ -1,4 +1,5 @@
 import os
+
 from celery import Celery
 from kombu import Exchange, Queue
 
@@ -40,5 +41,4 @@ def autodiscover_tasks():
 
 if os.getenv("FLASK_ENV") != "testing":
     autodiscover_tasks()
-from .celery_tasks import run_full_analysis
 from .celery_tasks import run_full_analysis

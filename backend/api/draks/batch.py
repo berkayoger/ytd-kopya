@@ -1,22 +1,21 @@
 from __future__ import annotations
+
 import os
 import uuid
-from flask import Blueprint, request, jsonify, g
+
+from flask import Blueprint, g, jsonify, request
+
+from backend import limiter
 from backend.auth.jwt_utils import jwt_required_if_not_testing
 from backend.middleware.plan_limits import enforce_plan_limit
-from backend.utils.feature_flags import feature_flag_enabled
-from backend.utils.security import validate_asset, validate_timeframe, validate_symbols_list
-from backend.utils.rate import parse_rate_string
-from backend.utils.logger import create_log
 from backend.observability.metrics import inc_batch_submit
-from backend import limiter
-from backend.tasks.draks_batch import (
-    init_job,
-    job_status,
-    job_results,
-    process_symbol,
-    BATCH_MAX_CANDLES,
-)
+from backend.tasks.draks_batch import (BATCH_MAX_CANDLES, init_job,
+                                       job_results, job_status, process_symbol)
+from backend.utils.feature_flags import feature_flag_enabled
+from backend.utils.logger import create_log
+from backend.utils.rate import parse_rate_string
+from backend.utils.security import (validate_asset, validate_symbols_list,
+                                    validate_timeframe)
 
 draks_batch_bp = Blueprint("draks_batch", __name__)
 
@@ -28,14 +27,19 @@ def _rate_limit_value() -> str:
 def _feature_enabled() -> bool:
     return feature_flag_enabled("draks") and (
         feature_flag_enabled("draks_batch")
-        or os.getenv("DRAKS_BATCH_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+        or os.getenv("DRAKS_BATCH_ENABLED", "false").lower()
+        in {"1", "true", "yes", "on"}
     )
 
 
 @draks_batch_bp.post("/batch/submit")
 @jwt_required_if_not_testing()
 @enforce_plan_limit("draks_batch")
-@limiter.limit(lambda: _rate_limit_value(), key_func=lambda: (getattr(g, "user", None) and str(g.user.id)) or request.remote_addr)
+@limiter.limit(
+    lambda: _rate_limit_value(),
+    key_func=lambda: (getattr(g, "user", None) and str(g.user.id))
+    or request.remote_addr,
+)
 def batch_submit():
     if not _feature_enabled():
         return jsonify({"error": "Özellik şu anda devre dışı."}), 403
@@ -85,7 +89,10 @@ def _check_owner(meta_user_id: str | None) -> bool:
     if not user:
         return False
     try:
-        if getattr(user, "is_admin", False) or str(getattr(user, "role", "")).upper() == "ADMIN":
+        if (
+            getattr(user, "is_admin", False)
+            or str(getattr(user, "role", "")).upper() == "ADMIN"
+        ):
             return True
     except Exception:
         pass

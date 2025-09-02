@@ -22,6 +22,7 @@ def advanced_decision_logic(indicators: dict) -> dict:
 
     return {"signal": signal, "confidence": round(confidence, 2)}
 
+
 from .decision_maker import build_prediction
 
 

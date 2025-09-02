@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, request, current_app
 from typing import Any, Dict, List
-from sqlalchemy import Table, select, func, and_
+
+from flask import Blueprint, current_app, jsonify, request
+from sqlalchemy import Table, and_, func, select
 
 admin_logs_bp = Blueprint("admin_logs_bp", __name__, url_prefix="/api/admin")
 
@@ -18,6 +19,7 @@ def _get_db():
         db = ext.get("sqlalchemy")
         if db is None:
             from flask_sqlalchemy import SQLAlchemy  # type: ignore
+
             # Bazı kurulumlarda current_app.extensions["sqlalchemy"] yoksa:
             db = SQLAlchemy()
             db.init_app(current_app)

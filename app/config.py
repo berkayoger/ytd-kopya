@@ -8,7 +8,6 @@ from typing import Any, Dict, Optional
 
 from .secrets_manager import SecretsManager
 
-
 # Uygulama genelinde kullanılacak gizli değer yöneticisi
 secrets_manager = SecretsManager(os.environ.get("ENCRYPTION_KEY"))
 
@@ -29,13 +28,16 @@ class Config:
 
     SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_urlsafe(32)
 
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or \
-        "sqlite:///" + os.path.join(os.path.dirname(__file__), "app.db")
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        "DATABASE_URL"
+    ) or "sqlite:///" + os.path.join(os.path.dirname(__file__), "app.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
         "pool_recycle": 300,
-        "connect_args": {"check_same_thread": False} if "sqlite" in SQLALCHEMY_DATABASE_URI else {},
+        "connect_args": (
+            {"check_same_thread": False} if "sqlite" in SQLALCHEMY_DATABASE_URI else {}
+        ),
     }
 
     SESSION_COOKIE_NAME = "session"
@@ -44,19 +46,24 @@ class Config:
     SESSION_COOKIE_SECURE = os.environ.get("FLASK_ENV") == "production"
     PERMANENT_SESSION_LIFETIME = timedelta(hours=4)
 
-    COINGECKO_API_KEY = _decrypt_secret(os.environ.get("COINGECKO_API_KEY_ENCRYPTED")) or \
-        os.environ.get("COINGECKO_API_KEY")
-    CRYPTOCOMPARE_API_KEY = _decrypt_secret(os.environ.get("CRYPTOCOMPARE_API_KEY_ENCRYPTED")) or \
-        os.environ.get("CRYPTOCOMPARE_API_KEY")
+    COINGECKO_API_KEY = _decrypt_secret(
+        os.environ.get("COINGECKO_API_KEY_ENCRYPTED")
+    ) or os.environ.get("COINGECKO_API_KEY")
+    CRYPTOCOMPARE_API_KEY = _decrypt_secret(
+        os.environ.get("CRYPTOCOMPARE_API_KEY_ENCRYPTED")
+    ) or os.environ.get("CRYPTOCOMPARE_API_KEY")
 
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY") or secrets.token_urlsafe(64)
     JWT_ACCESS_TOKEN_EXPIRES = int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRES", 3600))
-    JWT_REFRESH_TOKEN_EXPIRES = int(os.environ.get("JWT_REFRESH_TOKEN_EXPIRES", 2592000))
+    JWT_REFRESH_TOKEN_EXPIRES = int(
+        os.environ.get("JWT_REFRESH_TOKEN_EXPIRES", 2592000)
+    )
     JWT_ALGORITHM = "HS256"
 
     REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-    REDIS_PASSWORD = _decrypt_secret(os.environ.get("REDIS_PASSWORD_ENCRYPTED")) or \
-        os.environ.get("REDIS_PASSWORD")
+    REDIS_PASSWORD = _decrypt_secret(
+        os.environ.get("REDIS_PASSWORD_ENCRYPTED")
+    ) or os.environ.get("REDIS_PASSWORD")
 
     CELERY_BROKER_URL = REDIS_URL
     CELERY_RESULT_BACKEND = REDIS_URL
@@ -104,7 +111,9 @@ class Config:
         masked = config_dict.copy()
         for key in sensitive_keys:
             if key in masked and masked[key]:
-                masked[key] = f"{'*' * (len(str(masked[key])) - 4)}{str(masked[key])[-4:]}"
+                masked[key] = (
+                    f"{'*' * (len(str(masked[key])) - 4)}{str(masked[key])[-4:]}"
+                )
         return masked
 
 
@@ -170,4 +179,3 @@ config = {
     "testing": TestingConfig,
     "default": DevelopmentConfig,
 }
-

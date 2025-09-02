@@ -1,9 +1,11 @@
-from backend.db.models import TechnicalIndicator, PredictionOpportunity
+from datetime import datetime, timedelta
+
 from sqlalchemy import desc
+
+from backend.db import db
+from backend.db.models import PredictionOpportunity, TechnicalIndicator
 from backend.engine.strategic_decision_engine import advanced_decision_logic
 from backend.utils.price_fetcher import fetch_current_price
-from backend.db import db
-from datetime import datetime, timedelta
 
 
 def generate_ta_based_recommendation(symbol="bitcoin"):

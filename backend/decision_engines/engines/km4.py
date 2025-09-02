@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from ..registry import register_engine
 from ..base import BaseDecisionEngine, DecisionRequest, DecisionResult
+from ..registry import register_engine
 from ..utils import daily_volatility
 
 
@@ -11,6 +11,7 @@ class KM4BaselineHold(BaseDecisionEngine):
     KM4: Baseline/Hold – her zaman temkinli 'hold' önerir.
     Konsensüste dengeleyici rol oynar.
     """
+
     engine_id = "KM4"
 
     def run(self, request: DecisionRequest) -> DecisionResult:

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, Mapping
+from typing import Any, Dict, Mapping, Optional
 
 
 @dataclass
@@ -26,10 +26,11 @@ class BillingProvider:
     ) -> CheckoutSession:
         raise NotImplementedError
 
-    def create_billing_portal(self, *, customer_id: str, return_url: str) -> BillingPortal:
+    def create_billing_portal(
+        self, *, customer_id: str, return_url: str
+    ) -> BillingPortal:
         raise NotImplementedError
 
     def verify_and_parse_webhook(self, *, payload: bytes, sig_header: str):
         """Return (event_type:str, data:dict, event_id:str)."""
         raise NotImplementedError
-

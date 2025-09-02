@@ -1,11 +1,14 @@
-from flask import Blueprint, request, jsonify, current_app
-from flask_jwt_extended import jwt_required
-from backend.auth.middlewares import admin_required
-from backend.db.models import PromoCodeUsage, PromoCode, User
-from sqlalchemy import func
 from datetime import datetime
 
+from flask import Blueprint, current_app, jsonify, request
+from flask_jwt_extended import jwt_required
+from sqlalchemy import func
+
+from backend.auth.middlewares import admin_required
+from backend.db.models import PromoCode, PromoCodeUsage, User
+
 stats_bp = Blueprint("promo_stats", __name__)
+
 
 @stats_bp.route("/api/admin/promo-codes/stats", methods=["GET"])
 @jwt_required()
@@ -31,7 +34,9 @@ def promo_usage_stats():
         current_app.logger.exception("Invalid date format", exc_info=e)
         return jsonify({"error": "Tarih formatı geçersiz (YYYY-MM-DD)"}), 400
 
-    q = PromoCodeUsage.query.join(PromoCode, PromoCode.id == PromoCodeUsage.promo_code_id)
+    q = PromoCodeUsage.query.join(
+        PromoCode, PromoCode.id == PromoCodeUsage.promo_code_id
+    )
     if start_date:
         q = q.filter(PromoCodeUsage.used_at >= start_date)
     if end_date:
@@ -40,7 +45,9 @@ def promo_usage_stats():
         q = q.filter(PromoCode.is_active.is_(True))
     if new_users_only:
         q = q.join(User, User.id == PromoCodeUsage.user_id)
-        q = q.filter(func.julianday(PromoCodeUsage.used_at) - func.julianday(User.created_at) < 1)
+        q = q.filter(
+            func.julianday(PromoCodeUsage.used_at) - func.julianday(User.created_at) < 1
+        )
     if single_use_only:
         q = q.filter(PromoCode.is_single_use_per_user.is_(True))
 
@@ -53,11 +60,10 @@ def promo_usage_stats():
     total = stats_query.count()
     stats = stats_query.offset((page - 1) * per_page).limit(per_page).all()
 
-    result = [
-        {"code": code, "count": count}
-        for code, count in stats
-    ]
-    return jsonify({"total": total, "page": page, "per_page": per_page, "items": result})
+    result = [{"code": code, "count": count} for code, count in stats]
+    return jsonify(
+        {"total": total, "page": page, "per_page": per_page, "items": result}
+    )
 
 
 @stats_bp.route("/api/admin/promo-codes/stats/<string:code>/usages", methods=["GET"])
@@ -65,8 +71,7 @@ def promo_usage_stats():
 @admin_required()
 def promo_code_usage_details(code):
     usages = (
-        PromoCodeUsage.query
-        .join(User, User.id == PromoCodeUsage.user_id)
+        PromoCodeUsage.query.join(User, User.id == PromoCodeUsage.user_id)
         .join(PromoCode, PromoCode.id == PromoCodeUsage.promo_code_id)
         .filter(PromoCode.code == code.upper())
         .order_by(PromoCodeUsage.used_at.desc())
@@ -74,11 +79,9 @@ def promo_code_usage_details(code):
         .all()
     )
 
-    return jsonify([
-        {
-            "username": u,
-            "email": e,
-            "used_at": ua.isoformat() if ua else None
-        }
-        for u, e, ua in usages
-    ])
+    return jsonify(
+        [
+            {"username": u, "email": e, "used_at": ua.isoformat() if ua else None}
+            for u, e, ua in usages
+        ]
+    )

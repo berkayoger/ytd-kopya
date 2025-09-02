@@ -1,4 +1,5 @@
 from flask import Blueprint
+
 from .models.db import ensure_db_and_tables, seed_plans
 
 
@@ -27,4 +28,3 @@ def register_all(app) -> None:
     _register_if_missing(app, auth_bp, "/api/auth")
     _register_if_missing(app, billing_bp, "/api/billing")
     _register_if_missing(app, csrf_bp, "/api/csrf")
-

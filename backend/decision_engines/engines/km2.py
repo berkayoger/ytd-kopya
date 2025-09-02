@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from typing import Any, Dict
+
 import numpy as np
 import pandas as pd
 
-from ..registry import register_engine
 from ..base import BaseDecisionEngine, DecisionRequest, DecisionResult
+from ..registry import register_engine
 from ..utils import daily_volatility
 
 
@@ -23,6 +24,7 @@ class KM2ATRBreakout(BaseDecisionEngine):
     KM2: ATR kanal kırılımı (savunmacı)
     close > MA + k*ATR => buy, close < MA - k*ATR => sell
     """
+
     engine_id = "KM2"
 
     def run(self, request: DecisionRequest) -> DecisionResult:

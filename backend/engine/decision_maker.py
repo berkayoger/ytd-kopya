@@ -7,6 +7,6 @@ def build_prediction(df, model_output):
             "current_price": current,
             "target_price": target,
             "confidence": model_output["confidence"],
-            "trend_type": "short_term"
+            "trend_type": "short_term",
         }
     return None

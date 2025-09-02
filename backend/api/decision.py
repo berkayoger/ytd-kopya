@@ -1,28 +1,25 @@
-from flask import Blueprint, request, jsonify, g, current_app
+from dataclasses import asdict
+from typing import Any, Dict, List
 
 import pandas as pd
-from typing import Any, Dict, List
-from dataclasses import asdict
+from flask import Blueprint, current_app, g, jsonify, request
 
+from backend.auth.jwt_utils import jwt_required_if_not_testing
 from backend.decision_engine import extract_features, make_decision
 from backend.decision_engine.score_calculator import calculate_score
+from backend.decision_engines import (ENGINE_REGISTRY, DecisionRequest,
+                                      OrchestratorConfig,
+                                      build_consensus_result)
 from backend.engine.strategic_decision_engine import advanced_decision_logic
-from backend.auth.jwt_utils import jwt_required_if_not_testing
 from backend.middleware.plan_limits import enforce_plan_limit
 from backend.utils.feature_flags import feature_flag_enabled
 from backend.utils.logger import create_log
-from backend.decision_engines import (
-    ENGINE_REGISTRY,
-    DecisionRequest,
-    OrchestratorConfig,
-    build_consensus_result,
-)
 
 # Blueprint for lightweight decision endpoints
-decision_bp = Blueprint('decision', __name__, url_prefix='/api/decision')
+decision_bp = Blueprint("decision", __name__, url_prefix="/api/decision")
 
 
-@decision_bp.route('/evaluate', methods=['POST'])
+@decision_bp.route("/evaluate", methods=["POST"])
 def evaluate_decision():
     """Return decision signal and weighted score for provided indicators."""
     data = request.get_json() or {}
@@ -33,19 +30,19 @@ def evaluate_decision():
 
     # Map data to inputs expected by advanced_decision_logic
     indicators = {
-        'rsi': data.get('rsi'),
-        'macd': data.get('macd'),
-        'macd_signal': data.get('macd_signal'),
-        'price': data.get('price'),
-        'sma_10': data.get('sma_10'),
-        'prev_predictions_success_rate': data.get('prev_predictions_success_rate', 0),
+        "rsi": data.get("rsi"),
+        "macd": data.get("macd"),
+        "macd_signal": data.get("macd_signal"),
+        "price": data.get("price"),
+        "sma_10": data.get("sma_10"),
+        "prev_predictions_success_rate": data.get("prev_predictions_success_rate", 0),
     }
     decision = advanced_decision_logic(indicators)
 
-    return jsonify({'decision': decision, 'score': score, 'features': features})
+    return jsonify({"decision": decision, "score": score, "features": features})
 
 
-@decision_bp.route('/predict', methods=['POST'])
+@decision_bp.route("/predict", methods=["POST"])
 def predict_decision():
     """Return a recommendation based on provided market indicators."""
     data = request.get_json(silent=True)
@@ -59,7 +56,7 @@ def predict_decision():
     return jsonify(result)
 
 
-@decision_bp.route('/score-multi', methods=['POST'])
+@decision_bp.route("/score-multi", methods=["POST"])
 @jwt_required_if_not_testing()
 @enforce_plan_limit("predict_daily")
 def score_multi():

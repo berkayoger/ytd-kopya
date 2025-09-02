@@ -1,12 +1,17 @@
 from __future__ import annotations
-import re, json
+
+import json
+import re
+
 from flask import current_app
-from flask_socketio import Namespace, join_room, emit
+from flask_socketio import Namespace, emit, join_room
 
 _ROOM_RE = re.compile(r"^[a-f0-9\-]{16,64}$")
 
+
 def _meta_key(job_id: str) -> str:
     return f"draks:batch:{job_id}:meta"
+
 
 class BatchNamespace(Namespace):
     def on_connect(self):
@@ -22,6 +27,7 @@ class BatchNamespace(Namespace):
         # r = current_app.extensions["redis_client"]; meta = r.get(_meta_key(job_id))
         join_room(f"job:{job_id}")
         emit("joined", {"job_id": job_id})
+
 
 def init_batch_namespace(socketio, app):
     socketio.on_namespace(BatchNamespace("/batch"))

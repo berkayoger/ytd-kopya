@@ -16,8 +16,12 @@ def setup_app(monkeypatch):
 
 
 def test_log_and_list_events(monkeypatch):
-    monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
-    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    monkeypatch.setattr(
+        "flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f)
+    )
+    monkeypatch.setattr(
+        "backend.auth.middlewares.admin_required", lambda: (lambda f: f)
+    )
     app = setup_app(monkeypatch)
     client = app.test_client()
 
@@ -31,8 +35,12 @@ def test_log_and_list_events(monkeypatch):
 
 
 def test_retention_cleanup(monkeypatch):
-    monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
-    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    monkeypatch.setattr(
+        "flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f)
+    )
+    monkeypatch.setattr(
+        "backend.auth.middlewares.admin_required", lambda: (lambda f: f)
+    )
     app = setup_app(monkeypatch)
     client = app.test_client()
 
@@ -53,8 +61,12 @@ def test_retention_cleanup(monkeypatch):
 
 
 def test_system_status(monkeypatch):
-    monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
-    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    monkeypatch.setattr(
+        "flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f)
+    )
+    monkeypatch.setattr(
+        "backend.auth.middlewares.admin_required", lambda: (lambda f: f)
+    )
     app = setup_app(monkeypatch)
     client = app.test_client()
 

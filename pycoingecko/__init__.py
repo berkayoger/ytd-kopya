@@ -9,10 +9,9 @@ from __future__ import annotations
 
 import json
 import os
-import time
 import random
+import time
 from typing import Any, Dict, List, Optional
-
 
 try:  # pragma: no cover - gerçek kütüphane varsa onu kullan
     import importlib
@@ -22,20 +21,20 @@ try:  # pragma: no cover - gerçek kütüphane varsa onu kullan
 except Exception:  # pragma: no cover - küçük HTTP şimi devreye girer
     import urllib.parse
     import urllib.request
-    from urllib.error import URLError, HTTPError
+    from urllib.error import HTTPError, URLError
 
     class _HTTP:
         """Basit HTTP GET yardımcı sınıfı."""
 
         @staticmethod
-        def get(url: str, params: Optional[Dict[str, Any]] = None, timeout: int = 15) -> Any:
+        def get(
+            url: str, params: Optional[Dict[str, Any]] = None, timeout: int = 15
+        ) -> Any:
             """JSON dönen HTTP GET isteği."""
             if params:
                 qs = urllib.parse.urlencode(
                     {
-                        k: (
-                            ",".join(v) if isinstance(v, (list, tuple)) else v
-                        )
+                        k: (",".join(v) if isinstance(v, (list, tuple)) else v)
                         for k, v in params.items()
                         if v is not None
                     }
@@ -88,24 +87,28 @@ except Exception:  # pragma: no cover - küçük HTTP şimi devreye girer
             return out
 
         @staticmethod
-        def _offline_markets(vs_currency: str, ids: Optional[List[str]], per_page: int, page: int) -> List[Dict[str, Any]]:
+        def _offline_markets(
+            vs_currency: str, ids: Optional[List[str]], per_page: int, page: int
+        ) -> List[Dict[str, Any]]:
             if not ids:
                 ids = ["bitcoin", "ethereum", "tether"]
             rng = random.Random(1337)
             items: List[Dict[str, Any]] = []
             for coin_id in ids[:per_page]:
                 price = 1000 + rng.randint(0, 2000)
-                items.append({
-                    "id": coin_id,
-                    "symbol": coin_id[:3],
-                    "name": coin_id.capitalize(),
-                    "current_price": float(price),
-                    "market_cap": float(price * 1_000_000),
-                    "total_volume": float(price * 10_000),
-                    "price_change_percentage_24h": rng.uniform(-5.0, 5.0),
-                    "last_updated": "1970-01-01T00:00:00Z",
-                    "vs_currency": vs_currency,
-                })
+                items.append(
+                    {
+                        "id": coin_id,
+                        "symbol": coin_id[:3],
+                        "name": coin_id.capitalize(),
+                        "current_price": float(price),
+                        "market_cap": float(price * 1_000_000),
+                        "total_volume": float(price * 10_000),
+                        "price_change_percentage_24h": rng.uniform(-5.0, 5.0),
+                        "last_updated": "1970-01-01T00:00:00Z",
+                        "vs_currency": vs_currency,
+                    }
+                )
             return items
 
         def _throttle(self) -> None:
@@ -182,12 +185,9 @@ except Exception:  # pragma: no cover - küçük HTTP şimi devreye girer
                     params["ids"] = ",".join(ids)
                 if price_change_percentage:
                     params["price_change_percentage"] = price_change_percentage
-                return _HTTP.get(
-                    f"{self.api_base}/coins/markets", params=params
-                )
+                return _HTTP.get(f"{self.api_base}/coins/markets", params=params)
             except (URLError, HTTPError, TimeoutError, ValueError):
                 return self._offline_markets(vs_currency, ids, per_page, page)
 
 
 __all__ = ["CoinGeckoAPI"]
-

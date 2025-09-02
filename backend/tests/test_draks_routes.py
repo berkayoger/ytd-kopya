@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from backend import create_app, db
-from backend.db.models import User, SubscriptionPlan, UserRole
+from backend.db.models import SubscriptionPlan, User, UserRole
 from backend.models.plan import Plan
 from backend.utils.feature_flags import create_feature_flag
 
@@ -64,7 +64,9 @@ def _candles(n=60):
     candles = []
     for i in range(n):
         ts = now - (n - i) * 60
-        candles.append({"ts": ts, "open": 1, "high": 1, "low": 1, "close": 1, "volume": 1})
+        candles.append(
+            {"ts": ts, "open": 1, "high": 1, "low": 1, "close": 1, "volume": 1}
+        )
     return candles
 
 

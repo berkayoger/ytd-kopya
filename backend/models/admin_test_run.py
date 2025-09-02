@@ -27,4 +27,3 @@ class AdminTestRun(db.Model):
             "exit_code": self.exit_code,
             "summary_raw": self.summary_raw,
         }
-

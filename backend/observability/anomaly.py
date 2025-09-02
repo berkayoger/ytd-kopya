@@ -1,14 +1,19 @@
 from __future__ import annotations
-import os, time
+
+import os
+import time
 from typing import Optional
+
 from redis import Redis
 
 ANOMALY_WINDOW_SEC = int(os.getenv("ANOMALY_WINDOW_SEC", "900"))
 ANOMALY_MAX_SUBMITS_PER_WINDOW = int(os.getenv("ANOMALY_MAX_SUBMITS_PER_WINDOW", "5"))
 
+
 def _key(user_id: Optional[str], ip: str) -> str:
     uid = user_id or "anon"
     return f"anomaly:submits:{uid}:{ip}"
+
 
 def record_submit(r: Redis, user_id: Optional[str], ip: str) -> bool:
     """

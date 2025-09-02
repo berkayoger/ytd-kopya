@@ -13,4 +13,3 @@ def register_engine(cls: Type[BaseDecisionEngine]) -> Type[BaseDecisionEngine]:
 
     ENGINE_REGISTRY[getattr(cls, "engine_id", cls.__name__)] = cls
     return cls
-

@@ -2,7 +2,7 @@ import pytest
 from flask import g
 
 from backend import create_app, db
-from backend.db.models import User, Role, UserRole
+from backend.db.models import Role, User, UserRole
 
 
 @pytest.fixture
@@ -27,8 +27,12 @@ def client(monkeypatch):
 
         return decorator
 
-    monkeypatch.setattr(flask_jwt_extended, "jwt_required", fake_jwt_required, raising=False)
-    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    monkeypatch.setattr(
+        flask_jwt_extended, "jwt_required", fake_jwt_required, raising=False
+    )
+    monkeypatch.setattr(
+        "backend.auth.middlewares.admin_required", lambda: (lambda f: f)
+    )
 
     app = create_app()
     app.config["TESTING"] = True
@@ -84,4 +88,3 @@ def test_admin_list_users(client):
     assert "username" in row
     assert "email" in row
     assert "subscription_level" in row
-

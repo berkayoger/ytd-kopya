@@ -1,0 +1,1637 @@
+...FFFFFFFF..FF.....FFFFFF.....FFFFFFFFFFF.F.....F...Fs......ssss...s... [ 40%]
+sssss...........sssss........F............F....F.......ss.FFsFsss..FFFFF [ 80%]
+FF.FFFFFFFFF....FFFFF.s......s..ss                                       [100%]
+=================================== FAILURES ===================================
+_________________________ test_copy_eval_ok_and_limit __________________________
+
+app = <Flask 'backend.app'>, user = <User 1>
+auth_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NTY4NDI3MTMsImlzcyI6Inl0ZC1...IiwiZnJlc2giOnRydWV9.RSkTYJvDDB7hIW68tRTlAUjIiu4AJy-vYKwewkyTkBc', 'X-API-KEY': '9add96b1-e433-49c5-9db3-e2032ad67b43'}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3e56ed0>
+
+    def test_copy_eval_ok_and_limit(app, user, auth_headers, monkeypatch):
+        client = app.test_client()
+        with app.app_context():
+            create_feature_flag("draks", True)
+            payload = {"symbol": "BTC/USDT", "side": "BUY", "size": 1000, "candles": _candles()}
+            r1 = client.post("/api/draks/copy/evaluate", headers=auth_headers, json=payload)
+>           assert r1.status_code == 200
+E           assert 403 == 200
+E            +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+backend/tests/test_draks_copy_evaluate.py:85: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:53,714", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+__________________________ test_copy_eval_bad_side[] ___________________________
+
+app = <Flask 'backend.app'>, user = <User 1>
+auth_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NTY4NDI3MTQsImlzcyI6Inl0ZC1...IiwiZnJlc2giOnRydWV9.3pHeRzWEjTh7Chjea4GHqoaSXIq0YpBxN1gO85d7MCI', 'X-API-KEY': 'bbac161b-7cd8-4f2a-8d4a-9620856b9aaf'}
+side = ''
+
+    @pytest.mark.parametrize("side", ["", "BUYSELL", "hold", None])
+    def test_copy_eval_bad_side(app, user, auth_headers, side):
+        client = app.test_client()
+        with app.app_context():
+            create_feature_flag("draks", True)
+            payload = {"symbol": "BTC/USDT", "side": side, "candles": _candles()}
+            r = client.post("/api/draks/copy/evaluate", headers=auth_headers, json=payload)
+>           assert r.status_code == 400
+E           assert 403 == 400
+E            +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+backend/tests/test_draks_copy_evaluate.py:103: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:53,926", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_______________________ test_copy_eval_bad_side[BUYSELL] _______________________
+
+app = <Flask 'backend.app'>, user = <User 1>
+auth_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NTY4NDI3MTQsImlzcyI6Inl0ZC1...IiwiZnJlc2giOnRydWV9.naprlMLAiCOFxMt1rB7XLKqkj9A78NTcFu7iUEEDrkI', 'X-API-KEY': '9bedb3dd-e970-45c4-8d6b-801699682626'}
+side = 'BUYSELL'
+
+    @pytest.mark.parametrize("side", ["", "BUYSELL", "hold", None])
+    def test_copy_eval_bad_side(app, user, auth_headers, side):
+        client = app.test_client()
+        with app.app_context():
+            create_feature_flag("draks", True)
+            payload = {"symbol": "BTC/USDT", "side": side, "candles": _candles()}
+            r = client.post("/api/draks/copy/evaluate", headers=auth_headers, json=payload)
+>           assert r.status_code == 400
+E           assert 403 == 400
+E            +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+backend/tests/test_draks_copy_evaluate.py:103: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:54,053", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+________________________ test_copy_eval_bad_side[hold] _________________________
+
+app = <Flask 'backend.app'>, user = <User 1>
+auth_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NTY4NDI3MTQsImlzcyI6Inl0ZC1...IiwiZnJlc2giOnRydWV9.IhkPFoRzXdcXe_EX111GctBrod1FxVDVdzSFxCK7U80', 'X-API-KEY': '4ca14f34-f9fd-4736-8499-4c316145efe5'}
+side = 'hold'
+
+    @pytest.mark.parametrize("side", ["", "BUYSELL", "hold", None])
+    def test_copy_eval_bad_side(app, user, auth_headers, side):
+        client = app.test_client()
+        with app.app_context():
+            create_feature_flag("draks", True)
+            payload = {"symbol": "BTC/USDT", "side": side, "candles": _candles()}
+            r = client.post("/api/draks/copy/evaluate", headers=auth_headers, json=payload)
+>           assert r.status_code == 400
+E           assert 403 == 400
+E            +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+backend/tests/test_draks_copy_evaluate.py:103: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:54,185", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+________________________ test_copy_eval_bad_side[None] _________________________
+
+app = <Flask 'backend.app'>, user = <User 1>
+auth_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NTY4NDI3MTQsImlzcyI6Inl0ZC1...IiwiZnJlc2giOnRydWV9.viKtV1GSubyAxe3GeMdRUfFkGBHAUWnxTtJldfgQsOo', 'X-API-KEY': '1902449d-1881-420a-ad40-054a028776e7'}
+side = None
+
+    @pytest.mark.parametrize("side", ["", "BUYSELL", "hold", None])
+    def test_copy_eval_bad_side(app, user, auth_headers, side):
+        client = app.test_client()
+        with app.app_context():
+            create_feature_flag("draks", True)
+            payload = {"symbol": "BTC/USDT", "side": side, "candles": _candles()}
+            r = client.post("/api/draks/copy/evaluate", headers=auth_headers, json=payload)
+>           assert r.status_code == 400
+E           assert 403 == 400
+E            +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+backend/tests/test_draks_copy_evaluate.py:103: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:54,354", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+___________________________ test_copy_eval_bad_size ____________________________
+
+app = <Flask 'backend.app'>, user = <User 1>
+auth_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NTY4NDI3MTQsImlzcyI6Inl0ZC1...IiwiZnJlc2giOnRydWV9.TnxvsyUI82Zl_BrK1uAYtqNG_AlBRSbrdXwvHzEHWA8', 'X-API-KEY': '5663bfb7-e776-4d4d-a70a-014842819ec8'}
+
+    def test_copy_eval_bad_size(app, user, auth_headers):
+        client = app.test_client()
+        with app.app_context():
+            create_feature_flag("draks", True)
+            # str size
+            r1 = client.post("/api/draks/copy/evaluate", headers=auth_headers,
+                             json={"symbol": "BTC/USDT", "side": "BUY", "size": "x", "candles": _candles()})
+>           assert r1.status_code == 400
+E           assert 403 == 400
+E            +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+backend/tests/test_draks_copy_evaluate.py:114: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:54,483", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+____________________ test_copy_eval_no_candles_and_no_ccxt _____________________
+
+app = <Flask 'backend.app'>, user = <User 1>
+auth_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NTY4NDI3MTQsImlzcyI6Inl0ZC1...IiwiZnJlc2giOnRydWV9.zukE0vGRUnZhlMbxwcpjEIKQMJ2qXx1u1VH_dNe4sn4', 'X-API-KEY': '49be3bd8-b239-477c-a222-1c5c5824a73c'}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3cf9fa0>
+
+    def test_copy_eval_no_candles_and_no_ccxt(app, user, auth_headers, monkeypatch):
+        client = app.test_client()
+        with app.app_context():
+            create_feature_flag("draks", True)
+            # ccxt kullanılamasın diye modül referansını None yap
+            monkeypatch.setattr("backend.draks.routes.ccxt", None, raising=False)
+            resp = client.post("/api/draks/copy/evaluate",
+                               headers=auth_headers,
+                               json={"symbol": "BTC/USDT", "side": "BUY"})
+>           assert resp.status_code == 400
+E           assert 403 == 400
+E            +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+backend/tests/test_draks_copy_evaluate.py:130: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:54,616", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_______________________ test_copy_eval_insufficient_data _______________________
+
+app = <Flask 'backend.app'>, user = <User 1>
+auth_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NTY4NDI3MTQsImlzcyI6Inl0ZC1...IiwiZnJlc2giOnRydWV9.V6RjcgqLibfgl2SHUbSMqfF3yizao82X6wNL2cSSRGI', 'X-API-KEY': '22025256-b1d4-468e-973f-1e03c5777807'}
+
+    def test_copy_eval_insufficient_data(app, user, auth_headers):
+        client = app.test_client()
+        with app.app_context():
+            create_feature_flag("draks", True)
+            few = _candles(10)  # yetersiz
+            resp = client.post("/api/draks/copy/evaluate",
+                               headers=auth_headers,
+                               json={"symbol": "BTC/USDT", "side": "BUY", "candles": few})
+>           assert resp.status_code == 400
+E           assert 403 == 400
+E            +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+backend/tests/test_draks_copy_evaluate.py:142: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:54,748", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_______________________ test_decision_run_limit_enforced _______________________
+
+app = <Flask 'backend.app'>, user = <User 1>
+auth_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NTY4NDI3MTUsImlzcyI6Inl0ZC1...IsImZyZXNoIjp0cnVlfQ.f_J-EHdOyMjNnZKZagDskvilh83bMp588J4_4oJh-Fg', 'X-API-KEY': '8889eb2b-f6e6-4c65-bf3a-8241c813b229'}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3db3a10>
+
+    def test_decision_run_limit_enforced(app, user, auth_headers, monkeypatch):
+        client = app.test_client()
+    
+        class DummyResp:
+            def __init__(self, status=200):
+                self.status_code = status
+                self.ok = status == 200
+    
+            def json(self):  # basit yanıt
+                return {"decision": "HOLD", "score": 0}
+    
+        monkeypatch.setattr("requests.post", lambda *a, **k: DummyResp())
+        usage_count = {"n": 0}
+        monkeypatch.setattr(User, "get_usage_count", lambda self, key: usage_count["n"])
+    
+        with app.app_context():
+            create_feature_flag("draks_enabled", True)
+            payload = {"symbol": "BTC/USDT", "candles": _candles()}
+            resp1 = client.post(
+                "/api/draks/decision/run",
+                headers=auth_headers,
+                json=payload,
+            )
+>           assert resp1.status_code == 200
+E           assert 403 == 200
+E            +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+backend/tests/test_draks_routes.py:106: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:55,151", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_________________ test_load_dotenv_called_when_not_production __________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a4009b80>
+
+    def test_load_dotenv_called_when_not_production(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "development")
+        with patch("backend.load_dotenv") as mock_load:
+            backend.create_app()
+>           mock_load.assert_called_once()
+
+backend/tests/test_env_loading.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='load_dotenv' id='130316354237744'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'load_dotenv' to have been called once. Called 0 times.
+
+/home/codespace/.python/current/lib/python3.12/unittest/mock.py:923: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:55,315", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+____________________ test_admin_can_update_custom_features _____________________
+
+client = <FlaskClient <Flask 'backend.app'>>
+admin_headers = {'X-API-KEY': 'adminkey'}, test_user = <User 2>
+
+    def test_admin_can_update_custom_features(client, admin_headers, test_user):
+        payload = {
+            "can_export_csv": True,
+            "predict_daily": 99,
+        }
+    
+        res = client.put(
+            f"/api/admin/users/{test_user.id}/custom_features",
+            headers=admin_headers,
+            json=payload,
+        )
+    
+>       assert res.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/test_admin_custom_features.py:80: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:55,475", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+___________________ test_update_custom_features_invalid_json ___________________
+
+client = <FlaskClient <Flask 'backend.app'>>
+admin_headers = {'X-API-KEY': 'adminkey'}, test_user = <User 2>
+
+    def test_update_custom_features_invalid_json(client, admin_headers, test_user):
+        invalid_payload = ["invalid"]
+        resp = client.put(
+            f"/api/admin/users/{test_user.id}/custom_features",
+            json=invalid_payload,
+            headers=admin_headers,
+        )
+>       assert resp.status_code == 400
+E       assert 404 == 400
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/test_admin_custom_features.py:107: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:55,705", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+__________________ test_update_custom_features_user_not_found __________________
+
+client = <FlaskClient <Flask 'backend.app'>>
+admin_headers = {'X-API-KEY': 'adminkey'}
+
+    def test_update_custom_features_user_not_found(client, admin_headers):
+        resp = client.put(
+            "/api/admin/users/999/custom_features",
+            json={},
+            headers=admin_headers,
+        )
+        assert resp.status_code == 404
+>       assert resp.get_json().get("error") == "Kullanıcı bulunamadı"
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'get'
+
+tests/test_admin_custom_features.py:118: AttributeError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:55,917", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_________________ test_update_custom_features_invalid_user_id __________________
+
+client = <FlaskClient <Flask 'backend.app'>>
+admin_headers = {'X-API-KEY': 'adminkey'}
+
+    def test_update_custom_features_invalid_user_id(client, admin_headers):
+        resp = client.get(
+            "/api/admin/users/notint/custom_features",
+            headers=admin_headers,
+        )
+        assert resp.status_code == 404
+>       assert resp.get_json().get("error") == "Kullanıcı bulunamadı"
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'get'
+
+tests/test_admin_custom_features.py:127: AttributeError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:56,055", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_____________________________ test_list_decisions ______________________________
+
+admin_client = <FlaskClient <Flask 'backend.app'>>
+
+    def test_list_decisions(admin_client):
+        set_feature_flag("draks", True)
+        with admin_client.application.app_context():
+            db.session.add(
+                DraksDecision(
+                    symbol="BTC/USDT",
+                    decision="LONG",
+                    position_pct=0.1,
+                    stop=100,
+                    take_profit=110,
+                    reasons="[]",
+                    raw_response="{}",
+                    created_at=datetime.utcnow(),
+                )
+            )
+            db.session.commit()
+    
+        resp = admin_client.get("/api/admin/draks/decisions")
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/test_admin_draks_monitor.py:45: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:56,183", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+______________________________ test_list_signals _______________________________
+
+admin_client = <FlaskClient <Flask 'backend.app'>>
+
+    def test_list_signals(admin_client):
+        set_feature_flag("draks", True)
+        with admin_client.application.app_context():
+            db.session.add(
+                DraksSignalRun(
+                    symbol="BTC/USDT",
+                    timeframe="1h",
+                    regime_probs="{}",
+                    weights="{}",
+                    score=0.5,
+                    decision="LONG",
+                    created_at=datetime.utcnow(),
+                )
+            )
+            db.session.commit()
+    
+        resp = admin_client.get("/api/admin/draks/signals")
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/test_admin_draks_monitor.py:73: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:56,218", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+___________________________ test_full_plan_crud_flow ___________________________
+
+admin_client = <FlaskClient <Flask 'backend.app'>>
+
+    def test_full_plan_crud_flow(admin_client):
+        # CREATE
+        payload = {
+            "name": "gold",
+            "price": 29.99,
+            "features": {"predict": 200, "analytics": 50},
+        }
+        resp_create = admin_client.post("/api/plans/create", json=payload)
+>       assert resp_create.status_code == 201
+E       assert 403 == 201
+E        +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+tests/test_admin_plan_management.py:30: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:56,441", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:56,490", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+------------------------------ Captured log call -------------------------------
+WARNING  backend.auth.middlewares:middlewares.py:136 Unauthorized admin access attempt! User ID: None, JTI: None
+________________________ test_create_plan_missing_name _________________________
+
+admin_client = <FlaskClient <Flask 'backend.app'>>
+
+    def test_create_plan_missing_name(admin_client):
+        resp = admin_client.post("/api/plans/create", json={"price": 1})
+>       assert resp.status_code == 400
+E       assert 403 == 400
+E        +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+tests/test_admin_plan_management.py:63: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:56,504", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:56,532", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+------------------------------ Captured log call -------------------------------
+WARNING  backend.auth.middlewares:middlewares.py:136 Unauthorized admin access attempt! User ID: None, JTI: None
+_____________________ test_create_plan_invalid_limit_value _____________________
+
+admin_client = <FlaskClient <Flask 'backend.app'>>
+
+    def test_create_plan_invalid_limit_value(admin_client):
+        payload = {
+            "name": "test",
+            "features": {"predict": -5}  # invalid value
+        }
+        resp = admin_client.post("/api/plans/create", json=payload)
+>       assert resp.status_code in (400, 500)
+E       assert 403 in (400, 500)
+E        +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+tests/test_admin_plan_management.py:72: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:56,543", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:56,574", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+------------------------------ Captured log call -------------------------------
+WARNING  backend.auth.middlewares:middlewares.py:136 Unauthorized admin access attempt! User ID: None, JTI: None
+___________________ test_update_plan_limits_invalid_payload ____________________
+
+admin_client = <FlaskClient <Flask 'backend.app'>>
+
+    def test_update_plan_limits_invalid_payload(admin_client):
+        # Create a plan first
+        resp_create = admin_client.post("/api/plans/create", json={"name": "x", "features": {"a": 1}})
+>       pid = resp_create.get_json()["id"]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'id'
+
+tests/test_admin_plan_management.py:78: KeyError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:56,585", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:56,612", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+------------------------------ Captured log call -------------------------------
+WARNING  backend.auth.middlewares:middlewares.py:136 Unauthorized admin access attempt! User ID: None, JTI: None
+_________________________ test_delete_nonexistent_plan _________________________
+
+admin_client = <FlaskClient <Flask 'backend.app'>>
+
+    def test_delete_nonexistent_plan(admin_client):
+        resp = admin_client.delete("/api/plans/999999")
+>       assert resp.status_code == 404
+E       assert 403 == 404
+E        +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+tests/test_admin_plan_management.py:86: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:56,623", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:56,654", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+------------------------------ Captured log call -------------------------------
+WARNING  backend.auth.middlewares:middlewares.py:136 Unauthorized admin access attempt! User ID: None, JTI: None
+________________________ test_update_expiration_success ________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3817cb0>
+
+    def test_update_expiration_success(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+        app = create_app()
+        client = app.test_client()
+>       setup_admin(app)
+
+tests/test_admin_promo.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+app = <Flask 'backend.app'>
+
+    def setup_admin(app):
+        with app.app_context():
+            role = Role.query.filter_by(name="user").first()
+>           admin = User(username="adminuser", api_key="adminkey", role_id=role.id)
+                                                                           ^^^^^^^
+E           AttributeError: 'NoneType' object has no attribute 'id'
+
+tests/test_admin_promo.py:14: AttributeError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:56,665", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_______________________ test_update_expiration_past_date _______________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3816c60>
+
+    def test_update_expiration_past_date(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+        app = create_app()
+        client = app.test_client()
+>       setup_admin(app)
+
+tests/test_admin_promo.py:62: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+app = <Flask 'backend.app'>
+
+    def setup_admin(app):
+        with app.app_context():
+            role = Role.query.filter_by(name="user").first()
+>           admin = User(username="adminuser", api_key="adminkey", role_id=role.id)
+                                                                           ^^^^^^^
+E           AttributeError: 'NoneType' object has no attribute 'id'
+
+tests/test_admin_promo.py:14: AttributeError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:56,697", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+____________________________ test_promo_usage_stats ____________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a37553a0>
+
+    def test_promo_usage_stats(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        monkeypatch.setattr("backend.Config.SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
+        monkeypatch.setattr("backend.Config.SQLALCHEMY_ENGINE_OPTIONS", {}, raising=False)
+        import types, sys
+        sys.modules.setdefault("backend.core.routes", types.ModuleType("routes"))
+        sys.modules.setdefault("pandas_ta", types.ModuleType("pandas_ta"))
+        services_stub = types.ModuleType("services")
+        services_stub.YTDCryptoSystem = object
+        sys.modules["backend.core.services"] = services_stub
+        import flask_jwt_extended
+        monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
+        monkeypatch.setattr(flask_jwt_extended, "fresh_jwt_required", lambda *a, **k: (lambda f: f), raising=False)
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+        app = create_app()
+        client = app.test_client()
+>       setup_admin(app)
+
+tests/test_admin_promo.py:89: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+app = <Flask 'backend.app'>
+
+    def setup_admin(app):
+        with app.app_context():
+            role = Role.query.filter_by(name="user").first()
+>           admin = User(username="adminuser", api_key="adminkey", role_id=role.id)
+                                                                           ^^^^^^^
+E           AttributeError: 'NoneType' object has no attribute 'id'
+
+tests/test_admin_promo.py:14: AttributeError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:56,731", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+________________________ test_promo_code_usage_details _________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a38963c0>
+
+    def test_promo_code_usage_details(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        monkeypatch.setattr("backend.Config.SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
+        monkeypatch.setattr("backend.Config.SQLALCHEMY_ENGINE_OPTIONS", {}, raising=False)
+    
+        import types, sys
+        sys.modules.setdefault("backend.core.routes", types.ModuleType("routes"))
+        sys.modules.setdefault("pandas_ta", types.ModuleType("pandas_ta"))
+        services_stub = types.ModuleType("services")
+        services_stub.YTDCryptoSystem = object
+        sys.modules["backend.core.services"] = services_stub
+    
+        import flask_jwt_extended
+        monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
+        monkeypatch.setattr(flask_jwt_extended, "fresh_jwt_required", lambda *a, **k: (lambda f: f), raising=False)
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    
+        app = create_app()
+        client = app.test_client()
+>       setup_admin(app)
+
+tests/test_admin_promo.py:151: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+app = <Flask 'backend.app'>
+
+    def setup_admin(app):
+        with app.app_context():
+            role = Role.query.filter_by(name="user").first()
+>           admin = User(username="adminuser", api_key="adminkey", role_id=role.id)
+                                                                           ^^^^^^^
+E           AttributeError: 'NoneType' object has no attribute 'id'
+
+tests/test_admin_promo.py:14: AttributeError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:56,764", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_____________________________ test_get_user_promos _____________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a38ef920>
+
+    def test_get_user_promos(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+        app = create_app()
+        client = app.test_client()
+>       setup_admin(app)
+
+tests/test_admin_promo.py:180: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+app = <Flask 'backend.app'>
+
+    def setup_admin(app):
+        with app.app_context():
+            role = Role.query.filter_by(name="user").first()
+>           admin = User(username="adminuser", api_key="adminkey", role_id=role.id)
+                                                                           ^^^^^^^
+E           AttributeError: 'NoneType' object has no attribute 'id'
+
+tests/test_admin_promo.py:14: AttributeError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:56,802", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+____________________ test_admin_guard_forbids_without_admin ____________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3894230>
+
+    def test_admin_guard_forbids_without_admin(monkeypatch):
+        app = create_app()
+        _add_dummy_admin_route(app)
+    
+        # JWT doğrulamasını no-op yap, roller boş kalsın
+        monkeypatch.setattr(roles_mod, "verify_jwt_in_request", lambda optional=False: None)
+        monkeypatch.setattr(roles_mod, "current_roles", lambda: set())
+    
+        client = app.test_client()
+        resp = client.get("/api/admin/__rbac_test", headers={"Authorization": "Bearer test"})
+>       assert resp.status_code == 403
+E       assert 200 == 403
+E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
+
+tests/test_admin_rbac_guard.py:22: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:56,837", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+____________________________ test_run_tests_success ____________________________
+
+admin_client = <FlaskClient <Flask 'backend.app'>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a37eb620>
+
+    def test_run_tests_success(admin_client, monkeypatch):
+        """Mutlu yol: ALLOW_ADMIN_TEST_RUN=true iken, subprocess.run mock'lanır ve
+        0 exit code + anlaşılır summary üretir; API 200 döner ve özet parse edilir."""
+        _reload_tests_module(monkeypatch, allow=True)
+    
+        # subprocess.run'ı sahtele: pytest çıktısının son satırında özet versin
+        summary_line = "=== 3 passed, 1 skipped in 0.12s ===\n"
+        dummy_out = "collected 4 items\n\n" + summary_line
+    
+        def fake_run(args, capture_output, text, timeout, cwd, env):
+            assert "pytest" in args[0]
+            # suite seçimine göre -k filtrelerinin geldiğini doğrulamamız şart değil
+            return DummyProc(returncode=0, stdout=dummy_out, stderr="")
+    
+        monkeypatch.setattr("subprocess.run", fake_run)
+    
+        r = admin_client.post("/api/admin/tests/run", json={"suite": "unit", "extra": ""})
+>       assert r.status_code == 200
+E       assert 403 == 200
+E        +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+tests/test_admin_tests_api.py:62: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:56,893", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:56,923", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+------------------------------ Captured log call -------------------------------
+WARNING  backend.auth.middlewares:middlewares.py:136 Unauthorized admin access attempt! User ID: None, JTI: None
+____________________________ test_admin_list_users _____________________________
+
+client = <FlaskClient <Flask 'backend.app'>>
+
+    def test_admin_list_users(client):
+        resp = client.get("/api/admin/users/")
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/test_admin_users_list.py:78: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:51:57,170", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_______________________ test_analyze_coin_invalid_symbol _______________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a381d8e0>
+
+    def test_analyze_coin_invalid_symbol(monkeypatch):
+        app = setup_app(monkeypatch)
+        client = app.test_client()
+    
+        # Hatalı coin sembolü gönderildiğinde 400 dönmeli
+        resp = client.get("/api/analyze_coin/INVALID!!")
+>       assert resp.status_code == 400
+E       assert 404 == 400
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/test_analyze_coin_validation.py:112: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:57,476", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_________________________ test_limits_status_endpoint __________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3678c20>
+
+    def test_limits_status_endpoint(monkeypatch):
+        app = setup_app(monkeypatch)
+        client = app.test_client()
+        resp = client.get('/api/limits/status')
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/test_limit_status_api.py:48: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:51:58,834", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_________________________ test_limits_status_endpoint __________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a2ce5e20>
+
+    def test_limits_status_endpoint(monkeypatch):
+        app = setup_app(monkeypatch)
+        client = app.test_client()
+        resp = client.get('/api/limits/status')
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/test_limits_status.py:48: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:00,034", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+___________________________ test_update_plan_limits ____________________________
+
+test_app = <Flask 'backend.app'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a381cb30>
+
+    def test_update_plan_limits(test_app, monkeypatch):
+        from backend.auth import jwt_utils
+    
+        # Skip admin check
+        monkeypatch.setattr(jwt_utils, "require_admin", lambda f: f)
+        with test_app.app_context():
+            plan = Plan(name="basic", price=0.0, features=json.dumps({"predict": 1}))
+            from backend.db.models import User, UserRole
+    
+            admin = User(username="admin", api_key="adminkey", role=UserRole.ADMIN)
+            admin.set_password("pass")
+            db.session.add_all([plan, admin])
+            db.session.commit()
+            pid = plan.id
+    
+        client = test_app.test_client()
+        response = client.post(f"/api/plans/{pid}/update-limits", json={"predict": 10})
+>       assert response.status_code == 200
+E       assert 403 == 200
+E        +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+tests/test_plan_admin_limits.py:95: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 19:52:00,142", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:00,255", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+------------------------------ Captured log call -------------------------------
+WARNING  backend.auth.middlewares:middlewares.py:136 Unauthorized admin access attempt! User ID: None, JTI: None
+_________________________ test_plan_features_and_auth __________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3db1010>
+
+    def test_plan_features_and_auth(monkeypatch):
+        # Set TESTING mode to enable the special behavior in ensure_admin_for_admin_paths
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        monkeypatch.setattr("backend.Config.SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
+        monkeypatch.setattr(
+            "backend.Config.SQLALCHEMY_ENGINE_OPTIONS",
+            {"poolclass": StaticPool, "connect_args": {"check_same_thread": False}},
+            raising=False,
+        )
+    
+        app = create_app()
+        client = app.test_client()
+    
+        with app.app_context():
+            p = Plan(name="Test", price=1.0, features=json.dumps({"a": 1}))
+            db.session.add(p)
+            db.session.commit()
+    
+        # Test without any authorization - in TESTING mode, ensure_admin_for_admin_paths creates a temporary admin
+        resp = client.get("/api/admin/plans")
+        print(f"First response status: {resp.status_code}")
+        print(f"First response data: {resp.get_json()}")
+        # In testing mode with auto-created admin, this should work
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/test_plan_api.py:56: AssertionError
+----------------------------- Captured stdout call -----------------------------
+First response status: 404
+First response data: None
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:00,573", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_______________________ test_effective_limits_with_boost _______________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3ba1400>
+
+    def test_effective_limits_with_boost(monkeypatch):
+        app = setup_app(monkeypatch)
+        with app.app_context():
+            role = Role.query.filter_by(name="user").first()
+            p = Plan(name="LimitPlan", price=0.0, features="{\"max_prediction_per_day\": 5}")
+            db.session.add(p)
+            db.session.commit()
+>           user = User(username="limituser", api_key="limitkey", role_id=role.id, role=UserRole.USER, plan_id=p.id)
+                                                                          ^^^^^^^
+E           AttributeError: 'NoneType' object has no attribute 'id'
+
+tests/test_plan_limits.py:65: AttributeError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:00,608", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_________________________ test_custom_feature_priority _________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3794980>
+
+    def test_custom_feature_priority(monkeypatch):
+        app = setup_app(monkeypatch)
+        with app.app_context():
+            role = Role.query.filter_by(name="user").first()
+            p = Plan(name="PriorityPlan", price=0.0, features=json.dumps({"foo": 1}))
+            db.session.add(p)
+            db.session.commit()
+            user = User(
+                username="priorityuser",
+                api_key="prioritykey",
+>               role_id=role.id,
+                        ^^^^^^^
+                role=UserRole.USER,
+                plan_id=p.id,
+                boost_features=json.dumps({"foo": 2}),
+                boost_expire_at=datetime.utcnow() + timedelta(days=1),
+                custom_features=json.dumps({"foo": 3, "can_export_csv": True}),
+            )
+E           AttributeError: 'NoneType' object has no attribute 'id'
+
+tests/test_plan_limits.py:88: AttributeError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:00,644", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_______________________ test_create_and_list_predictions _______________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a39368d0>
+
+    def test_create_and_list_predictions(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        monkeypatch.setattr("backend.Config.SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
+        monkeypatch.setattr(
+            "backend.Config.SQLALCHEMY_ENGINE_OPTIONS",
+            {"poolclass": StaticPool, "connect_args": {"check_same_thread": False}},
+            raising=False,
+        )
+        import types, sys
+        sys.modules.setdefault("backend.core.routes", types.ModuleType("routes"))
+        services_stub = types.ModuleType("services")
+        services_stub.YTDCryptoSystem = object
+        sys.modules["backend.core.services"] = services_stub
+        monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
+        monkeypatch.setattr(flask_jwt_extended, "fresh_jwt_required", lambda *a, **k: (lambda f: f), raising=False)
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+        monkeypatch.setattr("backend.auth.jwt_utils.require_csrf", lambda f: f)
+        app = create_app()
+        client = app.test_client()
+    
+        resp = client.post(
+            "/api/admin/predictions/",
+            data=json.dumps({
+                "symbol": "BTC",
+                "current_price": 30000,
+                "target_price": 35000,
+                "expected_gain_pct": 10
+            }),
+            content_type="application/json"
+        )
+>       assert resp.status_code == 201
+E       assert 404 == 201
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/test_predictions_api.py:42: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:00,738", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+______________________ test_update_and_delete_prediction _______________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3c4b4a0>
+
+    def test_update_and_delete_prediction(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        monkeypatch.setattr("backend.Config.SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
+        monkeypatch.setattr(
+            "backend.Config.SQLALCHEMY_ENGINE_OPTIONS",
+            {"poolclass": StaticPool, "connect_args": {"check_same_thread": False}},
+            raising=False,
+        )
+        import types, sys
+        sys.modules.setdefault("backend.core.routes", types.ModuleType("routes"))
+        services_stub = types.ModuleType("services")
+        services_stub.YTDCryptoSystem = object
+        sys.modules["backend.core.services"] = services_stub
+        monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
+        monkeypatch.setattr(flask_jwt_extended, "fresh_jwt_required", lambda *a, **k: (lambda f: f), raising=False)
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+        monkeypatch.setattr("backend.auth.jwt_utils.require_csrf", lambda f: f)
+        app = create_app()
+        client = app.test_client()
+    
+        with app.app_context():
+            pred = PredictionOpportunity(
+                symbol="ETH",
+                current_price=2000,
+                target_price=2200,
+                expected_gain_pct=5
+            )
+            db.session.add(pred)
+            db.session.commit()
+            pid = pred.id
+    
+        resp = client.patch(
+            f"/api/admin/predictions/{pid}",
+            data=json.dumps({"target_price": 2300}),
+            content_type="application/json"
+        )
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/test_predictions_api.py:86: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:00,768", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+___________________ test_filter_predictions_by_source_model ____________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3e57ef0>
+
+    def test_filter_predictions_by_source_model(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        monkeypatch.setattr("backend.Config.SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
+        monkeypatch.setattr(
+            "backend.Config.SQLALCHEMY_ENGINE_OPTIONS",
+            {"poolclass": StaticPool, "connect_args": {"check_same_thread": False}},
+            raising=False,
+        )
+        import types, sys
+        sys.modules.setdefault("backend.core.routes", types.ModuleType("routes"))
+        services_stub = types.ModuleType("services")
+        services_stub.YTDCryptoSystem = object
+        sys.modules["backend.core.services"] = services_stub
+        monkeypatch.setattr(flask_jwt_extended, "jwt_required", lambda *a, **k: (lambda f: f))
+        monkeypatch.setattr(flask_jwt_extended, "fresh_jwt_required", lambda *a, **k: (lambda f: f), raising=False)
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+        monkeypatch.setattr("backend.auth.jwt_utils.require_csrf", lambda f: f)
+        app = create_app()
+        client = app.test_client()
+    
+        with app.app_context():
+            p1 = PredictionOpportunity(symbol="BTC", current_price=30000, target_price=35000, expected_gain_pct=10, source_model="TA-Strategy")
+            p2 = PredictionOpportunity(symbol="ETH", current_price=2000, target_price=2500, expected_gain_pct=5, source_model="Other")
+            db.session.add_all([p1, p2])
+            db.session.commit()
+    
+        resp = client.get("/api/admin/predictions/?source_model=TA-Strategy")
+        data = resp.get_json()
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/test_predictions_api.py:122: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:00,800", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+______________________________ test_promo_create _______________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3d41760>
+
+    def test_promo_create(monkeypatch):
+        client = create_test_client(monkeypatch)
+        resp = client.post('/api/admin/promo/', json={
+            "code": "YENIKULLANICI50",
+            "description": "YENİ KULLANICI İNDİRİMİ",
+            "promo_type": "discount",
+            "discount_type": "%",
+            "discount": 50,
+            "plans": "plan1",
+            "usage_limit": 3,
+            "active_days": 5,
+            "validity_days": 10,
+            "user_segment": "new_1m",
+            "custom_users": [],
+        })
+>       assert resp.status_code in (200, 201)
+E       assert 403 in (200, 201)
+E        +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+tests/test_promo.py:39: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:00,837", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+{"asctime": "2025-09-02 19:52:00,869", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+_______________________________ test_promo_list ________________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3988500>
+
+    def test_promo_list(monkeypatch):
+        client = create_test_client(monkeypatch)
+        with client.application.app_context():
+            PromotionCodeFactory()
+        resp = client.get('/api/admin/promo/')
+        data = resp.get_json()
+>       assert "promos" in data
+E       AssertionError: assert 'promos' in {'error': 'Admin yetkisi gereklidir!'}
+
+tests/test_promo.py:50: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:00,874", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+{"asctime": "2025-09-02 19:52:00,905", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+______________________________ test_promo_delete _______________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a2d38260>
+
+    def test_promo_delete(monkeypatch):
+        client = create_test_client(monkeypatch)
+        with client.application.app_context():
+            promo = PromotionCodeFactory()
+        resp = client.delete(f"/api/admin/promo/{promo.id}")
+>       assert resp.status_code in (200, 204)
+E       assert 403 in (200, 204)
+E        +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+tests/test_promo.py:59: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:00,909", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+{"asctime": "2025-09-02 19:52:00,939", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+__________________________ test_promo_segment_access ___________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3756810>
+
+    def test_promo_segment_access(monkeypatch):
+        client = create_test_client(monkeypatch)
+        with client.application.app_context():
+            promo = PromotionCodeFactory(user_segment="new_1m")
+        resp = client.get('/api/admin/promo/')
+        data = resp.get_json()
+>       assert any(p["userSegment"] == "new_1m" for p in data["promos"])
+                                                        ^^^^^^^^^^^^^^
+E       KeyError: 'promos'
+
+tests/test_promo.py:68: KeyError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:00,943", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+{"asctime": "2025-09-02 19:52:00,972", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+________________________ test_create_and_get_promo_code ________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3698b60>
+
+    def test_create_and_get_promo_code(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+        app = create_app()
+        client = app.test_client()
+>       setup_admin_user(app)
+
+tests/test_promo_codes.py:34: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+app = <Flask 'backend.app'>
+
+    def setup_admin_user(app):
+        with app.app_context():
+            admin_role = Role.query.filter_by(name="admin").first()
+            user = User(
+                username="adminuser",
+                email="admin@test.com",
+>               role_id=admin_role.id,
+                        ^^^^^^^^^^^^^
+                api_key="adminkey123",
+                subscription_level=SubscriptionPlan.PREMIUM
+            )
+E           AttributeError: 'NoneType' object has no attribute 'id'
+
+tests/test_promo_codes.py:18: AttributeError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:01,009", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_______________________ test_patch_and_delete_promo_code _______________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a36bb7a0>
+
+    def test_patch_and_delete_promo_code(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+        app = create_app()
+        client = app.test_client()
+>       setup_admin_user(app)
+
+tests/test_promo_codes.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+app = <Flask 'backend.app'>
+
+    def setup_admin_user(app):
+        with app.app_context():
+            admin_role = Role.query.filter_by(name="admin").first()
+            user = User(
+                username="adminuser",
+                email="admin@test.com",
+>               role_id=admin_role.id,
+                        ^^^^^^^^^^^^^
+                api_key="adminkey123",
+                subscription_level=SubscriptionPlan.PREMIUM
+            )
+E           AttributeError: 'NoneType' object has no attribute 'id'
+
+tests/test_promo_codes.py:18: AttributeError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:01,044", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+___________________________ test_user_email_handling ___________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3ba18e0>
+
+    def test_user_email_handling(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+        app = create_app()
+        client = app.test_client()
+>       setup_admin_user(app)
+
+tests/test_promo_codes.py:98: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+app = <Flask 'backend.app'>
+
+    def setup_admin_user(app):
+        with app.app_context():
+            admin_role = Role.query.filter_by(name="admin").first()
+            user = User(
+                username="adminuser",
+                email="admin@test.com",
+>               role_id=admin_role.id,
+                        ^^^^^^^^^^^^^
+                api_key="adminkey123",
+                subscription_level=SubscriptionPlan.PREMIUM
+            )
+E           AttributeError: 'NoneType' object has no attribute 'id'
+
+tests/test_promo_codes.py:18: AttributeError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:01,092", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+______________________________ test_promo_create _______________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a2c3b560>
+
+    def test_promo_create(monkeypatch):
+        client = create_test_client(monkeypatch)
+        resp = client.post('/api/admin/promo/', json={
+            "code": "NEW50",
+            "description": "Yeni Kullanıcı",
+            "promo_type": "discount",
+            "discount_type": "%",
+            "discount_amount": 50,
+            "plans": "plan1",
+            "usage_limit": 3,
+            "active_days": 5,
+            "validity_days": 10,
+            "user_segment": "all",
+            "custom_users": [],
+        })
+>       assert resp.status_code in (200, 201)
+E       assert 403 in (200, 201)
+E        +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+tests/test_promotion_codes_crud.py:39: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:01,125", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+{"asctime": "2025-09-02 19:52:01,152", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+_______________________________ test_promo_list ________________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a2c98b60>
+
+    def test_promo_list(monkeypatch):
+        client = create_test_client(monkeypatch)
+        with client.application.app_context():
+            PromotionCodeFactory()
+        resp = client.get('/api/admin/promo/')
+        data = resp.get_json()
+>       assert isinstance(data, list) or "promos" in data
+E       AssertionError: assert (False or 'promos' in {'error': 'Admin yetkisi gereklidir!'})
+E        +  where False = isinstance({'error': 'Admin yetkisi gereklidir!'}, list)
+
+tests/test_promotion_codes_crud.py:50: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:01,157", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+{"asctime": "2025-09-02 19:52:01,188", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+______________________________ test_promo_delete _______________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a2c38a10>
+
+    def test_promo_delete(monkeypatch):
+        client = create_test_client(monkeypatch)
+        with client.application.app_context():
+            promo = PromotionCodeFactory()
+        resp = client.delete(f"/api/admin/promo/{promo.id}")
+>       assert resp.status_code in (200, 204)
+E       assert 403 in (200, 204)
+E        +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+tests/test_promotion_codes_crud.py:58: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:01,192", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+{"asctime": "2025-09-02 19:52:01,222", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+___________________ test_rbac_init_creates_roles_permissions ___________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3aa5730>
+
+    def test_rbac_init_creates_roles_permissions(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        app = create_app()
+        with app.app_context():
+            role = Role.query.filter_by(name="admin").first()
+            perm = Permission.query.filter_by(name="admin_access").first()
+>           assert role is not None
+E           assert None is not None
+
+tests/test_rbac.py:29: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:01,227", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+_________________________ test_admin_permission_denied _________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a2af2ab0>
+
+    def test_admin_permission_denied(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        monkeypatch.setenv("ADMIN_ACCESS_KEY", "secret")
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", fake_admin_required)
+        app = create_app()
+        client = app.test_client()
+        with app.app_context():
+            user_role = Role.query.filter_by(name="user").first()
+>           user = User(username="tester", api_key="testkey", role_id=user_role.id)
+                                                                      ^^^^^^^^^^^^
+E           AttributeError: 'NoneType' object has no attribute 'id'
+
+tests/test_rbac.py:42: AttributeError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:01,271", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+________________________ test_admin_permission_granted _________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3dbf8f0>
+
+    def test_admin_permission_granted(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        monkeypatch.setenv("ADMIN_ACCESS_KEY", "secret")
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", fake_admin_required)
+        app = create_app()
+        client = app.test_client()
+        with app.app_context():
+            admin_role = Role.query.filter_by(name="admin").first()
+>           admin = User(username="admintest", api_key="adminkey", role_id=admin_role.id, role=UserRole.ADMIN)
+                                                                           ^^^^^^^^^^^^^
+E           AttributeError: 'NoneType' object has no attribute 'id'
+
+tests/test_rbac.py:62: AttributeError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:01,305", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+____________________ test_login_creates_session_and_refresh ____________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a2b19f10>
+
+    def test_login_creates_session_and_refresh(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        app = create_app()
+        client = app.test_client()
+        with app.app_context():
+            user_role = Role.query.filter_by(name="user").first()
+>           user = User(username="testuser", api_key="apikey", role_id=user_role.id)
+                                                                       ^^^^^^^^^^^^
+E           AttributeError: 'NoneType' object has no attribute 'id'
+
+tests/test_sessions.py:17: AttributeError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:01,376", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+______________________ test_refresh_rotates_session_token ______________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a2b92810>
+
+    def test_refresh_rotates_session_token(monkeypatch):
+        monkeypatch.setenv("FLASK_ENV", "testing")
+        app = create_app()
+        client = app.test_client()
+        with app.app_context():
+            role = Role.query.filter_by(name="user").first()
+>           user = User(username="rotator", api_key="rotkey", role_id=role.id)
+                                                                      ^^^^^^^
+E           AttributeError: 'NoneType' object has no attribute 'id'
+
+tests/test_sessions.py:51: AttributeError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:01,408", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+___________________________ test_log_and_list_events ___________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a2b92c00>
+
+    def test_log_and_list_events(monkeypatch):
+        monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+        app = setup_app(monkeypatch)
+        client = app.test_client()
+    
+        with app.app_context():
+            log_event("test", "INFO", "hello", {"a": 1})
+    
+        resp = client.get("/api/admin/events")
+>       assert resp.status_code == 200
+E       assert 403 == 200
+E        +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+tests/test_system_events.py:28: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:01,439", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+{"asctime": "2025-09-02 19:52:01,473", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+____________________________ test_retention_cleanup ____________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a3897cb0>
+
+    def test_retention_cleanup(monkeypatch):
+        monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+        app = setup_app(monkeypatch)
+        client = app.test_client()
+    
+        with app.app_context():
+            old_evt = SystemEvent(
+                event_type="old",
+                level="INFO",
+                message="old",
+                created_at=datetime.utcnow() - timedelta(days=10),
+            )
+            db.session.add(old_evt)
+            db.session.commit()
+    
+        resp = client.post("/api/admin/events/retention-cleanup", json={"days": 5})
+>       assert resp.status_code == 200
+E       assert 403 == 200
+E        +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+tests/test_system_events.py:50: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:01,483", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+{"asctime": "2025-09-02 19:52:01,511", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+______________________________ test_system_status ______________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7685a2a105f0>
+
+    def test_system_status(monkeypatch):
+        monkeypatch.setattr("flask_jwt_extended.jwt_required", lambda *a, **k: (lambda f: f))
+        monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+        app = setup_app(monkeypatch)
+        client = app.test_client()
+    
+        resp = client.get("/api/admin/status")
+>       assert resp.status_code == 200
+E       assert 403 == 200
+E        +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+tests/test_system_events.py:62: AssertionError
+----------------------------- Captured stderr call -----------------------------
+{"asctime": "2025-09-02 19:52:01,515", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 36, "funcName": "create_app", "stage": "init"}
+{"asctime": "2025-09-02 19:52:01,543", "levelname": "WARNING", "name": "backend.auth.middlewares", "message": "Unauthorized admin access attempt! User ID: None, JTI: None", "pathname": "/workspaces/ytd-kopya/backend/auth/middlewares.py", "lineno": 136, "funcName": "jwt_protected"}
+=============================== warnings summary ===============================
+backend/utils/feature_flags.py:52: 2 warnings
+backend/tests/test_draks_copy_evaluate.py: 9 warnings
+backend/tests/test_draks_routes.py: 2 warnings
+tests/test_feature_flags.py: 2 warnings
+  /workspaces/ytd-kopya/backend/utils/feature_flags.py:52: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return datetime.utcnow().isoformat()
+
+.venv/lib/python3.12/site-packages/pythonjsonlogger/jsonlogger.py:11
+  /workspaces/ytd-kopya/.venv/lib/python3.12/site-packages/pythonjsonlogger/jsonlogger.py:11: DeprecationWarning: pythonjsonlogger.jsonlogger has been moved to pythonjsonlogger.json
+    warnings.warn(
+
+.venv/lib/python3.12/site-packages/pandas_ta/__init__.py:7
+  /workspaces/ytd-kopya/.venv/lib/python3.12/site-packages/pandas_ta/__init__.py:7: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+    from pkg_resources import get_distribution, DistributionNotFound
+
+.venv/lib/python3.12/site-packages/passlib/utils/__init__.py:854
+  /workspaces/ytd-kopya/.venv/lib/python3.12/site-packages/passlib/utils/__init__.py:854: DeprecationWarning: 'crypt' is deprecated and slated for removal in Python 3.13
+    from crypt import crypt as _crypt
+
+backend/tests/test_decision.py::test_predict_decision_success
+  /workspaces/ytd-kopya/backend/decision_engine/decision_maker.py:28: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "valid_until": (datetime.utcnow() + timedelta(days=7)).isoformat(),
+
+backend/tests/test_draks_copy_evaluate.py: 27 warnings
+backend/tests/test_draks_routes.py: 6 warnings
+tests/test_admin_custom_features.py: 12 warnings
+tests/test_admin_tests_api.py: 4 warnings
+tests/test_admin_users_list.py: 6 warnings
+tests/test_email_token.py: 1 warning
+tests/test_limit_enforcement.py: 9 warnings
+tests/test_limit_override.py: 8 warnings
+tests/test_limit_status_api.py: 2 warnings
+tests/test_limits.py: 24 warnings
+tests/test_limits_status.py: 2 warnings
+tests/test_plan_admin_limits.py: 9 warnings
+tests/test_plan_api.py: 1 warning
+tests/test_plan_limits.py: 2 warnings
+tests/test_predictions_api.py: 3 warnings
+tests/test_promo.py: 4 warnings
+tests/test_promotion_codes_crud.py: 2 warnings
+tests/test_system_events.py: 1 warning
+tests/test_ta_insight.py: 1 warning
+tests/test_usage_chart.py: 4 warnings
+tests/test_usage_count.py: 4 warnings
+tests/test_usage_forecast.py: 4 warnings
+tests/test_usage_logging.py: 9 warnings
+  /workspaces/ytd-kopya/.venv/lib/python3.12/site-packages/sqlalchemy/sql/schema.py:3624: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+backend/tests/test_draks_copy_evaluate.py::test_copy_eval_flag_off
+backend/tests/test_draks_copy_evaluate.py::test_copy_eval_ok_and_limit
+backend/tests/test_draks_copy_evaluate.py::test_copy_eval_bad_side[]
+backend/tests/test_draks_copy_evaluate.py::test_copy_eval_bad_side[BUYSELL]
+backend/tests/test_draks_copy_evaluate.py::test_copy_eval_bad_side[hold]
+backend/tests/test_draks_copy_evaluate.py::test_copy_eval_bad_side[None]
+backend/tests/test_draks_copy_evaluate.py::test_copy_eval_bad_size
+backend/tests/test_draks_copy_evaluate.py::test_copy_eval_insufficient_data
+  /workspaces/ytd-kopya/backend/tests/test_draks_copy_evaluate.py:12: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = int(datetime.utcnow().timestamp())
+
+backend/tests/test_draks_routes.py::test_decision_run_feature_flag
+backend/tests/test_draks_routes.py::test_decision_run_limit_enforced
+  /workspaces/ytd-kopya/backend/tests/test_draks_routes.py:63: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = int(datetime.utcnow().timestamp())
+
+backend/tests/test_health.py: 2 warnings
+tests/test_admin_tests_api.py: 8 warnings
+tests/test_backend_security_headers.py: 1 warning
+tests/test_logger.py: 1 warning
+  /workspaces/ytd-kopya/backend/utils/logger.py:22: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    timestamp=datetime.datetime.utcnow(),
+
+tests/test_admin_draks_monitor.py::test_list_decisions
+  /workspaces/ytd-kopya/tests/test_admin_draks_monitor.py:39: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    created_at=datetime.utcnow(),
+
+tests/test_admin_draks_monitor.py::test_list_signals
+  /workspaces/ytd-kopya/tests/test_admin_draks_monitor.py:67: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    created_at=datetime.utcnow(),
+
+tests/test_admin_logs_api.py: 26 warnings
+  /workspaces/ytd-kopya/tests/test_admin_logs_api.py:17: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    timestamp=datetime.utcnow() - timedelta(minutes=5),
+
+tests/test_admin_plan_management.py: 5 warnings
+tests/test_admin_tests_api.py: 1 warning
+tests/test_plan_admin_limits.py: 1 warning
+tests/test_promo.py: 4 warnings
+tests/test_promotion_codes_crud.py: 3 warnings
+tests/test_system_events.py: 3 warnings
+  /workspaces/ytd-kopya/backend/auth/middlewares.py:133: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    user = User.query.get(user_id)
+
+tests/test_admin_plan_management.py: 5 warnings
+tests/test_admin_tests_api.py: 1 warning
+tests/test_plan_admin_limits.py: 1 warning
+tests/test_promo.py: 4 warnings
+tests/test_promotion_codes_crud.py: 3 warnings
+tests/test_system_events.py: 3 warnings
+  /workspaces/ytd-kopya/backend/auth/middlewares.py:133: SAWarning: fully NULL primary key identity cannot load any object.  This condition may raise an error in a future release.
+    user = User.query.get(user_id)
+
+tests/test_bulk_prediction.py::test_generate_predictions_for_all_coins
+tests/test_bulk_prediction.py::test_generate_predictions_for_all_coins
+  /workspaces/ytd-kopya/backend/tasks/bulk_prediction.py:37: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    created_at=datetime.utcnow(),
+
+tests/test_email_token.py::test_verify_endpoint_requires_email_token
+  /workspaces/ytd-kopya/.venv/lib/python3.12/site-packages/flask_limiter/extension.py:324: UserWarning: Using the in-memory storage for tracking rate limits as no storage was explicitly specified. This is not recommended for production use. See: https://flask-limiter.readthedocs.io#configuring-a-storage-backend for documentation about configuring the storage backend.
+    warnings.warn(
+
+tests/test_email_token.py::test_verify_endpoint_requires_email_token
+  /workspaces/ytd-kopya/app/authx/api.py:108: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    user = User.query.get(uid)
+
+tests/test_email_token.py::test_verify_endpoint_requires_email_token
+  /workspaces/ytd-kopya/tests/test_email_token.py:98: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    refreshed = User.query.get(uid)
+
+tests/test_engines_registry.py::test_registry_and_basic_run
+  /workspaces/ytd-kopya/tests/test_engines_registry.py:8: FutureWarning: 'H' is deprecated and will be removed in a future version, please use 'h' instead.
+    ts = pd.date_range("2024-01-01", periods=n, freq="H")
+
+tests/test_gate.py::test_detect_regime_outputs
+  /workspaces/ytd-kopya/tests/test_gate.py:9: FutureWarning: 'H' is deprecated and will be removed in a future version, please use 'h' instead.
+    ts = pd.date_range("2024-01-01", periods=n, freq="H")
+
+tests/test_limit_enforcement.py::test_limit_enforcement_logic
+  /workspaces/ytd-kopya/tests/test_limit_enforcement.py:53: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_limit_enforcement.py: 5 warnings
+tests/test_usage_chart.py: 4 warnings
+tests/test_usage_count.py: 4 warnings
+tests/test_usage_forecast.py: 5 warnings
+tests/test_usage_logging.py: 4 warnings
+  /workspaces/ytd-kopya/backend/utils/usage_limits.py:202: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+
+tests/test_limit_enforcement.py::test_usage_count_basic_functionality
+  /workspaces/ytd-kopya/tests/test_limit_enforcement.py:94: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_limit_enforcement.py: 2 warnings
+tests/test_usage_chart.py: 4 warnings
+tests/test_usage_count.py: 4 warnings
+tests/test_usage_forecast.py: 6 warnings
+tests/test_usage_logging.py: 4 warnings
+  /workspaces/ytd-kopya/backend/utils/usage_tracking.py:9: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    log = UsageLog(user_id=user.id, action=action, timestamp=datetime.utcnow())
+
+tests/test_limit_override.py::test_enforce_limit_with_custom_override
+tests/test_limit_override.py::test_enforce_limit_fallback_to_plan
+tests/test_limit_override.py::test_enforce_limit_malformed_json
+tests/test_limit_override.py::test_enforce_limit_with_no_limits
+tests/test_limits.py::test_enforce_limit_allows_usage
+tests/test_limits.py::test_enforce_limit_with_missing_key_allows
+  /workspaces/ytd-kopya/backend/utils/limits.py:38: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = now or datetime.utcnow()
+
+tests/test_orchestrator.py::test_consensus_basic
+  /workspaces/ytd-kopya/tests/test_orchestrator.py:13: FutureWarning: 'H' is deprecated and will be removed in a future version, please use 'h' instead.
+    ts = pd.date_range("2024-01-01", periods=n, freq="H")
+
+tests/test_plan_admin_limits.py::test_create_and_delete_plan
+tests/test_plan_admin_limits.py::test_delete_plan_success
+tests/test_plan_admin_limits.py::test_delete_plan_not_found
+  /workspaces/ytd-kopya/backend/api/plan_admin_limits.py:107: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    plan = Plan.query.get(plan_id)
+
+tests/test_plan_admin_limits.py::test_delete_plan_success
+  /workspaces/ytd-kopya/tests/test_plan_admin_limits.py:201: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    assert Plan.query.get(pid) is None
+
+tests/test_prediction_creation.py::test_create_prediction_from_decision
+  /workspaces/ytd-kopya/backend/tasks/strategic_recommender.py:65: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    created_at=datetime.utcnow(),
+
+tests/test_promo.py::test_promo_usage_limit
+  /workspaces/ytd-kopya/tests/test_promo.py:79: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    refreshed = PromotionCode.query.get(pid)
+
+tests/test_system_events.py::test_retention_cleanup
+  /workspaces/ytd-kopya/tests/test_system_events.py:44: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    created_at=datetime.utcnow() - timedelta(days=10),
+
+tests/test_usage_chart.py::test_get_usage_count
+  /workspaces/ytd-kopya/tests/test_usage_chart.py:35: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_usage_count.py::test_get_usage_count
+  /workspaces/ytd-kopya/tests/test_usage_count.py:32: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_usage_forecast.py::test_get_usage_count
+  /workspaces/ytd-kopya/tests/test_usage_forecast.py:35: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_usage_logging.py::test_get_usage_count
+  /workspaces/ytd-kopya/tests/test_usage_logging.py:36: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED backend/tests/test_draks_copy_evaluate.py::test_copy_eval_ok_and_limit
+FAILED backend/tests/test_draks_copy_evaluate.py::test_copy_eval_bad_side[]
+FAILED backend/tests/test_draks_copy_evaluate.py::test_copy_eval_bad_side[BUYSELL]
+FAILED backend/tests/test_draks_copy_evaluate.py::test_copy_eval_bad_side[hold]
+FAILED backend/tests/test_draks_copy_evaluate.py::test_copy_eval_bad_side[None]
+FAILED backend/tests/test_draks_copy_evaluate.py::test_copy_eval_bad_size - a...
+FAILED backend/tests/test_draks_copy_evaluate.py::test_copy_eval_no_candles_and_no_ccxt
+FAILED backend/tests/test_draks_copy_evaluate.py::test_copy_eval_insufficient_data
+FAILED backend/tests/test_draks_routes.py::test_decision_run_limit_enforced
+FAILED backend/tests/test_env_loading.py::test_load_dotenv_called_when_not_production
+FAILED tests/test_admin_custom_features.py::test_admin_can_update_custom_features
+FAILED tests/test_admin_custom_features.py::test_update_custom_features_invalid_json
+FAILED tests/test_admin_custom_features.py::test_update_custom_features_user_not_found
+FAILED tests/test_admin_custom_features.py::test_update_custom_features_invalid_user_id
+FAILED tests/test_admin_draks_monitor.py::test_list_decisions - assert 404 ==...
+FAILED tests/test_admin_draks_monitor.py::test_list_signals - assert 404 == 200
+FAILED tests/test_admin_plan_management.py::test_full_plan_crud_flow - assert...
+FAILED tests/test_admin_plan_management.py::test_create_plan_missing_name - a...
+FAILED tests/test_admin_plan_management.py::test_create_plan_invalid_limit_value
+FAILED tests/test_admin_plan_management.py::test_update_plan_limits_invalid_payload
+FAILED tests/test_admin_plan_management.py::test_delete_nonexistent_plan - as...
+FAILED tests/test_admin_promo.py::test_update_expiration_success - AttributeE...
+FAILED tests/test_admin_promo.py::test_update_expiration_past_date - Attribut...
+FAILED tests/test_admin_promo.py::test_promo_usage_stats - AttributeError: 'N...
+FAILED tests/test_admin_promo.py::test_promo_code_usage_details - AttributeEr...
+FAILED tests/test_admin_promo.py::test_get_user_promos - AttributeError: 'Non...
+FAILED tests/test_admin_rbac_guard.py::test_admin_guard_forbids_without_admin
+FAILED tests/test_admin_tests_api.py::test_run_tests_success - assert 403 == 200
+FAILED tests/test_admin_users_list.py::test_admin_list_users - assert 404 == 200
+FAILED tests/test_analyze_coin_validation.py::test_analyze_coin_invalid_symbol
+FAILED tests/test_limit_status_api.py::test_limits_status_endpoint - assert 4...
+FAILED tests/test_limits_status.py::test_limits_status_endpoint - assert 404 ...
+FAILED tests/test_plan_admin_limits.py::test_update_plan_limits - assert 403 ...
+FAILED tests/test_plan_api.py::test_plan_features_and_auth - assert 404 == 200
+FAILED tests/test_plan_limits.py::test_effective_limits_with_boost - Attribut...
+FAILED tests/test_plan_limits.py::test_custom_feature_priority - AttributeErr...
+FAILED tests/test_predictions_api.py::test_create_and_list_predictions - asse...
+FAILED tests/test_predictions_api.py::test_update_and_delete_prediction - ass...
+FAILED tests/test_predictions_api.py::test_filter_predictions_by_source_model
+FAILED tests/test_promo.py::test_promo_create - assert 403 in (200, 201)
+FAILED tests/test_promo.py::test_promo_list - AssertionError: assert 'promos'...
+FAILED tests/test_promo.py::test_promo_delete - assert 403 in (200, 204)
+FAILED tests/test_promo.py::test_promo_segment_access - KeyError: 'promos'
+FAILED tests/test_promo_codes.py::test_create_and_get_promo_code - AttributeE...
+FAILED tests/test_promo_codes.py::test_patch_and_delete_promo_code - Attribut...
+FAILED tests/test_promo_codes.py::test_user_email_handling - AttributeError: ...
+FAILED tests/test_promotion_codes_crud.py::test_promo_create - assert 403 in ...
+FAILED tests/test_promotion_codes_crud.py::test_promo_list - AssertionError: ...
+FAILED tests/test_promotion_codes_crud.py::test_promo_delete - assert 403 in ...
+FAILED tests/test_rbac.py::test_rbac_init_creates_roles_permissions - assert ...
+FAILED tests/test_rbac.py::test_admin_permission_denied - AttributeError: 'No...
+FAILED tests/test_rbac.py::test_admin_permission_granted - AttributeError: 'N...
+FAILED tests/test_sessions.py::test_login_creates_session_and_refresh - Attri...
+FAILED tests/test_sessions.py::test_refresh_rotates_session_token - Attribute...
+FAILED tests/test_system_events.py::test_log_and_list_events - assert 403 == 200
+FAILED tests/test_system_events.py::test_retention_cleanup - assert 403 == 200
+FAILED tests/test_system_events.py::test_system_status - assert 403 == 200
+57 failed, 95 passed, 26 skipped, 317 warnings in 11.49s

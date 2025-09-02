@@ -1,12 +1,16 @@
 import json
 import os
 import sys
+
 from sqlalchemy.pool import StaticPool
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from backend import create_app, db
-from backend.models.plan import Plan
-from backend.db.models import User, Role, UserRole
 from flask import g
+
+from backend import create_app, db
+from backend.db.models import Role, User, UserRole
+from backend.models.plan import Plan
+
 
 def setup_app(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "development")
@@ -18,17 +22,19 @@ def setup_app(monkeypatch):
     )
     return create_app()
 
+
 def create_admin(app):
     with app.app_context():
         admin = User(username="admin", api_key="adminkey", role=UserRole.ADMIN)
         admin.set_password("pass")
         db.session.add(admin)
         db.session.commit()
-        
+
         # Debug: Verify admin was created correctly
         created_admin = User.query.filter_by(api_key="adminkey").first()
         print(f"Created admin: {created_admin}")
         print(f"Admin role: {created_admin.role if created_admin else 'None'}")
+
 
 def test_plan_features_and_auth(monkeypatch):
     # Set TESTING mode to enable the special behavior in ensure_admin_for_admin_paths
@@ -39,7 +45,7 @@ def test_plan_features_and_auth(monkeypatch):
         {"poolclass": StaticPool, "connect_args": {"check_same_thread": False}},
         raising=False,
     )
-    
+
     app = create_app()
     client = app.test_client()
 

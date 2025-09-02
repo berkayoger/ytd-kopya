@@ -1,10 +1,8 @@
 import pandas as pd
 
-from backend.decision_engines.orchestrator import (
-    OrchestratorConfig,
-    build_consensus_result,
-)
 from backend.decision_engines.base import DecisionResult
+from backend.decision_engines.orchestrator import (OrchestratorConfig,
+                                                   build_consensus_result)
 
 
 def _mk_df(n=240):
@@ -58,4 +56,3 @@ def test_consensus_basic():
     assert out["symbol"] == "BTCUSDT"
     assert "consensus" in out and "label" in out["consensus"]
     assert out["consensus"]["position_value"] >= 0.0
-

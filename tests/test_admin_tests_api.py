@@ -2,6 +2,7 @@ import importlib
 from dataclasses import dataclass
 
 import pytest
+
 from backend import create_app, db
 
 
@@ -10,9 +11,12 @@ def admin_client(monkeypatch):
     """Admin JWT ve admin_required kontrolünü test ortamında bypass eden test client."""
     monkeypatch.setenv("FLASK_ENV", "testing")
     # admin_required bypass
-    monkeypatch.setattr("backend.auth.middlewares.admin_required", lambda: (lambda f: f))
+    monkeypatch.setattr(
+        "backend.auth.middlewares.admin_required", lambda: (lambda f: f)
+    )
     # JWT verify bypass (jwt_required_if_not_testing zaten testing'te no-op ama yine de güvence)
     import flask_jwt_extended.view_decorators as vd
+
     monkeypatch.setattr(vd, "verify_jwt_in_request", lambda *a, **k: None)
 
     app = create_app()
@@ -39,6 +43,7 @@ def _reload_tests_module(monkeypatch, allow: bool):
     monkeypatch.setenv("ALLOW_ADMIN_TEST_RUN", "true" if allow else "false")
     # import sırası önemli: önce modülü reload et, sonra app'i import eden testler onu kullanıyor olacak
     import backend.api.admin.tests as admin_tests_module
+
     importlib.reload(admin_tests_module)
 
 
@@ -94,7 +99,9 @@ def test_run_tests_nonzero_exit_returns_202(admin_client, monkeypatch):
 
     monkeypatch.setattr("subprocess.run", fake_run)
 
-    r = admin_client.post("/api/admin/tests/run", json={"suite": "all", "extra": "-k smoke"})
+    r = admin_client.post(
+        "/api/admin/tests/run", json={"suite": "all", "extra": "-k smoke"}
+    )
     assert r.status_code == 202
     b = r.get_json()
     assert b["exit_code"] == 1

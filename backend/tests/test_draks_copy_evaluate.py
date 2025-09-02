@@ -1,9 +1,10 @@
 import json
 from datetime import datetime
+
 import pytest
 
 from backend import create_app, db
-from backend.db.models import User, SubscriptionPlan, UserRole
+from backend.db.models import SubscriptionPlan, User, UserRole
 from backend.models.plan import Plan
 from backend.utils.feature_flags import create_feature_flag
 
@@ -15,7 +16,16 @@ def _candles(n=80):
     for i in range(n):
         ts = now - (n - i) * 60
         px *= 1.001  # küçük drift
-        out.append({"ts": ts, "open": px-2, "high": px+2, "low": px-3, "close": px, "volume": 1000+i})
+        out.append(
+            {
+                "ts": ts,
+                "open": px - 2,
+                "high": px + 2,
+                "low": px - 3,
+                "close": px,
+                "volume": 1000 + i,
+            }
+        )
     return out
 
 
@@ -70,9 +80,11 @@ def test_copy_eval_flag_off(app, user, auth_headers):
     client = app.test_client()
     with app.app_context():
         create_feature_flag("draks", False)
-        resp = client.post("/api/draks/copy/evaluate",
-                           headers=auth_headers,
-                           json={"symbol": "BTC/USDT", "side": "BUY", "candles": _candles()})
+        resp = client.post(
+            "/api/draks/copy/evaluate",
+            headers=auth_headers,
+            json={"symbol": "BTC/USDT", "side": "BUY", "candles": _candles()},
+        )
         assert resp.status_code == 403
 
 
@@ -80,7 +92,12 @@ def test_copy_eval_ok_and_limit(app, user, auth_headers, monkeypatch):
     client = app.test_client()
     with app.app_context():
         create_feature_flag("draks", True)
-        payload = {"symbol": "BTC/USDT", "side": "BUY", "size": 1000, "candles": _candles()}
+        payload = {
+            "symbol": "BTC/USDT",
+            "side": "BUY",
+            "size": 1000,
+            "candles": _candles(),
+        }
         r1 = client.post("/api/draks/copy/evaluate", headers=auth_headers, json=payload)
         assert r1.status_code == 200
         body = r1.get_json()
@@ -109,12 +126,28 @@ def test_copy_eval_bad_size(app, user, auth_headers):
     with app.app_context():
         create_feature_flag("draks", True)
         # str size
-        r1 = client.post("/api/draks/copy/evaluate", headers=auth_headers,
-                         json={"symbol": "BTC/USDT", "side": "BUY", "size": "x", "candles": _candles()})
+        r1 = client.post(
+            "/api/draks/copy/evaluate",
+            headers=auth_headers,
+            json={
+                "symbol": "BTC/USDT",
+                "side": "BUY",
+                "size": "x",
+                "candles": _candles(),
+            },
+        )
         assert r1.status_code == 400
         # negatif size
-        r2 = client.post("/api/draks/copy/evaluate", headers=auth_headers,
-                         json={"symbol": "BTC/USDT", "side": "BUY", "size": -10, "candles": _candles()})
+        r2 = client.post(
+            "/api/draks/copy/evaluate",
+            headers=auth_headers,
+            json={
+                "symbol": "BTC/USDT",
+                "side": "BUY",
+                "size": -10,
+                "candles": _candles(),
+            },
+        )
         assert r2.status_code == 400
 
 
@@ -124,11 +157,13 @@ def test_copy_eval_no_candles_and_no_ccxt(app, user, auth_headers, monkeypatch):
         create_feature_flag("draks", True)
         # ccxt kullanılamasın diye modül referansını None yap
         monkeypatch.setattr("backend.draks.routes.ccxt", None, raising=False)
-        resp = client.post("/api/draks/copy/evaluate",
-                           headers=auth_headers,
-                           json={"symbol": "BTC/USDT", "side": "BUY"})
+        resp = client.post(
+            "/api/draks/copy/evaluate",
+            headers=auth_headers,
+            json={"symbol": "BTC/USDT", "side": "BUY"},
+        )
         assert resp.status_code == 400
-        assert "candles" in resp.get_json().get("error","")
+        assert "candles" in resp.get_json().get("error", "")
 
 
 def test_copy_eval_insufficient_data(app, user, auth_headers):
@@ -136,8 +171,10 @@ def test_copy_eval_insufficient_data(app, user, auth_headers):
     with app.app_context():
         create_feature_flag("draks", True)
         few = _candles(10)  # yetersiz
-        resp = client.post("/api/draks/copy/evaluate",
-                           headers=auth_headers,
-                           json={"symbol": "BTC/USDT", "side": "BUY", "candles": few})
+        resp = client.post(
+            "/api/draks/copy/evaluate",
+            headers=auth_headers,
+            json={"symbol": "BTC/USDT", "side": "BUY", "candles": few},
+        )
         assert resp.status_code == 400
         assert resp.get_json().get("error") == "yetersiz veri"

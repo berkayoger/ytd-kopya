@@ -1,7 +1,9 @@
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
+
 from backend import create_app, db
-from backend.db.models import User, UsageLog, UserRole, SubscriptionPlan
+from backend.db.models import SubscriptionPlan, UsageLog, User, UserRole
 from backend.models.plan import Plan
 from backend.utils.usage_limits import get_usage_count
 
@@ -10,7 +12,7 @@ from backend.utils.usage_limits import get_usage_count
 def test_app(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
     app = create_app()
-    app.config['TESTING'] = True
+    app.config["TESTING"] = True
 
     with app.app_context():
         db.create_all()
@@ -23,14 +25,13 @@ def test_app(monkeypatch):
 def user_with_limits(test_app):
     with test_app.app_context():
         import json
+
         plan = Plan(
             name="basic",
             price=0.0,
-            features=json.dumps({
-                "predict_daily": 2,
-                "generate_chart": 2,
-                "prediction": 2
-            })
+            features=json.dumps(
+                {"predict_daily": 2, "generate_chart": 2, "prediction": 2}
+            ),
         )
         db.session.add(plan)
         db.session.commit()
@@ -39,7 +40,7 @@ def user_with_limits(test_app):
             username="limituser",
             role=UserRole.USER,
             plan_id=plan.id,
-            subscription_level=SubscriptionPlan.BASIC
+            subscription_level=SubscriptionPlan.BASIC,
         )
         user.set_password("pass")
         user.generate_api_key()  # API key gerekli
@@ -52,12 +53,24 @@ def test_limit_enforcement_logic(test_app, user_with_limits):
     with test_app.app_context():
         now = datetime.utcnow()
         yesterday = now - timedelta(days=1)
-        db.session.add_all([
-            UsageLog(user_id=user_with_limits.id, action="predict_daily", timestamp=now),
-            UsageLog(user_id=user_with_limits.id, action="generate_chart", timestamp=now),
-            UsageLog(user_id=user_with_limits.id, action="generate_chart", timestamp=now),
-            UsageLog(user_id=user_with_limits.id, action="generate_chart", timestamp=yesterday),
-        ])
+        db.session.add_all(
+            [
+                UsageLog(
+                    user_id=user_with_limits.id, action="predict_daily", timestamp=now
+                ),
+                UsageLog(
+                    user_id=user_with_limits.id, action="generate_chart", timestamp=now
+                ),
+                UsageLog(
+                    user_id=user_with_limits.id, action="generate_chart", timestamp=now
+                ),
+                UsageLog(
+                    user_id=user_with_limits.id,
+                    action="generate_chart",
+                    timestamp=yesterday,
+                ),
+            ]
+        )
         db.session.commit()
 
         pd_count = get_usage_count(user_with_limits, "predict_daily")
@@ -71,10 +84,9 @@ def test_usage_count_basic_functionality(test_app):
     """Temel kullanım sayma fonksiyonalitesini test et."""
     with test_app.app_context():
         import json
+
         plan = Plan(
-            name="test_plan",
-            price=0.0,
-            features=json.dumps({"test_feature": 5})
+            name="test_plan", price=0.0, features=json.dumps({"test_feature": 5})
         )
         db.session.add(plan)
         db.session.commit()
@@ -83,7 +95,7 @@ def test_usage_count_basic_functionality(test_app):
             username="testuser",
             role=UserRole.USER,
             plan_id=plan.id,
-            subscription_level=SubscriptionPlan.BASIC
+            subscription_level=SubscriptionPlan.BASIC,
         )
         user.set_password("pass")
         user.generate_api_key()  # API key eklendi
@@ -93,21 +105,17 @@ def test_usage_count_basic_functionality(test_app):
         # Bugün 3 kullanım ekle
         now = datetime.utcnow()
         for i in range(3):
-            db.session.add(UsageLog(
-                user_id=user.id, 
-                action="test_feature", 
-                timestamp=now
-            ))
-        
+            db.session.add(
+                UsageLog(user_id=user.id, action="test_feature", timestamp=now)
+            )
+
         # Dün 2 kullanım ekle (bunlar sayılmamalı)
         yesterday = now - timedelta(days=1)
         for i in range(2):
-            db.session.add(UsageLog(
-                user_id=user.id, 
-                action="test_feature", 
-                timestamp=yesterday
-            ))
-        
+            db.session.add(
+                UsageLog(user_id=user.id, action="test_feature", timestamp=yesterday)
+            )
+
         db.session.commit()
 
         # Sadece bugünküler sayılmalı
@@ -122,13 +130,12 @@ def test_usage_count_basic_functionality(test_app):
 def test_usage_tracking_basic(test_app):
     """Usage tracking fonksiyonunun temel çalışmasını test et."""
     with test_app.app_context():
-        from backend.utils.usage_tracking import record_usage
         import json
-        
+
+        from backend.utils.usage_tracking import record_usage
+
         plan = Plan(
-            name="tracking_plan",
-            price=0.0,
-            features=json.dumps({"track_feature": 3})
+            name="tracking_plan", price=0.0, features=json.dumps({"track_feature": 3})
         )
         db.session.add(plan)
         db.session.commit()
@@ -137,7 +144,7 @@ def test_usage_tracking_basic(test_app):
             username="trackuser",
             role=UserRole.USER,
             plan_id=plan.id,
-            subscription_level=SubscriptionPlan.BASIC
+            subscription_level=SubscriptionPlan.BASIC,
         )
         user.set_password("pass")
         user.generate_api_key()  # API key eklendi

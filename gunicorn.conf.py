@@ -19,4 +19,3 @@ worker_tmp_dir = "/tmp"
 accesslog = "-"
 errorlog = "-"
 loglevel = "info"
-

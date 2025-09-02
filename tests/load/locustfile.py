@@ -1,5 +1,10 @@
-from locust import HttpUser, task, between
-import json, random, string, websocket, threading
+import json
+import random
+import string
+import threading
+
+import websocket
+from locust import HttpUser, between, task
 
 
 def random_symbol():

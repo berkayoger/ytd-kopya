@@ -1,8 +1,8 @@
 import json
 import logging
+
 from backend.db import db
 from backend.db.models import SystemEvent
-
 
 logger = logging.getLogger(__name__)
 

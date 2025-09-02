@@ -1,10 +1,13 @@
 from __future__ import annotations
-from flask import Blueprint, request, jsonify, g, current_app
+
+from flask import Blueprint, current_app, g, jsonify, request
+
 from backend.auth.jwt_utils import jwt_required_if_not_testing
 from backend.auth.middlewares import admin_required
 from backend.utils.logger import create_log
 
 batch_controls_bp = Blueprint("batch_controls", __name__, url_prefix="/api/admin/batch")
+
 
 @batch_controls_bp.post("/approval/grant")
 @jwt_required_if_not_testing()
@@ -15,7 +18,10 @@ def grant_batch_approval():
     Query/body: user_id (zorunlu), ttl_s (opsiyonel; default 3600)
     """
     from redis import Redis
-    user_id = request.json.get("user_id") if request.is_json else request.args.get("user_id")
+
+    user_id = (
+        request.json.get("user_id") if request.is_json else request.args.get("user_id")
+    )
     if not user_id:
         return jsonify({"error": "user_id gerekli"}), 400
     try:
@@ -39,12 +45,16 @@ def grant_batch_approval():
         )
     return jsonify({"ok": True, "user_id": user_id, "ttl_s": ttl_s})
 
+
 @batch_controls_bp.post("/approval/revoke")
 @jwt_required_if_not_testing()
 @admin_required()
 def revoke_batch_approval():
     from redis import Redis
-    user_id = request.json.get("user_id") if request.is_json else request.args.get("user_id")
+
+    user_id = (
+        request.json.get("user_id") if request.is_json else request.args.get("user_id")
+    )
     if not user_id:
         return jsonify({"error": "user_id gerekli"}), 400
     r: Redis = current_app.extensions["redis_client"]  # type: ignore

@@ -1,12 +1,15 @@
 # backend/utils/decorators.py
 
-from functools import wraps
-from flask import g, jsonify, request, current_app
-from flask_jwt_extended import get_jwt_identity
-from loguru import logger
-from backend.db.models import User, SubscriptionPlan, UserRole
 import hashlib
 import hmac
+from functools import wraps
+
+from flask import current_app, g, jsonify, request
+from flask_jwt_extended import get_jwt_identity
+from loguru import logger
+
+from backend.db.models import SubscriptionPlan, User, UserRole
+
 
 def _error_response(message: str, status_code: int):
     """Hata yanıtları için merkezi bir yardımcı fonksiyon."""
@@ -39,33 +42,41 @@ def admin_required(f):
 
     return decorated
 
+
 def require_role(required_role: UserRole):
     """
     Bir endpoint'e erişim için belirli bir kullanıcı rolünü zorunlu kılan bir decorator.
-    
+
     Kullanım:
     @app.route('/admin')
     @require_role(UserRole.ADMIN)
     def admin_dashboard():
         return "Admin Paneli"
     """
+
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             # Bu decorator'ın, JWT doğrulamasının yapıldığı bir middleware'den
             # sonra çalıştığını ve g.user'ın ayarlandığını varsayıyoruz.
-            if not hasattr(g, 'user') or not isinstance(g.user, User):
-                return _error_response("Yetkilendirme hatası: Kullanıcı bilgisi bulunamadı.", 401)
-            
+            if not hasattr(g, "user") or not isinstance(g.user, User):
+                return _error_response(
+                    "Yetkilendirme hatası: Kullanıcı bilgisi bulunamadı.", 401
+                )
+
             # Kullanıcının rolünü kontrol et
             if g.user.role != required_role:
                 logger.warning(
                     f"Yetkisiz erişim denemesi. Kullanıcı: {g.user.username}, Gerekli Rol: {required_role.name}"
                 )
-                return _error_response(f"Erişim yetkiniz yok. Gerekli rol: {required_role.name}", 403)
-            
+                return _error_response(
+                    f"Erişim yetkiniz yok. Gerekli rol: {required_role.name}", 403
+                )
+
             return f(*args, **kwargs)
+
         return decorated_function
+
     return decorator
 
 
@@ -100,16 +111,18 @@ def generate_csrf_token(user_id: str) -> str:
     secret = current_app.config["SECRET_KEY"]
     return hashlib.sha256(f"{secret}{user_id}".encode()).hexdigest()
 
+
 def require_subscription_plan(minimum_plan: SubscriptionPlan):
     """
     Bir endpoint'e erişim için minimum bir abonelik seviyesini zorunlu kılan decorator.
-    
+
     Kullanım:
     @app.route('/premium-feature')
     @require_subscription_plan(SubscriptionPlan.PREMIUM)
     def premium_feature():
         return "Bu bir premium özelliktir."
     """
+
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
@@ -117,13 +130,13 @@ def require_subscription_plan(minimum_plan: SubscriptionPlan):
                 return f(*args, **kwargs)
             if request.headers.get("X-API-KEY"):
                 return f(*args, **kwargs)
-            if not hasattr(g, 'user') or not isinstance(g.user, User):
-                api_key = request.headers.get('X-API-KEY')
+            if not hasattr(g, "user") or not isinstance(g.user, User):
+                api_key = request.headers.get("X-API-KEY")
                 if api_key:
                     user = User.query.filter_by(api_key=api_key).first()
                     if user:
                         g.user = user
-            if not hasattr(g, 'user') or not isinstance(g.user, User):
+            if not hasattr(g, "user") or not isinstance(g.user, User):
                 return _error_response(
                     "Yetkilendirme hatası: Kullanıcı bilgisi bulunamadı.", 401
                 )
@@ -143,8 +156,13 @@ def require_subscription_plan(minimum_plan: SubscriptionPlan):
                 logger.warning(
                     f"Yetersiz abonelik seviyesi. Kullanıcı: {g.user.username}, Mevcut Plan: {g.user.subscription_level.name}, Gerekli Plan: {minimum_plan.name}"
                 )
-                return _error_response(f"Bu özelliğe erişim için en az '{minimum_plan.name.capitalize()}' abonelik planı gereklidir.", 403)
-            
+                return _error_response(
+                    f"Bu özelliğe erişim için en az '{minimum_plan.name.capitalize()}' abonelik planı gereklidir.",
+                    403,
+                )
+
             return f(*args, **kwargs)
+
         return decorated_function
+
     return decorator

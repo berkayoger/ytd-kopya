@@ -1,6 +1,8 @@
 import factory
+
 from backend import db
 from backend.db.models import PromotionCode
+
 
 class PromotionCodeFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:

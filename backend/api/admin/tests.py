@@ -1,18 +1,29 @@
 from __future__ import annotations
-import os, re, shlex, subprocess
+
+import os
+import re
+import shlex
+import subprocess
 from pathlib import Path
-from flask import Blueprint, jsonify, request, g
+
+from flask import Blueprint, g, jsonify, request
+from loguru import logger
+
+from backend import limiter
 from backend.auth.jwt_utils import jwt_required_if_not_testing
 from backend.auth.middlewares import admin_required
-from backend.utils.logger import create_log
 from backend.observability.metrics import inc_error
-from backend import limiter
-from loguru import logger
+from backend.utils.logger import create_log
 
 admin_tests_bp = Blueprint("admin_tests", __name__, url_prefix="/api/admin/tests")
 
 # Ortam değişkeni ile kapatılabilir
-_ALLOW = os.getenv("ALLOW_ADMIN_TEST_RUN", "false").strip().lower() in {"1", "true", "yes", "on"}
+_ALLOW = os.getenv("ALLOW_ADMIN_TEST_RUN", "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
 
 def _project_root() -> Path:
@@ -24,7 +35,11 @@ def _project_root() -> Path:
     here = Path(__file__).resolve()
     # git kökü ara
     for p in [here] + list(here.parents):
-        if (p / ".git").exists() or (p / "pyproject.toml").exists() or (p / "pytest.ini").exists():
+        if (
+            (p / ".git").exists()
+            or (p / "pyproject.toml").exists()
+            or (p / "pytest.ini").exists()
+        ):
             return p if p.is_dir() else p.parent
     # yedek: backend klasörünün üstü
     for p in here.parents:
@@ -62,7 +77,14 @@ def _parse_summary(text: str) -> dict:
     """Pytest özet satırını ayrıştır."""
     m = re.search(r"=+ (.+?) =+\s*$", text, flags=re.M | re.S)
     summary = m.group(1).strip() if m else ""
-    counts = {"passed": 0, "failed": 0, "errors": 0, "skipped": 0, "xfailed": 0, "xpassed": 0}
+    counts = {
+        "passed": 0,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xfailed": 0,
+        "xpassed": 0,
+    }
     for key in counts.keys():
         mm = re.search(rf"(\d+)\s+{key}", summary)
         if mm:
@@ -78,7 +100,14 @@ def run_tests():
     """Sunucu üzerinde testleri çalıştır."""
     if not _ALLOW:
         inc_error("tests_forbidden")
-        return jsonify({"error": "Test çalıştırma devre dışı. ALLOW_ADMIN_TEST_RUN=true yapın."}), 403
+        return (
+            jsonify(
+                {
+                    "error": "Test çalıştırma devre dışı. ALLOW_ADMIN_TEST_RUN=true yapın."
+                }
+            ),
+            403,
+        )
 
     body = request.json or {}
     suite = body.get("suite", "unit")
@@ -162,7 +191,10 @@ def run_tests():
 
     except subprocess.TimeoutExpired:
         inc_error("tests_timeout")
-        return jsonify({"error": "Test çalıştırma zaman aşımına uğradı (timeout)."}), 504
+        return (
+            jsonify({"error": "Test çalıştırma zaman aşımına uğradı (timeout)."}),
+            504,
+        )
     except Exception as e:  # pragma: no cover
         inc_error("tests_exception")
         return jsonify({"error": str(e)}), 500
@@ -193,8 +225,9 @@ def tests_status():
 @admin_required()
 def tests_history():
     """Geçmiş test çalıştırma kayıtlarını döner (filtreli)."""
-    from backend.models.admin_test_run import AdminTestRun, db
     from sqlalchemy import and_
+
+    from backend.models.admin_test_run import AdminTestRun, db
 
     q = AdminTestRun.query
 

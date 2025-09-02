@@ -1,8 +1,11 @@
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required
-from backend.auth.middlewares import admin_required
-from backend.db.models import db, PromoCode, SubscriptionPlan
 from datetime import datetime
+
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required
+
+from backend.auth.middlewares import admin_required
+from backend.db.models import (PromoCode, PromoCodeUsage, SubscriptionPlan,
+                               User, db)
 
 admin_promo_bp = Blueprint("admin_promo", __name__, url_prefix="/api/admin/promo-codes")
 
@@ -27,7 +30,10 @@ def create_promo_code():
             try:
                 expires_at = datetime.fromisoformat(expires_at_str)
             except ValueError:
-                return jsonify({"error": "Ge\u00e7ersiz tarih format\u0131 (expires_at)"}), 400
+                return (
+                    jsonify({"error": "Ge\u00e7ersiz tarih format\u0131 (expires_at)"}),
+                    400,
+                )
 
         user_email = data.get("user_email")
         if user_email == "":
@@ -91,7 +97,12 @@ def update_promo_code(promo_id):
                 try:
                     promo.expires_at = datetime.fromisoformat(data["expires_at"])
                 except ValueError:
-                    return jsonify({"error": "Ge\u00e7ersiz tarih format\u0131 (expires_at)"}), 400
+                    return (
+                        jsonify(
+                            {"error": "Ge\u00e7ersiz tarih format\u0131 (expires_at)"}
+                        ),
+                        400,
+                    )
             else:
                 promo.expires_at = None
         db.session.commit()
@@ -124,3 +135,83 @@ def update_promo_expiration(promo_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
+
+@admin_promo_bp.route("/stats", methods=["GET"])
+@jwt_required()
+@admin_required()
+def promo_usage_stats():
+    """Aggregate promo usage counts per code with optional filtering and pagination."""
+    include_inactive = str(
+        request.args.get("include_inactive", "true")
+    ).lower() not in {
+        "false",
+        "0",
+        "no",
+    }
+    try:
+        per_page = max(1, int(request.args.get("per_page", 50)))
+    except Exception:
+        per_page = 50
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except Exception:
+        page = 1
+
+    from sqlalchemy import func
+
+    q = (
+        db.session.query(
+            PromoCode.code.label("code"),
+            PromoCode.is_active.label("is_active"),
+            func.count(PromoCodeUsage.id).label("count"),
+        )
+        .select_from(PromoCode)
+        .outerjoin(PromoCodeUsage, PromoCode.id == PromoCodeUsage.promo_code_id)
+        .group_by(PromoCode.id)
+        .order_by(PromoCode.code.asc())
+    )
+    if not include_inactive:
+        q = q.filter(PromoCode.is_active.is_(True))
+
+    rows = q.all()
+    total = len(rows)
+    start = (page - 1) * per_page
+    end = start + per_page
+    page_rows = rows[start:end]
+    items = [
+        {"code": r.code, "count": int(r.count or 0), "is_active": bool(r.is_active)}
+        for r in page_rows
+    ]
+    return jsonify({"total": total, "items": items}), 200
+
+
+@admin_promo_bp.route("/stats/<code>/usages", methods=["GET"])
+@jwt_required()
+@admin_required()
+def promo_code_usage_details(code: str):
+    """List users who used a given promo code."""
+    promo = PromoCode.query.filter(PromoCode.code == str(code).upper()).first()
+    if not promo:
+        return jsonify([]), 200
+    rows = (
+        db.session.query(PromoCodeUsage, User)
+        .select_from(PromoCodeUsage)
+        .join(User, User.id == PromoCodeUsage.user_id)
+        .join(PromoCode, PromoCode.id == PromoCodeUsage.promo_code_id)
+        .filter(PromoCode.id == promo.id)
+        .all()
+    )
+    out = []
+    for usage, user in rows:
+        try:
+            out.append(
+                {
+                    "user_id": user.id,
+                    "username": getattr(user, "username", None)
+                    or getattr(user, "email", None),
+                    "used_at": usage.used_at.isoformat() if usage.used_at else None,
+                }
+            )
+        except Exception:
+            continue
+    return jsonify(out), 200

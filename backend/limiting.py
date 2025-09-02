@@ -2,15 +2,19 @@
 Plan bazlı rate limit yardımcıları.
 Test/CI ortamında güvenli varsayılanlarla çalışır.
 """
+
 from __future__ import annotations
+
 import os
 from typing import Optional
-from flask import request, g
+
+from flask import g, request
 from flask_limiter import Limiter
 
 # Güvenli import: jwt fonksiyonları yoksa None olsun
 try:  # pragma: no cover
-    from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request, get_jwt  # type: ignore
+    from flask_jwt_extended import (get_jwt, get_jwt_identity,  # type: ignore
+                                    verify_jwt_in_request)
 except Exception:  # pragma: no cover
     get_jwt_identity = None  # type: ignore
     verify_jwt_in_request = None  # type: ignore
@@ -74,8 +78,10 @@ def get_plan_rate_limit(plan_name: str | None = None) -> str:
     if plan_name is None:
         plan = getattr(g, "user", None)
         plan_name = getattr(getattr(plan, "plan", None), "name", None) if plan else None
-    key = (str(plan_name).strip().lower() if plan_name else "free")
-    return _normalize_rate_string(DEFAULT_PLAN_LIMITS.get(key, DEFAULT_PLAN_LIMITS["free"]))
+    key = str(plan_name).strip().lower() if plan_name else "free"
+    return _normalize_rate_string(
+        DEFAULT_PLAN_LIMITS.get(key, DEFAULT_PLAN_LIMITS["free"])
+    )
 
 
 def rate_limit_key_func() -> str:
@@ -95,4 +101,3 @@ def rate_limit_key_func() -> str:
 
 # Flask-Limiter instance (uygulama init'de init_app ile bağlanır)
 limiter = Limiter(key_func=rate_limit_key_func)
-

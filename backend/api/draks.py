@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import requests
-from flask import Blueprint, current_app, jsonify, request, g
+from flask import Blueprint, current_app, g, jsonify, request
 from flask_jwt_extended import jwt_required
 
 from backend.middleware.plan_limits import enforce_plan_limit
@@ -71,12 +71,16 @@ def draks_copy_evaluate():
         score = float(data.get("score", 0))
         decision = str(data.get("decision", "HOLD")).upper()
         side = str(payload.get("side", "")).upper()
-        greenlight = (decision == "LONG" and side == "BUY") or (decision == "SHORT" and side == "SELL")
+        greenlight = (decision == "LONG" and side == "BUY") or (
+            decision == "SHORT" and side == "SELL"
+        )
         scaled_size = None
         if greenlight and payload.get("size") is not None:
             scaled_size = payload["size"] * max(0, min(1, abs(score) * 1.5))
         status = "success"
-        return jsonify({"greenlight": greenlight, "scaled_size": scaled_size, "draks": data})
+        return jsonify(
+            {"greenlight": greenlight, "scaled_size": scaled_size, "draks": data}
+        )
     except Exception as exc:  # pragma: no cover
         current_app.logger.exception("draks_copy_evaluate hata: %s", exc)
         return jsonify({"error": "draks-eval-error"}), 500

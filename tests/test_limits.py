@@ -1,12 +1,14 @@
 import json
+
 import pytest
+from flask import g, jsonify
 
 from backend import create_app, db
-from backend.db.models import User, UserRole, SubscriptionPlan
+from backend.db.models import SubscriptionPlan, User, UserRole
+from backend.middleware.plan_limits import enforce_plan_limit
 from backend.models.plan import Plan
 from backend.utils.limits import enforce_limit
-from backend.middleware.plan_limits import enforce_plan_limit
-from flask import jsonify, g
+
 
 @pytest.fixture
 def test_app(monkeypatch):
@@ -27,7 +29,12 @@ def test_user(test_app):
         db.session.add(plan)
         db.session.commit()
 
-        user = User(username="limit_user", subscription_level=SubscriptionPlan.BASIC, role=UserRole.USER, plan_id=plan.id)
+        user = User(
+            username="limit_user",
+            subscription_level=SubscriptionPlan.BASIC,
+            role=UserRole.USER,
+            plan_id=plan.id,
+        )
         user.custom_features = json.dumps({"predict_daily": 3})
         user.set_password("pass")
         user.generate_api_key()
@@ -35,12 +42,15 @@ def test_user(test_app):
         db.session.commit()
         return user
 
+
 def test_enforce_limit_allows_usage(test_user):
     assert enforce_limit(test_user, "predict_daily", 2)[0] is True
+
 
 def test_enforce_limit_denies_usage(test_user):
     pass
     # Bu test yanlış tasarlanmış, enforce_limit limit değerini parametre olarak almıyor
+
 
 def test_enforce_limit_with_missing_key_allows(test_user):
     assert enforce_limit(test_user, "unknown_limit", 999)[0] is True
@@ -81,6 +91,7 @@ def test_enforce_plan_limit_blocked_usage(test_app, test_user):
             user = db.session.merge(test_user)
             g.user = user
             from unittest.mock import patch
+
             with patch.object(User, "get_usage_count", return_value=3):
                 response = client.post("/test-decorated-block")
                 assert response.status_code == 429
@@ -103,6 +114,7 @@ def test_enforce_plan_limit_admin_bypass(test_app, test_user):
             db.session.commit()
             g.user = user
             from unittest.mock import patch
+
             with patch.object(User, "get_usage_count", return_value=999):
                 response = client.post("/admin-bypass")
                 assert response.status_code == 200

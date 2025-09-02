@@ -9,4 +9,3 @@ gerçek blueprint'i `plan_routes` modülünden dışa aktarır.
 from backend.api.plan_routes import plan_bp  # noqa: F401
 
 __all__ = ["plan_bp"]
-

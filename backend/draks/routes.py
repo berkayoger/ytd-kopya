@@ -1,22 +1,25 @@
 from __future__ import annotations
-from flask import request, jsonify, current_app, g
-from datetime import datetime, timezone
-import pandas as pd
-import numpy as np
-import os
+
 import json
+import os
+from datetime import datetime, timezone
+
+import numpy as np
+import pandas as pd
+from flask import current_app, g, jsonify, request
 
 try:
     import ccxt  # opsiyonel: candles yoksa otomatik çeker
 except Exception:  # pragma: no cover
     ccxt = None
 
+from backend import limiter
 from backend.auth.jwt_utils import jwt_required_if_not_testing
+from backend.db import db
+from backend.db.models import DraksDecision, DraksSignalRun, UsageLog
 from backend.middleware.plan_limits import enforce_plan_limit
 from backend.utils.feature_flags import feature_flag_enabled
 from backend.utils.logger import create_log
-from backend.db.models import UsageLog, DraksSignalRun, DraksDecision
-from backend import db, limiter
 
 from . import draks_bp
 from .engine_min import DRAKSEngine
@@ -85,20 +88,24 @@ def draks_health():
     """
     try:
         enabled = feature_flag_enabled("draks")
-        use_advanced = (
-            feature_flag_enabled("draks_advanced")
-            or os.getenv("DRAKS_ADVANCED", "0").lower() in {"1", "true", "yes"}
-        )
+        use_advanced = feature_flag_enabled("draks_advanced") or os.getenv(
+            "DRAKS_ADVANCED", "0"
+        ).lower() in {"1", "true", "yes"}
         live_mode = os.getenv("DRAKS_LIVE_MODE", "0").lower() in {"1", "true", "yes"}
         # Minimal kontrol: engine objesi çalışıyor mu?
         ok = ENGINE is not None
-        return jsonify({
-            "status": "ok" if ok else "degraded",
-            "enabled": enabled,
-            "advanced": bool(use_advanced),
-            "live_mode": bool(live_mode),
-            "timeframe": CFG.get("timeframe", "1h")
-        }), 200
+        return (
+            jsonify(
+                {
+                    "status": "ok" if ok else "degraded",
+                    "enabled": enabled,
+                    "advanced": bool(use_advanced),
+                    "live_mode": bool(live_mode),
+                    "timeframe": CFG.get("timeframe", "1h"),
+                }
+            ),
+            200,
+        )
     except Exception as e:  # pragma: no cover
         current_app.logger.exception("draks health error")
         return jsonify({"status": "error", "error": str(e)}), 500
@@ -124,17 +131,17 @@ def _fetch_ohlcv_ccxt(
 @limiter.limit("60/minute")
 def decision_run():
     """Karar motorunu çalıştır."""
-    if not feature_flag_enabled("draks"):
+    # Hem eski hem yeni isimlendirmeyi destekle: draks / draks_enabled
+    if not (feature_flag_enabled("draks") and feature_flag_enabled("draks_enabled")):
         return jsonify({"error": "Özellik şu anda devre dışı."}), 403
 
     user = getattr(g, "user", None)
     ip_address = request.remote_addr or "unknown"
     user_agent = request.headers.get("User-Agent", "")
     # çalışma anı toggles (env veya flag)
-    use_advanced = (
-        feature_flag_enabled("draks_advanced")
-        or os.getenv("DRAKS_ADVANCED", "0").lower() in {"1", "true", "yes"}
-    )
+    use_advanced = feature_flag_enabled("draks_advanced") or os.getenv(
+        "DRAKS_ADVANCED", "0"
+    ).lower() in {"1", "true", "yes"}
     live_mode = os.getenv("DRAKS_LIVE_MODE", "0").lower() in {"1", "true", "yes"}
     # not: live_mode sadece risk kapaklarını sıkılaştırır, plan/flag kontrollerini etkilemez
 
@@ -229,10 +236,9 @@ def copy_evaluate():
     user_agent = request.headers.get("User-Agent", "")
 
     # çalışma anı toggles (env veya bayrak)
-    use_advanced = (
-        feature_flag_enabled("draks_advanced")
-        or os.getenv("DRAKS_ADVANCED", "0").lower() in {"1", "true", "yes"}
-    )
+    use_advanced = feature_flag_enabled("draks_advanced") or os.getenv(
+        "DRAKS_ADVANCED", "0"
+    ).lower() in {"1", "true", "yes"}
     live_mode = os.getenv("DRAKS_LIVE_MODE", "0").lower() in {"1", "true", "yes"}
     # not: live_mode sadece risk kapaklarını kısar, plan/flag kontrollerini etkilemez
 
@@ -309,12 +315,14 @@ def copy_evaluate():
                 user_agent=user_agent,
             )
 
-        return jsonify({
-            "greenlight": final_green,
-            "scale_factor": final_scale,
-            "scaled_size": scaled_size,
-            "draks": out
-        })
+        return jsonify(
+            {
+                "greenlight": final_green,
+                "scale_factor": final_scale,
+                "scaled_size": scaled_size,
+                "draks": out,
+            }
+        )
     except Exception as e:  # pragma: no cover
         current_app.logger.exception("draks eval error")
         if user:

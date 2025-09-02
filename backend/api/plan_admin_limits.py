@@ -1,16 +1,19 @@
-from flask import Blueprint, request, jsonify
-from backend.auth.jwt_utils import require_csrf, require_admin
-from flask_jwt_extended import jwt_required
-from backend import db
-from backend.models.plan import Plan
 import json
 import os
+
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required
+
+from backend import db
+from backend.auth.jwt_utils import require_admin, require_csrf
+from backend.models.plan import Plan
 
 plan_admin_limits_bp = Blueprint(
     "plan_admin_limits",
     __name__,
     url_prefix="/api/plans",
 )
+
 
 @plan_admin_limits_bp.route("/<int:plan_id>/update-limits", methods=["POST"])
 @jwt_required()
@@ -50,6 +53,7 @@ def update_plan_limits(plan_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
+
 @plan_admin_limits_bp.route("/all", methods=["GET"])
 @jwt_required()
 @require_csrf
@@ -68,6 +72,7 @@ def get_all_plans():
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @plan_admin_limits_bp.route("/create", methods=["POST"])
 @jwt_required()
@@ -96,6 +101,7 @@ def create_plan():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
 
 @plan_admin_limits_bp.route("/<int:plan_id>", methods=["DELETE"])
 @require_csrf

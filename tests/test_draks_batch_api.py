@@ -1,9 +1,10 @@
 import json
-import pytest
 from datetime import datetime
 
+import pytest
+
 from backend import create_app, db
-from backend.db.models import User, SubscriptionPlan, UserRole
+from backend.db.models import SubscriptionPlan, User, UserRole
 from backend.models.plan import Plan
 from backend.utils.feature_flags import set_feature_flag
 
@@ -66,6 +67,7 @@ def app(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
     monkeypatch.setenv("CELERY_TASK_ALWAYS_EAGER", "true")
     import flask_jwt_extended.view_decorators as vd
+
     monkeypatch.setattr(vd, "verify_jwt_in_request", lambda *a, **k: None)
     app = create_app()
     app.config["TESTING"] = True
@@ -104,10 +106,11 @@ def auth_headers(app, user):
 
 def _patch_batch(monkeypatch):
     import backend.tasks.draks_batch as mod
+
     dummy = DummyRedis()
     monkeypatch.setattr(mod, "_r", lambda: dummy)
-    import pandas as pd
     import numpy as np
+    import pandas as pd
 
     def fake_get(asset, symbol, timeframe, limit):
         now = pd.Timestamp.utcnow().floor("s")
@@ -125,19 +128,30 @@ def _patch_batch(monkeypatch):
         return df
 
     monkeypatch.setattr(mod, "_get_ohlcv_cached", fake_get)
+
     def _fake_delay(**kw):
         r = dummy
         try:
-            df = mod._get_ohlcv_cached(kw["asset"], kw["symbol"], kw["timeframe"], kw["limit"])
+            df = mod._get_ohlcv_cached(
+                kw["asset"], kw["symbol"], kw["timeframe"], kw["limit"]
+            )
             if len(df) < 60:
                 raise RuntimeError("insufficient_data")
             out = mod.ENGINE.run(df, kw["symbol"].replace(" ", ""))
             out["as_of"] = datetime.utcnow().isoformat() + "Z"
-            r.setex(mod._result_key(kw["job_id"], kw["symbol"]), mod.DECISION_TTL, json.dumps({"status": "ok", "draks": out}))
+            r.setex(
+                mod._result_key(kw["job_id"], kw["symbol"]),
+                mod.DECISION_TTL,
+                json.dumps({"status": "ok", "draks": out}),
+            )
             r.sadd(mod._set_key(kw["job_id"], "done"), kw["symbol"])
             mod.inc_batch_item(kw["asset"], "ok")
         except Exception:
-            r.setex(mod._result_key(kw["job_id"], kw["symbol"]), mod.DECISION_TTL, json.dumps({"status": "error", "error": "internal_error"}))
+            r.setex(
+                mod._result_key(kw["job_id"], kw["symbol"]),
+                mod.DECISION_TTL,
+                json.dumps({"status": "error", "error": "internal_error"}),
+            )
             r.sadd(mod._set_key(kw["job_id"], "failed"), kw["symbol"])
             mod.inc_batch_item(kw["asset"], "error")
         finally:
@@ -151,6 +165,7 @@ def _patch_batch(monkeypatch):
     dummy_task = _Task()
     monkeypatch.setattr(mod, "process_symbol", dummy_task)
     import backend.api.draks.batch as api_batch
+
     monkeypatch.setattr(api_batch, "process_symbol", dummy_task)
     return dummy
 

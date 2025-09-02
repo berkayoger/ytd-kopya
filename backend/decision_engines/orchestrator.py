@@ -6,10 +6,10 @@ from typing import Any, Dict, List, Sequence
 import numpy as np
 import pandas as pd
 
-from .registry import ENGINE_REGISTRY
 from .base import DecisionRequest, DecisionResult
-from .utils import action_to_score, zscore, winsorize01, daily_volatility
 from .gate import detect_regime
+from .registry import ENGINE_REGISTRY
+from .utils import action_to_score, daily_volatility, winsorize01, zscore
 
 
 @dataclass
@@ -37,7 +37,9 @@ def _pick_weights(cfg: OrchestratorConfig, regime_label: str) -> Dict[str, float
     return cfg.weights_mixed
 
 
-def _normalized_weights(engine_ids: Sequence[str], raw_map: Dict[str, float]) -> np.ndarray:
+def _normalized_weights(
+    engine_ids: Sequence[str], raw_map: Dict[str, float]
+) -> np.ndarray:
     w = np.array([float(raw_map.get(e, 0.0)) for e in engine_ids], dtype=float)
     s = w.sum()
     if not np.isfinite(s) or s <= 1e-12:
@@ -78,7 +80,9 @@ def build_consensus_result(
     norm_scores = zscore(raw_scores)
 
     s_consensus = float((norm_scores * weights).sum()) if len(norm_scores) else 0.0
-    exp_consensus = float((np.array(exp_rets) * weights).sum()) if len(exp_rets) else 0.0
+    exp_consensus = (
+        float((np.array(exp_rets) * weights).sum()) if len(exp_rets) else 0.0
+    )
     conf_consensus = float((np.array(confs) * weights).sum()) if len(confs) else 0.0
 
     label = "hold"
@@ -149,4 +153,3 @@ def build_consensus_result(
         },
         "engines": {eid: engine_results[eid].__dict__ for eid in ids},
     }
-

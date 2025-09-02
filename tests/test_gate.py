@@ -30,4 +30,3 @@ def test_detect_regime_outputs():
     r = detect_regime(df)
     assert r["label"] in {"risk_on", "risk_off", "mixed"}
     assert "trend_strength" in r and "vol_pct" in r
-

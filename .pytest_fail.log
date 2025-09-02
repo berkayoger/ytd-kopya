@@ -1,62 +1,60 @@
 ============================= test session starts ==============================
-platform linux -- Python 3.12.1, pytest-7.4.4, pluggy-1.6.0 -- /usr/local/python/3.12.1/bin/python3
+platform linux -- Python 3.12.1, pytest-8.4.1, pluggy-1.6.0 -- /workspaces/ytd-kopya/.venv/bin/python
 cachedir: .pytest_cache
 rootdir: /workspaces/ytd-kopya
 configfile: pytest.ini
-testpaths: tests
-plugins: anyio-4.9.0, Faker-37.5.3, cov-4.1.0
-collecting ... collected 163 items
+plugins: Faker-25.9.2, anyio-4.10.0, cov-4.1.0
+collecting ... collected 178 items
 
-tests/test_admin_custom_features.py::test_admin_can_update_custom_features PASSED [  0%]
-tests/test_admin_custom_features.py::test_update_custom_features_invalid_json PASSED [  1%]
-tests/test_admin_custom_features.py::test_update_custom_features_user_not_found PASSED [  1%]
-tests/test_admin_custom_features.py::test_update_custom_features_invalid_user_id PASSED [  2%]
-tests/test_admin_draks_monitor.py::test_list_decisions PASSED            [  3%]
-tests/test_admin_draks_monitor.py::test_list_signals PASSED              [  3%]
-tests/test_admin_logs_api.py::test_get_logs PASSED                       [  4%]
-tests/test_admin_logs_api.py::test_logs_filter_by_username PASSED        [  4%]
-tests/test_admin_logs_api.py::test_logs_filter_by_action PASSED          [  5%]
-tests/test_admin_logs_api.py::test_logs_date_range PASSED                [  6%]
-tests/test_admin_logs_api.py::test_logs_pagination PASSED                [  6%]
-tests/test_admin_plan_management.py::test_full_plan_crud_flow PASSED     [  7%]
-tests/test_admin_plan_management.py::test_create_plan_missing_name PASSED [  7%]
-tests/test_admin_plan_management.py::test_create_plan_invalid_limit_value PASSED [  8%]
-tests/test_admin_plan_management.py::test_update_plan_limits_invalid_payload PASSED [  9%]
-tests/test_admin_plan_management.py::test_delete_nonexistent_plan PASSED [  9%]
-tests/test_admin_promo.py::test_update_expiration_success PASSED         [ 10%]
-tests/test_admin_promo.py::test_update_expiration_past_date PASSED       [ 11%]
-tests/test_admin_promo.py::test_promo_usage_stats PASSED                 [ 11%]
-tests/test_admin_promo.py::test_promo_code_usage_details PASSED          [ 12%]
-tests/test_admin_promo.py::test_get_user_promos PASSED                   [ 12%]
-tests/test_admin_rbac_guard.py::test_admin_guard_forbids_without_admin FAILED [ 13%]
+backend/tests/test_decision.py::test_predict_decision_success PASSED     [  0%]
+backend/tests/test_decision.py::test_predict_decision_invalid_json PASSED [  1%]
+backend/tests/test_draks_copy_evaluate.py::test_copy_eval_flag_off FAILED [  1%]
 
 =================================== FAILURES ===================================
-____________________ test_admin_guard_forbids_without_admin ____________________
+___________________________ test_copy_eval_flag_off ____________________________
 
-monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7880e978f470>
+app = <Flask 'backend.app'>, user = <User 1>
+auth_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NTY4MzYwNDQsImlzcyI6Inl0ZC1...IiwiZnJlc2giOnRydWV9.KvZEWqVTgFbKKEpwS8_gW4Ews2sDtLr8grhyg2Se8_k', 'X-API-KEY': '37efe0a2-d1bb-469c-b42d-399afa3ff26b'}
 
-    def test_admin_guard_forbids_without_admin(monkeypatch):
-        app = create_app()
-        _add_dummy_admin_route(app)
-    
-        # JWT doğrulamasını no-op yap, roller boş kalsın
-        monkeypatch.setattr(roles_mod, "verify_jwt_in_request", lambda optional=False: None)
-        monkeypatch.setattr(roles_mod, "current_roles", lambda: set())
-    
+    def test_copy_eval_flag_off(app, user, auth_headers):
         client = app.test_client()
-        resp = client.get("/api/admin/__rbac_test", headers={"Authorization": "Bearer test"})
->       assert resp.status_code == 403
-E       assert 200 == 403
-E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
+        with app.app_context():
+>           create_feature_flag("draks", False)
+E           TypeError: create_feature_flag() takes from 0 to 1 positional arguments but 2 were given
 
-tests/test_admin_rbac_guard.py:22: AssertionError
------------------------------ Captured stderr call -----------------------------
-{"asctime": "2025-08-25 22:55:16,736", "levelname": "INFO", "name": "backend", "message": "App booting with observability metrics enabled.", "pathname": "/workspaces/ytd-kopya/backend/__init__.py", "lineno": 161, "funcName": "create_app"}
-{"asctime": "2025-08-25 22:55:16,794", "levelname": "INFO", "name": "backend", "message": "", "pathname": "/workspaces/ytd-kopya/backend/__init__.py", "lineno": 314, "funcName": "_after", "event": "http_access", "method": "GET", "path": "/api/admin/__rbac_test", "status": 200, "request_id": "01dcca5d-6dc9-42c1-91a6-4a81f5c9edd4", "user_id": "test-user", "remote_addr": "127.0.0.1", "latency_sec": 0.0001}
------------------------------- Captured log call -------------------------------
-INFO     backend:__init__.py:161 App booting with observability metrics enabled.
-INFO     backend:__init__.py:314 {'event': 'http_access', 'method': 'GET', 'path': '/api/admin/__rbac_test', 'status': 200, 'request_id': '01dcca5d-6dc9-42c1-91a6-4a81f5c9edd4', 'user_id': 'test-user', 'remote_addr': '127.0.0.1', 'latency_sec': 0.0001}
+backend/tests/test_draks_copy_evaluate.py:72: TypeError
+---------------------------- Captured stderr setup -----------------------------
+{"asctime": "2025-09-02 18:00:44,070", "levelname": "INFO", "name": "backend.app", "message": "app_boot", "pathname": "/workspaces/ytd-kopya/backend/app/__init__.py", "lineno": 35, "funcName": "create_app", "stage": "init"}
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/pythonjsonlogger/jsonlogger.py:11
+  /workspaces/ytd-kopya/.venv/lib/python3.12/site-packages/pythonjsonlogger/jsonlogger.py:11: DeprecationWarning: pythonjsonlogger.jsonlogger has been moved to pythonjsonlogger.json
+    warnings.warn(
+
+backend/utils/feature_flags.py:52
+backend/utils/feature_flags.py:52
+  /workspaces/ytd-kopya/backend/utils/feature_flags.py:52: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return datetime.utcnow().isoformat()
+
+.venv/lib/python3.12/site-packages/pandas_ta/__init__.py:7
+  /workspaces/ytd-kopya/.venv/lib/python3.12/site-packages/pandas_ta/__init__.py:7: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+    from pkg_resources import get_distribution, DistributionNotFound
+
+.venv/lib/python3.12/site-packages/passlib/utils/__init__.py:854
+  /workspaces/ytd-kopya/.venv/lib/python3.12/site-packages/passlib/utils/__init__.py:854: DeprecationWarning: 'crypt' is deprecated and slated for removal in Python 3.13
+    from crypt import crypt as _crypt
+
+backend/tests/test_decision.py::test_predict_decision_success
+  /workspaces/ytd-kopya/backend/decision_engine/decision_maker.py:28: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "valid_until": (datetime.utcnow() + timedelta(days=7)).isoformat(),
+
+backend/tests/test_draks_copy_evaluate.py::test_copy_eval_flag_off
+backend/tests/test_draks_copy_evaluate.py::test_copy_eval_flag_off
+backend/tests/test_draks_copy_evaluate.py::test_copy_eval_flag_off
+  /workspaces/ytd-kopya/.venv/lib/python3.12/site-packages/sqlalchemy/sql/schema.py:3624: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 =========================== short test summary info ============================
-FAILED tests/test_admin_rbac_guard.py::test_admin_guard_forbids_without_admin
+FAILED backend/tests/test_draks_copy_evaluate.py::test_copy_eval_flag_off - TypeError: create_feature_flag() takes from 0 to 1 positional arguments but 2 were given
 !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
-================== 1 failed, 21 passed, 117 warnings in 5.13s ==================
+=================== 1 failed, 2 passed, 9 warnings in 1.62s ====================

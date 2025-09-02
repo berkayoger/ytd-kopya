@@ -1,13 +1,15 @@
-from flask import Blueprint, request, jsonify
+import logging
+from datetime import datetime, timedelta
+
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
-from backend.auth.middlewares import admin_required
+
 from backend.auth.jwt_utils import require_csrf
+from backend.auth.middlewares import admin_required
 from backend.db import db
 from backend.db.models import PredictionOpportunity
-from datetime import datetime, timedelta
 from backend.utils.helpers import add_audit_log
-import logging
-from backend.utils.security import validate_request_args, COMMON_VALIDATIONS
+from backend.utils.security import COMMON_VALIDATIONS, validate_request_args
 
 # Admin paneli tahmin yönetimi için Blueprint tanımı
 predictions_bp = Blueprint("predictions", __name__, url_prefix="/api/admin/predictions")
@@ -17,7 +19,13 @@ logger = logging.getLogger(__name__)
 @predictions_bp.route("/", methods=["GET"])
 @jwt_required()
 @admin_required()
-@validate_request_args({**COMMON_VALIDATIONS["pagination"], **COMMON_VALIDATIONS["search_filter"], **COMMON_VALIDATIONS["date_range"]})
+@validate_request_args(
+    {
+        **COMMON_VALIDATIONS["pagination"],
+        **COMMON_VALIDATIONS["search_filter"],
+        **COMMON_VALIDATIONS["date_range"],
+    }
+)
 def list_predictions():
     """Tahmin fırsatlarını sayfalı ve filtreli olarak listeler."""
     try:
@@ -50,13 +58,15 @@ def list_predictions():
         if not request.args:
             return jsonify([p.to_dict() for p in pagination.items])
 
-        return jsonify({
-            "total": pagination.total,
-            "page": pagination.page,
-            "per_page": pagination.per_page,
-            "pages": pagination.pages,
-            "items": [p.to_dict() for p in pagination.items]
-        })
+        return jsonify(
+            {
+                "total": pagination.total,
+                "page": pagination.page,
+                "per_page": pagination.per_page,
+                "pages": pagination.pages,
+                "items": [p.to_dict() for p in pagination.items],
+            }
+        )
     except Exception as e:
         logger.error(f"[ERROR] Tahmin listeleme hatası: {e}")
         return jsonify({"error": str(e)}), 400
@@ -84,7 +94,9 @@ def public_predictions():
         if duration_range:
             try:
                 min_days, max_days = duration_range.split("-")
-                q = q.filter(PredictionOpportunity.expected_gain_days.ilike(f"{min_days}-%"))
+                q = q.filter(
+                    PredictionOpportunity.expected_gain_days.ilike(f"{min_days}-%")
+                )
             except Exception:
                 pass
 
@@ -114,7 +126,9 @@ def public_predictions():
         confidence_scores = [
             p.confidence_score for p in predictions if p.confidence_score is not None
         ]
-        min_conf_range = [round(min(confidence_scores), 1), 100] if confidence_scores else [0, 100]
+        min_conf_range = (
+            [round(min(confidence_scores), 1), 100] if confidence_scores else [0, 100]
+        )
 
         return (
             jsonify(
@@ -147,7 +161,12 @@ def create_prediction():
     data = request.get_json() or {}
     try:
         # Gerekli alanların varlığını kontrol et
-        required_fields = ["symbol", "current_price", "target_price", "expected_gain_pct"]
+        required_fields = [
+            "symbol",
+            "current_price",
+            "target_price",
+            "expected_gain_pct",
+        ]
         for field in required_fields:
             if field not in data:
                 return jsonify({"error": f"'{field}' alanı zorunludur"}), 400
@@ -165,11 +184,11 @@ def create_prediction():
             try:
                 num = int(forecast_horizon[:-1])
                 unit = forecast_horizon[-1]
-                if unit == 'd':
+                if unit == "d":
                     expires_at = created_at + timedelta(days=num)
-                elif unit == 'h':
+                elif unit == "h":
                     expires_at = created_at + timedelta(hours=num)
-                elif unit == 'w':
+                elif unit == "w":
                     expires_at = created_at + timedelta(weeks=num)
             except Exception:
                 pass
@@ -179,9 +198,15 @@ def create_prediction():
         if current_price < 0 or target_price < 0:
             return jsonify({"error": "Fiyatlar negatif olamaz"}), 400
         if not -100 <= expected_gain <= 100:
-            return jsonify({"error": "expected_gain_pct -100 ile 100 arasinda olmalidir"}), 400
+            return (
+                jsonify({"error": "expected_gain_pct -100 ile 100 arasinda olmalidir"}),
+                400,
+            )
         if not 0 <= confidence <= 1:
-            return jsonify({"error": "confidence_score 0 ile 1 arasinda olmalidir"}), 400
+            return (
+                jsonify({"error": "confidence_score 0 ile 1 arasinda olmalidir"}),
+                400,
+            )
 
         pred = PredictionOpportunity(
             symbol=symbol,
@@ -206,7 +231,14 @@ def create_prediction():
         return jsonify(pred.to_dict()), 201
     except ValueError:
         # Sayısal alanlara yanlış tipte veri girilirse hata yakala
-        return jsonify({"error": "Tip uyuşmazlığı: Lütfen sayısal alanlara geçerli bir değer girin."}), 400
+        return (
+            jsonify(
+                {
+                    "error": "Tip uyuşmazlığı: Lütfen sayısal alanlara geçerli bir değer girin."
+                }
+            ),
+            400,
+        )
     except Exception:
         db.session.rollback()
         logger.exception("Tahmin oluşturma hatası")
@@ -224,11 +256,23 @@ def update_prediction(prediction_id):
 
     try:
         # Alan listeleri
-        float_fields = ["current_price", "target_price", "expected_gain_pct", "confidence_score"]
+        float_fields = [
+            "current_price",
+            "target_price",
+            "expected_gain_pct",
+            "confidence_score",
+        ]
         all_fields = [
-            "symbol", "current_price", "target_price", "forecast_horizon",
-            "expected_gain_pct", "confidence_score", "trend_type",
-            "source_model", "is_active", "is_public"
+            "symbol",
+            "current_price",
+            "target_price",
+            "forecast_horizon",
+            "expected_gain_pct",
+            "confidence_score",
+            "trend_type",
+            "source_model",
+            "is_active",
+            "is_public",
         ]
 
         for field in all_fields:
@@ -239,14 +283,29 @@ def update_prediction(prediction_id):
                     if field in ["current_price", "target_price"] and num < 0:
                         return jsonify({"error": f"{field} negatif olamaz"}), 400
                     if field == "expected_gain_pct" and not -100 <= num <= 100:
-                        return jsonify({"error": "expected_gain_pct -100 ile 100 arasinda olmalidir"}), 400
+                        return (
+                            jsonify(
+                                {
+                                    "error": "expected_gain_pct -100 ile 100 arasinda olmalidir"
+                                }
+                            ),
+                            400,
+                        )
                     if field == "confidence_score" and not 0 <= num <= 1:
-                        return jsonify({"error": "confidence_score 0 ile 1 arasinda olmalidir"}), 400
+                        return (
+                            jsonify(
+                                {"error": "confidence_score 0 ile 1 arasinda olmalidir"}
+                            ),
+                            400,
+                        )
                     setattr(pred, field, num)
                 elif field == "symbol":
                     sym = value.strip().upper()
                     if len(sym) > 20:
-                        return jsonify({"error": "Symbol en fazla 20 karakter olabilir"}), 400
+                        return (
+                            jsonify({"error": "Symbol en fazla 20 karakter olabilir"}),
+                            400,
+                        )
                     setattr(pred, field, sym)
                 else:
                     setattr(pred, field, value)
@@ -261,7 +320,14 @@ def update_prediction(prediction_id):
         return jsonify(pred.to_dict()), 200
     except ValueError:
         # Sayısal alanlara yanlış tipte veri girilirse hata yakala
-        return jsonify({"error": "Tip uyuşmazlığı: Lütfen sayısal alanlara geçerli bir değer girin."}), 400
+        return (
+            jsonify(
+                {
+                    "error": "Tip uyuşmazlığı: Lütfen sayısal alanlara geçerli bir değer girin."
+                }
+            ),
+            400,
+        )
     except Exception:
         db.session.rollback()
         logger.exception("Tahmin güncelleme hatası")
@@ -290,15 +356,69 @@ def delete_prediction(prediction_id):
 # Bu veri kaynakları ileride tahmin motoruna beslenecek
 
 DATA_SOURCES = [
-    {"type": "Fiyat/Grafik", "source": "CoinGecko API", "reliability": "High", "cost": "Free", "python_tool": "pycoingecko"},
-    {"type": "Teknik Analiz", "source": "Kendin Hesapla", "reliability": "High", "cost": "Free", "python_tool": "pandas-ta"},
-    {"type": "Haberler", "source": "RSS Beslemeleri", "reliability": "Mid-High", "cost": "Free", "python_tool": "feedparser"},
-    {"type": "Haberler (Alternatif)", "source": "NewsAPI.org", "reliability": "High", "cost": "Free Tier", "python_tool": "requests"},
-    {"type": "Haber & Yorum", "source": "CryptoPanic API", "reliability": "Mid-High", "cost": "Free Tier", "python_tool": "requests"},
-    {"type": "Sosyal Etki", "source": "LunarCrush API", "reliability": "Mid", "cost": "Free Tier", "python_tool": "requests"},
-    {"type": "Etkinlik Takvimi", "source": "CoinMarketCal", "reliability": "Mid", "cost": "Free", "python_tool": "requests"},
-    {"type": "Yorum & Söylem", "source": "Messari News", "reliability": "High", "cost": "Free Tier", "python_tool": "requests"},
-    {"type": "Haber", "source": "CoinTelegraph RSS", "reliability": "High", "cost": "Free", "python_tool": "feedparser"}
+    {
+        "type": "Fiyat/Grafik",
+        "source": "CoinGecko API",
+        "reliability": "High",
+        "cost": "Free",
+        "python_tool": "pycoingecko",
+    },
+    {
+        "type": "Teknik Analiz",
+        "source": "Kendin Hesapla",
+        "reliability": "High",
+        "cost": "Free",
+        "python_tool": "pandas-ta",
+    },
+    {
+        "type": "Haberler",
+        "source": "RSS Beslemeleri",
+        "reliability": "Mid-High",
+        "cost": "Free",
+        "python_tool": "feedparser",
+    },
+    {
+        "type": "Haberler (Alternatif)",
+        "source": "NewsAPI.org",
+        "reliability": "High",
+        "cost": "Free Tier",
+        "python_tool": "requests",
+    },
+    {
+        "type": "Haber & Yorum",
+        "source": "CryptoPanic API",
+        "reliability": "Mid-High",
+        "cost": "Free Tier",
+        "python_tool": "requests",
+    },
+    {
+        "type": "Sosyal Etki",
+        "source": "LunarCrush API",
+        "reliability": "Mid",
+        "cost": "Free Tier",
+        "python_tool": "requests",
+    },
+    {
+        "type": "Etkinlik Takvimi",
+        "source": "CoinMarketCal",
+        "reliability": "Mid",
+        "cost": "Free",
+        "python_tool": "requests",
+    },
+    {
+        "type": "Yorum & Söylem",
+        "source": "Messari News",
+        "reliability": "High",
+        "cost": "Free Tier",
+        "python_tool": "requests",
+    },
+    {
+        "type": "Haber",
+        "source": "CoinTelegraph RSS",
+        "reliability": "High",
+        "cost": "Free",
+        "python_tool": "feedparser",
+    },
 ]
 
 # Planlanan veri toplama görevleri (fonksiyon adları ve açıklamaları ile birlikte tanımlanacak)
@@ -359,10 +479,12 @@ def fetch_news_rss(urls: list[str]) -> list[dict]:
     for url in urls:
         feed = feedparser.parse(url)
         for entry in feed.entries:
-            articles.append({
-                "title": entry.get("title"),
-                "link": entry.get("link"),
-            })
+            articles.append(
+                {
+                    "title": entry.get("title"),
+                    "link": entry.get("link"),
+                }
+            )
     return articles
 
 
@@ -431,4 +553,3 @@ def fetch_sentiment_news(api_key: str, asset: str) -> list[dict]:
         return resp.json().get("data", [])
     except Exception:  # pragma: no cover - dış servis hatası
         return []
-

@@ -1,7 +1,7 @@
 from .data_loader import load_sample_price_data
+from .decision_maker import build_prediction
 from .feature_engineering import compute_features
 from .model_runner import run_simple_rule_model
-from .decision_maker import build_prediction
 
 
 def generate_prediction_for(symbol="BTC"):

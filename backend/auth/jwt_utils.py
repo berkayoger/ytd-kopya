@@ -25,9 +25,7 @@ class TokenManager:
         return hashlib.sha256(token.encode()).hexdigest()
 
     @staticmethod
-    def generate_tokens(
-        user_id: int, additional_claims: dict | None = None
-    ) -> dict:
+    def generate_tokens(user_id: int, additional_claims: dict | None = None) -> dict:
         """Generate both access and refresh tokens with enhanced security"""
         now = datetime.now(timezone.utc)
 
@@ -124,9 +122,7 @@ class TokenManager:
 # Legacy compatibility
 def generate_tokens(user_id: int, username: str, role: str | None = None):
     """Legacy function for backward compatibility"""
-    tokens = TokenManager.generate_tokens(
-        user_id, {"username": username, "role": role}
-    )
+    tokens = TokenManager.generate_tokens(user_id, {"username": username, "role": role})
     return tokens["access_token"], tokens["refresh_token"], secrets.token_hex(32)
 
 
@@ -155,12 +151,16 @@ def verify_csrf() -> bool:
 
 def csrf_required(func):
     """Decorator enforcing CSRF validation"""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         if current_app.config.get("TESTING"):
             return func(*args, **kwargs)
         if not verify_csrf():
-            return ({"error": "CSRF token is missing or invalid", "code": "INVALID_CSRF"}, 403)
+            return (
+                {"error": "CSRF token is missing or invalid", "code": "INVALID_CSRF"},
+                403,
+            )
         return func(*args, **kwargs)
 
     return wrapper
@@ -194,5 +194,3 @@ def jwt_required_if_not_testing(*dargs, **dkwargs):
         return wrapper
 
     return decorator
-
-

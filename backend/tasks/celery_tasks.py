@@ -1,33 +1,33 @@
 """Celery task definitions."""
 
-from datetime import datetime
 import os
+from datetime import datetime
 
 # Celery broker configuration
 os.environ.setdefault("CELERY_BROKER_URL", "redis://localhost:6379/0")
 import json
 import traceback
 from dataclasses import asdict
+
 from celery import Celery
+
 try:
     import numpy as np  # Ağır bağımlılık, test ortamında mevcut olmayabilir
 except Exception:  # pragma: no cover
     np = None
 
-from backend import celery_app, socketio, logger, create_app
 from flask import current_app
+
+from backend import celery_app, create_app, logger, socketio
+
 # Test ortamında 'backend.core.services' bağımlılığını yüklemek gereksizdir.
 try:
-    from backend.core.services import YTDCryptoSystem, AnalysisResult
+    from backend.core.services import AnalysisResult, YTDCryptoSystem
 except Exception:  # pragma: no cover
     YTDCryptoSystem = AnalysisResult = None
-from backend.db.models import (
-    User,
-    SubscriptionPlan,
-    CeleryTaskLog,
-    CeleryTaskStatus,
-)
 from backend import db
+from backend.db.models import (CeleryTaskLog, CeleryTaskStatus,
+                               SubscriptionPlan, User)
 
 
 def _harmonize_conf(app: Celery) -> None:
@@ -49,8 +49,11 @@ def _harmonize_conf(app: Celery) -> None:
 
 _harmonize_conf(celery_app)
 
+
 @celery_app.task(name="backend.tasks.celery_tasks.run_full_analysis", bind=True)
-def run_full_analysis(self, coin_id: str, investor_profile: str = "moderate", user_id: int | None = None):
+def run_full_analysis(
+    self, coin_id: str, investor_profile: str = "moderate", user_id: int | None = None
+):
     logger.info(
         f"Celery: {coin_id.upper()} analizi arka planda baslatildi. Profil: {investor_profile}"
     )
@@ -89,7 +92,9 @@ def run_full_analysis(self, coin_id: str, investor_profile: str = "moderate", us
                 coin_name=coin_id,
             )
 
-            volatility = float(np.std(price_data["prices"]) / np.mean(price_data["prices"]))
+            volatility = float(
+                np.std(price_data["prices"]) / np.mean(price_data["prices"])
+            )
 
             decision_input = {
                 "current_price": price_data["current_price"],
@@ -128,7 +133,11 @@ def run_full_analysis(self, coin_id: str, investor_profile: str = "moderate", us
                 volatility=volatility,
                 signal=decision["signal"],
                 confidence=decision["confidence"],
-                risk_level="high" if volatility > 0.1 else "medium" if volatility > 0.05 else "low",
+                risk_level=(
+                    "high"
+                    if volatility > 0.1
+                    else "medium" if volatility > 0.05 else "low"
+                ),
                 suggested_stop_loss=decision["stop_loss"],
                 suggested_position_size=decision["position_size_pct"],
             )
@@ -159,7 +168,9 @@ def run_full_analysis(self, coin_id: str, investor_profile: str = "moderate", us
 
 
 @celery_app.task(name="backend.tasks.celery_tasks.analyze_coin_task")
-def analyze_coin_task(coin_id: str, investor_profile: str = "moderate", user_id: int | None = None):
+def analyze_coin_task(
+    coin_id: str, investor_profile: str = "moderate", user_id: int | None = None
+):
     """Backward compatible wrapper for the analysis task."""
     return run_full_analysis(coin_id, investor_profile, user_id)
 
@@ -174,9 +185,8 @@ def check_and_downgrade_subscriptions():
     def _process():
         now = datetime.utcnow()
         db.session.expire_all()
-        expired_q = (
-            User.query.filter(User.subscription_end.isnot(None))
-            .filter(User.subscription_end < now)
+        expired_q = User.query.filter(User.subscription_end.isnot(None)).filter(
+            User.subscription_end < now
         )
         for user in expired_q.all():
             target = User.query.get(user.id)
@@ -200,10 +210,13 @@ def check_and_downgrade_subscriptions():
             _process()
 
 
-from backend.utils.alarms import send_alarm, AlarmSeverityEnum
+from backend.utils.alarms import AlarmSeverityEnum, send_alarm
+
 
 @celery_app.task
-def send_security_alert_task(alert_type: str, details: str = "", severity: str = "INFO"):
+def send_security_alert_task(
+    alert_type: str, details: str = "", severity: str = "INFO"
+):
     """Send a security alert to external channels."""
     logger.warning(f"Security alert: {alert_type} - {details}")
     with app.app_context():

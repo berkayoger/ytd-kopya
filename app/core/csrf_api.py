@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+
 from .security import generate_csrf_token
 
 bp = Blueprint("csrf_api", __name__)
@@ -19,4 +20,3 @@ def get_csrf_token():
     except Exception:
         return jsonify({"detail": "csrf not configured"}), 500
     return jsonify({"csrf": token}), 200
-

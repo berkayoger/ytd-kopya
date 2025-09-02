@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from typing import Any, Dict
+
 import numpy as np
 import pandas as pd
 
-from ..registry import register_engine
 from ..base import BaseDecisionEngine, DecisionRequest, DecisionResult
+from ..registry import register_engine
 from ..utils import daily_volatility
 
 
@@ -25,6 +26,7 @@ class KM3RSIMeanReversion(BaseDecisionEngine):
     KM3: RSI Mean-Reversion
     RSI<30 => buy, RSI>70 => sell, aksi hold
     """
+
     engine_id = "KM3"
 
     def run(self, request: DecisionRequest) -> DecisionResult:

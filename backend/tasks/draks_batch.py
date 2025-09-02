@@ -1,12 +1,15 @@
 from __future__ import annotations
-import os, json, time
+
+import json
+import os
+import time
 from datetime import datetime
 from typing import Optional
 
 import numpy as np
 import pandas as pd
-from redis import Redis
 from loguru import logger
+from redis import Redis
 
 try:
     import ccxt
@@ -17,17 +20,14 @@ try:
 except Exception:
     yf = None
 
-from backend import celery_app
-from backend.observability.metrics import (
-    inc_batch_item,
-    inc_cache_hit,
-    inc_cache_miss,
-    observe_batch_duration,
-)
-from backend.utils.security import safe_cache_key
-
-from backend.draks.engine_min import DRAKSEngine
 from flask_socketio import SocketIO
+
+from backend import celery_app
+from backend.draks.engine_min import DRAKSEngine
+from backend.observability.metrics import (inc_batch_item, inc_cache_hit,
+                                           inc_cache_miss,
+                                           observe_batch_duration)
+from backend.utils.security import safe_cache_key
 
 CFG = {
     "timeframe": "1h",
@@ -58,6 +58,7 @@ BATCH_JOB_TIMEOUT = int(os.getenv("BATCH_JOB_TIMEOUT", "300"))
 
 def _r() -> Redis:
     return Redis.from_url(REDIS_URL, decode_responses=True)
+
 
 # Socket.IO publisher (Redis MQ üzerinden)
 SIO = SocketIO(message_queue=REDIS_URL)
@@ -113,7 +114,9 @@ def _fetch_yf(symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
     return df.sort_index()
 
 
-def _get_ohlcv_cached(asset: str, symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
+def _get_ohlcv_cached(
+    asset: str, symbol: str, timeframe: str, limit: int
+) -> pd.DataFrame:
     r = _r()
     safe = safe_cache_key("draks:ohlcv", asset, symbol, timeframe, str(limit))
     val = r.get(safe)
@@ -133,7 +136,9 @@ def _get_ohlcv_cached(asset: str, symbol: str, timeframe: str, limit: int) -> pd
         [int(ts.value / 10**6), float(o), float(h), float(l), float(c), float(v)]
         for ts, (o, h, l, c, v) in zip(
             df.index,
-            df[["open", "high", "low", "close", "volume"]].itertuples(index=False, name=None),
+            df[["open", "high", "low", "close", "volume"]].itertuples(
+                index=False, name=None
+            ),
         )
     ]
     r.setex(safe, OHLCV_TTL, json.dumps(rows))
@@ -168,8 +173,18 @@ def _try_finalize(job_id: str):
             r.hset("draks:batch:index", job_id, int(time.time()))
             # tamamlandı bildirimi
             try:
-                SIO.emit("progress", {"job_id": job_id, "done": int(done), "failed": int(failed), "total": int(total), "finished": True},
-                         namespace="/batch", to=f"job:{job_id}")
+                SIO.emit(
+                    "progress",
+                    {
+                        "job_id": job_id,
+                        "done": int(done),
+                        "failed": int(failed),
+                        "total": int(total),
+                        "finished": True,
+                    },
+                    namespace="/batch",
+                    to=f"job:{job_id}",
+                )
             except Exception:
                 pass
     except Exception:
@@ -177,7 +192,9 @@ def _try_finalize(job_id: str):
 
 
 @celery_app.task(bind=True, name="draks.process_symbol", time_limit=BATCH_JOB_TIMEOUT)
-def process_symbol(self, *, asset: str, symbol: str, timeframe: str, limit: int, job_id: str):
+def process_symbol(
+    self, *, asset: str, symbol: str, timeframe: str, limit: int, job_id: str
+):
     r = _r()
     try:
         df = _get_ohlcv_cached(asset, symbol, timeframe, limit)
@@ -185,7 +202,11 @@ def process_symbol(self, *, asset: str, symbol: str, timeframe: str, limit: int,
             raise RuntimeError("insufficient_data")
         out = ENGINE.run(df, symbol.replace(" ", ""))
         out["as_of"] = datetime.utcnow().isoformat() + "Z"
-        r.setex(_result_key(job_id, symbol), DECISION_TTL, json.dumps({"status": "ok", "draks": out}))
+        r.setex(
+            _result_key(job_id, symbol),
+            DECISION_TTL,
+            json.dumps({"status": "ok", "draks": out}),
+        )
         r.sadd(_set_key(job_id, "done"), symbol)
         inc_batch_item(asset, "ok")
     except Exception:
@@ -204,8 +225,17 @@ def process_symbol(self, *, asset: str, symbol: str, timeframe: str, limit: int,
             total = int(json.loads(r.get(_meta_key(job_id)) or "{}").get("total", 0))
             done = r.scard(_set_key(job_id, "done"))
             failed = r.scard(_set_key(job_id, "failed"))
-            SIO.emit("progress", {"job_id": job_id, "done": int(done), "failed": int(failed), "total": int(total)},
-                     namespace="/batch", to=f"job:{job_id}")
+            SIO.emit(
+                "progress",
+                {
+                    "job_id": job_id,
+                    "done": int(done),
+                    "failed": int(failed),
+                    "total": int(total),
+                },
+                namespace="/batch",
+                to=f"job:{job_id}",
+            )
         except Exception:
             pass
         _try_finalize(job_id)

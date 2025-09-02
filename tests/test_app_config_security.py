@@ -5,6 +5,7 @@ import sys
 def _reload_config_module():
     sys.modules.pop("app.config", None)
     import app.config as config_module  # type: ignore
+
     return importlib.reload(config_module)
 
 
@@ -24,4 +25,3 @@ def test_mask_sensitive_values():
     masked = Config.mask_sensitive_values(data)
     assert masked["SECRET_KEY"] == "****1234"
     assert masked["NORMAL"] == "deger"
-

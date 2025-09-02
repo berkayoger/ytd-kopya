@@ -1,13 +1,15 @@
-from flask import Blueprint, send_file, request, jsonify, abort
+import hashlib
+import os
+import subprocess
+from datetime import datetime
+
+from flask import Blueprint, abort, jsonify, request, send_file
 from flask_jwt_extended import jwt_required
+
 from backend.auth.middlewares import admin_required
 from backend.db import db
 from backend.db.models import DatabaseBackup, User
 from backend.utils.audit import log_action
-import os
-import subprocess
-import hashlib
-from datetime import datetime
 
 backup_bp = Blueprint("backup", __name__, url_prefix="/api/admin/backup")
 
@@ -38,7 +40,9 @@ def create_backup():
     with open(path, "rb") as f:
         file_hash = hashlib.sha256(f.read()).hexdigest()
 
-    entry = DatabaseBackup(filename=filename, admin_id=admin.id if admin else None, file_hash=file_hash)
+    entry = DatabaseBackup(
+        filename=filename, admin_id=admin.id if admin else None, file_hash=file_hash
+    )
     db.session.add(entry)
     db.session.commit()
     log_action(admin, "backup_created", filename)
@@ -61,16 +65,20 @@ def create_backup():
 @jwt_required()
 @admin_required()
 def list_backups():
-    backups = DatabaseBackup.query.order_by(DatabaseBackup.created_at.desc()).limit(20).all()
-    return jsonify([
-        {
-            "id": b.id,
-            "filename": b.filename,
-            "created_at": b.created_at.isoformat(),
-            "admin_id": b.admin_id,
-        }
-        for b in backups
-    ])
+    backups = (
+        DatabaseBackup.query.order_by(DatabaseBackup.created_at.desc()).limit(20).all()
+    )
+    return jsonify(
+        [
+            {
+                "id": b.id,
+                "filename": b.filename,
+                "created_at": b.created_at.isoformat(),
+                "admin_id": b.admin_id,
+            }
+            for b in backups
+        ]
+    )
 
 
 @backup_bp.route("/download/<int:backup_id>", methods=["GET"])
@@ -103,4 +111,3 @@ def restore_backup():
     subprocess.run(["cp", path, DB_FILE], check=False)
     log_action(admin, "backup_restored", backup.filename)
     return jsonify({"ok": True})
-

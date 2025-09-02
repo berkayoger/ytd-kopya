@@ -91,7 +91,9 @@ class SecureLogger:
         return self.logger
 
     @staticmethod
-    def safe_log_dict(data: Dict[str, Any], sensitive_keys: List[str] | None = None) -> Dict[str, Any]:
+    def safe_log_dict(
+        data: Dict[str, Any], sensitive_keys: List[str] | None = None
+    ) -> Dict[str, Any]:
         """Sözlük içindeki hassas değerleri maskele"""
         if sensitive_keys is None:
             sensitive_keys = [

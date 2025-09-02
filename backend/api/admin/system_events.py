@@ -1,11 +1,12 @@
-from datetime import datetime, timedelta
 import json
-from flask import Blueprint, request, jsonify, current_app
-from flask_jwt_extended import jwt_required
-from backend.auth.middlewares import admin_required
-from backend.db.models import db, SystemEvent
-from backend.utils.system_events import log_event
+from datetime import datetime, timedelta
 
+from flask import Blueprint, current_app, jsonify, request
+from flask_jwt_extended import jwt_required
+
+from backend.auth.middlewares import admin_required
+from backend.db.models import SystemEvent, db
+from backend.utils.system_events import log_event
 
 events_bp = Blueprint("events_bp", __name__, url_prefix="/api/admin")
 
@@ -43,18 +44,20 @@ def list_events():
             pass
     limit = int(request.args.get("limit", 100))
     events = q.order_by(SystemEvent.created_at.desc()).limit(limit).all()
-    return jsonify([
-        {
-            "id": e.id,
-            "event_type": e.event_type,
-            "level": e.level,
-            "message": e.message,
-            "meta": json.loads(e.meta) if e.meta else {},
-            "created_at": e.created_at.isoformat(),
-            "user_id": e.user_id,
-        }
-        for e in events
-    ])
+    return jsonify(
+        [
+            {
+                "id": e.id,
+                "event_type": e.event_type,
+                "level": e.level,
+                "message": e.message,
+                "meta": json.loads(e.meta) if e.meta else {},
+                "created_at": e.created_at.isoformat(),
+                "user_id": e.user_id,
+            }
+            for e in events
+        ]
+    )
 
 
 @events_bp.route("/events/retention-cleanup", methods=["POST"])
@@ -66,7 +69,13 @@ def retention_cleanup():
     deleted = SystemEvent.query.filter(SystemEvent.created_at < threshold).delete()
     db.session.commit()
     admin_id = request.headers.get("X-Admin-ID")
-    log_event("retention_cleanup", "INFO", f"{deleted} events removed", {"days": days}, user_id=admin_id)
+    log_event(
+        "retention_cleanup",
+        "INFO",
+        f"{deleted} events removed",
+        {"days": days},
+        user_id=admin_id,
+    )
     return jsonify({"deleted": deleted})
 
 
@@ -86,6 +95,7 @@ def system_status():
         redis_status = f"error: {e}"
     try:
         import psutil
+
         cpu = psutil.cpu_percent(interval=None)
         mem = psutil.virtual_memory().percent
     except Exception:

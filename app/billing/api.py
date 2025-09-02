@@ -1,10 +1,10 @@
 import os
 from datetime import datetime
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, current_app, jsonify, request
 
-from ..models.db import db, Plan, Customer, Subscription, Invoice, User
-from ..core.security import decode_token, _redis_client
+from ..core.security import _redis_client, decode_token
+from ..models.db import Customer, Invoice, Plan, Subscription, User, db
 from .providers import get_provider
 
 bp = Blueprint("billing", __name__)
@@ -160,26 +160,40 @@ def webhook():
         user_id = meta.get("user_id")
         if not (cust_id and sub_id and plan_code and user_id):
             current_app.logger.warning("checkout.completed missing fields")
-            return jsonify({"status":"ignored"}), 200
+            return jsonify({"status": "ignored"}), 200
         # Customer mapping yoksa oluştur
-        cust = Customer.query.filter_by(provider=provider.name, provider_customer_id=cust_id).first()
+        cust = Customer.query.filter_by(
+            provider=provider.name, provider_customer_id=cust_id
+        ).first()
         if not cust:
-            cust = Customer(user_id=user_id, provider=provider.name, provider_customer_id=cust_id)
-            db.session.add(cust); db.session.commit()
+            cust = Customer(
+                user_id=user_id, provider=provider.name, provider_customer_id=cust_id
+            )
+            db.session.add(cust)
+            db.session.commit()
         plan = Plan.query.filter_by(code=plan_code).first()
         if plan:
-            sub = Subscription.query.filter_by(provider=provider.name, provider_sub_id=sub_id).first()
+            sub = Subscription.query.filter_by(
+                provider=provider.name, provider_sub_id=sub_id
+            ).first()
             if not sub:
-                db.session.add(Subscription(
-                    user_id=cust.user_id, plan_id=plan.id, provider=provider.name,
-                    provider_sub_id=sub_id, status="active"
-                ))
+                db.session.add(
+                    Subscription(
+                        user_id=cust.user_id,
+                        plan_id=plan.id,
+                        provider=provider.name,
+                        provider_sub_id=sub_id,
+                        status="active",
+                    )
+                )
                 db.session.commit()
     elif ev_type == "invoice.paid":
         uid = (
             Customer.query.filter_by(
                 provider_customer_id=data["customer"], provider=provider.name
-            ).first().user_id
+            )
+            .first()
+            .user_id
         )
         inv = Invoice(
             user_id=uid,

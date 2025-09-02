@@ -14,5 +14,3 @@ def test_app():
     app.register_blueprint(predict_bp, url_prefix="/api")
     app.config["TESTING"] = True
     return app.test_client()
-
-

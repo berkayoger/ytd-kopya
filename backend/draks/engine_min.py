@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
-import numpy as np, pandas as pd
+
+import numpy as np
+import pandas as pd
 
 
 def compute_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -82,7 +85,13 @@ def trend_module(
     gross_edge = abs(spread) / row["close"] * 0.8
     net_edge = float(gross_edge - cost_bps * 1e-4)
     return ModuleOutput(
-        "trend", direction, max(0.0, net_edge), prob, 15, ["EMA20-EMA50", "slope"], {"rp": rp}
+        "trend",
+        direction,
+        max(0.0, net_edge),
+        prob,
+        15,
+        ["EMA20-EMA50", "slope"],
+        {"rp": rp},
     )
 
 
@@ -110,7 +119,9 @@ def meanrev_module(
     prob = float(min(0.9, 0.5 + 0.3 * abs(z)))
     gross_edge = float(min(0.03, 0.5 * abs(z)))
     net_edge = float(max(0.0, gross_edge - cost_bps * 1e-4))
-    return ModuleOutput("meanrev", direction, net_edge, prob, 7, ["BB_zscore"], {"z": float(z)})
+    return ModuleOutput(
+        "meanrev", direction, net_edge, prob, 7, ["BB_zscore"], {"z": float(z)}
+    )
 
 
 class LinUCB:
@@ -282,4 +293,3 @@ class DRAKSEngine:
             "weights": weights,
             "reasons": reasons[:8],
         }
-

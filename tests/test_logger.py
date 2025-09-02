@@ -1,4 +1,5 @@
 import pytest
+
 from backend import create_app, db
 from backend.models.log import Log
 from backend.utils.logger import create_log
@@ -33,4 +34,3 @@ def test_create_log_inserts_entry(test_app):
         assert log.ip_address == "127.0.0.1"
         assert log.status == "success"
         assert log.source == "web"
-

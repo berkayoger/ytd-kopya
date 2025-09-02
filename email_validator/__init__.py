@@ -7,6 +7,7 @@ Provides a minimal compatible API:
 This is NOT a full RFC validator; it performs basic, deterministic checks
 good enough for unit tests where the real dependency may not be installed.
 """
+
 from __future__ import annotations
 
 import re
@@ -87,4 +88,3 @@ def validate_email(
 
     res = _normalize(s)
     return res.as_dict()
-

@@ -43,4 +43,3 @@ def daily_volatility(ohlcv: pd.DataFrame) -> float:
         ohlcv = ohlcv.sort_values("ts")
     r = ohlcv["close"].pct_change().dropna()
     return float(r.std() if len(r) > 5 else 0.0)
-

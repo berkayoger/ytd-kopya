@@ -1,17 +1,14 @@
-from flask import Blueprint, jsonify, request, g
 import json
 
+from flask import Blueprint, g, jsonify, request
+
 from backend.auth.jwt_utils import jwt_required_if_not_testing
+from backend.utils.feature_flags import (all_feature_flags,
+                                         create_feature_flag,
+                                         feature_flag_enabled,
+                                         get_feature_flag_metadata,
+                                         set_feature_flag)
 from backend.utils.logger import create_log
-
-from backend.utils.feature_flags import (
-    all_feature_flags,
-    feature_flag_enabled,
-    set_feature_flag,
-    create_feature_flag,
-    get_feature_flag_metadata,
-)
-
 
 feature_flags_bp = Blueprint("feature_flags", __name__)
 

@@ -1,26 +1,18 @@
 import os
 import re
 from typing import List
-from flask import Blueprint, request, jsonify, current_app
 
-from ..models.db import db, User
-from ..core.security import (
-    PasswordPolicy,
-    get_password_hash,
-    verify_password,
-    create_access_token,
-    create_refresh_token,
-    create_email_token,
-    rotate_refresh_token,
-    record_failed_login,
-    reset_login_failures,
-    is_locked,
-    validate_and_normalize_email,
-    generate_totp_secret,
-    get_totp_uri,
-    verify_totp,
-    decode_token,
-)
+from flask import Blueprint, current_app, jsonify, request
+
+from ..core.security import (PasswordPolicy, create_access_token,
+                             create_email_token, create_refresh_token,
+                             decode_token, generate_totp_secret,
+                             get_password_hash, get_totp_uri, is_locked,
+                             record_failed_login, reset_login_failures,
+                             rotate_refresh_token,
+                             validate_and_normalize_email, verify_password,
+                             verify_totp)
+from ..models.db import User, db
 
 bp = Blueprint("authx", __name__)
 
@@ -111,10 +103,15 @@ def verify():
     if not user.email_verified:
         user.email_verified = True
         db.session.commit()
-    return jsonify({
-        "access": create_access_token(subject=user.id),
-        "refresh": create_refresh_token(subject=user.id),
-    }), 200
+    return (
+        jsonify(
+            {
+                "access": create_access_token(subject=user.id),
+                "refresh": create_refresh_token(subject=user.id),
+            }
+        ),
+        200,
+    )
 
 
 @bp.post("/login")
@@ -132,15 +129,20 @@ def login():
         cnt = record_failed_login(ident)
         return jsonify({"detail": "Invalid credentials", "attempts": cnt}), 401
     if user.totp_secret:
-        if not data.get("totp_code") or not verify_totp(data["totp_code"], user.totp_secret):
+        if not data.get("totp_code") or not verify_totp(
+            data["totp_code"], user.totp_secret
+        ):
             return jsonify({"detail": "TOTP required/invalid"}), 401
     reset_login_failures(ident)
-    return jsonify(
-        {
-            "access": create_access_token(subject=user.id),
-            "refresh": create_refresh_token(subject=user.id),
-        }
-    ), 200
+    return (
+        jsonify(
+            {
+                "access": create_access_token(subject=user.id),
+                "refresh": create_refresh_token(subject=user.id),
+            }
+        ),
+        200,
+    )
 
 
 @bp.post("/refresh")
@@ -152,7 +154,9 @@ def refresh():
         new_r = rotate_refresh_token(data["refresh"])
         p = decode_token(new_r, require_type="refresh")
         return (
-            jsonify({"access": create_access_token(subject=p["sub"]), "refresh": new_r}),
+            jsonify(
+                {"access": create_access_token(subject=p["sub"]), "refresh": new_r}
+            ),
             200,
         )
     except Exception:
@@ -199,4 +203,3 @@ def totp_setup():
     db.session.commit()
     uri = get_totp_uri(user.email, secret)
     return jsonify({"otpauth_uri": uri}), 200
-
