@@ -21,7 +21,7 @@ PyJWT>=2.9.0
 argon2-cffi==23.1.0
 cryptography>=44.0.0,<45.0.0
 passlib==1.7.4
-pwnedpasswords==2.0.0
+pwnedpasswords==3.0.0
 pyotp==2.9.0
 pydantic>=2.8.0
 
