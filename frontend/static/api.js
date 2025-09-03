@@ -9,13 +9,28 @@ class YTDApiClient {
 
     this.authToken = localStorage.getItem('auth_token');
     this.refreshToken = localStorage.getItem('refresh_token');
+    this.csrfToken = this.getCSRFToken();
     this.headers = {
       'Content-Type': 'application/json',
-      'X-Requested-With': 'XMLHttpRequest'
+      'X-Requested-With': 'XMLHttpRequest',
+      ...(this.csrfToken ? { 'X-CSRF-Token': this.csrfToken } : {})
     };
     // Varsayılan timeout (ms)
     this.defaultTimeout = 15000;
     this.setupAuthHeaders();
+  }
+
+  getCSRFToken() {
+    const metaToken = document.querySelector('meta[name="csrf-token"]');
+    if (metaToken) {
+      return metaToken.getAttribute('content');
+    }
+    const match = document.cookie.match(/csrf_token=([^;]+)/);
+    return match ? match[1] : null;
+  }
+
+  sanitizeRequestData(data) {
+    return SecurityUtils.sanitizeJsonResponse(data);
   }
 
   setupAuthHeaders() {
@@ -93,6 +108,12 @@ class YTDApiClient {
       const timeout = options.timeout ?? this.defaultTimeout;
       const timer = setTimeout(() => controller.abort(), timeout);
 
+      if (options.body && (options.headers?.['Content-Type'] === 'application/json' || this.headers['Content-Type'] === 'application/json')) {
+        const parsedBody = JSON.parse(options.body);
+        const sanitizedBody = this.sanitizeRequestData(parsedBody);
+        options.body = JSON.stringify(sanitizedBody);
+      }
+
       let response = await fetch(`${this.baseURL}${endpoint}`, {
         ...options,
         headers: { ...this.headers, ...options.headers },
@@ -120,9 +141,12 @@ class YTDApiClient {
       }
 
       const contentType = response.headers.get('content-type') || '';
-      const data = contentType.includes('application/json')
+      let data = contentType.includes('application/json')
         ? await response.json()
         : await response.text();
+      if (contentType.includes('application/json')) {
+        data = SecurityUtils.sanitizeJsonResponse(data);
+      }
 
       if (response.status === 429) {
         this.handlePlanLimitExceeded(typeof data === 'string' ? { message: data } : data);
