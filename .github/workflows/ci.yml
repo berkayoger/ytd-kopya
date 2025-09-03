@@ -17,6 +17,9 @@ jobs:
         with:
           python-version: "3.12"
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            backend/requirements.txt
       - run: |
           python -m pip install -U pip
           pip install ruff==0.6.9 mypy
@@ -76,10 +79,16 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            backend/requirements.txt
       - name: Install deps
         run: |
           python -m pip install -U pip
+          # Sıra önemli: kök -> backend -> dev
           pip install -r requirements.txt
+          pip install -r backend/requirements.txt
+          pip install -r requirements-dev.txt
           pip install pytest pytest-cov
       - name: Run tests
         env:
