@@ -10,6 +10,7 @@ try:
 except ImportError:  # Eski Flask-Limiter sürümleri için geri dönüş
     from backend import limiter  # pragma: no cover
 
+import html
 import time  # For time.time()
 from datetime import date, datetime, timedelta
 
@@ -17,12 +18,13 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_limiter.errors import RateLimitExceeded
 from loguru import logger
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm.exc import StaleDataError
 
+from backend.auth.middlewares import admin_required
 from backend.constants import SUBSCRIPTION_EXTENSION_DAYS
 # Modelleri import et
 from backend.db.models import (DailyUsage, PromoCode, PromoCodeUsage,
                                SecurityEvent, SubscriptionPlan, User, db)
+from backend.db.secure_queries import SecureQueryManager
 from backend.limiting import get_plan_rate_limit, rate_limit_key_func
 from backend.middleware.plan_limits import enforce_plan_limit
 # Güvenlik dekoratörlerini import et
@@ -30,14 +32,35 @@ from backend.utils.decorators import require_subscription_plan
 # Yardımcı fonksiyonları import et
 from backend.utils.helpers import add_audit_log, serialize_user_for_api
 from backend.utils.logger import create_log
-from backend.utils.plan_limits import (get_all_feature_keys,
-                                       get_user_effective_limits)
+from backend.utils.plan_limits import get_all_feature_keys
 from backend.utils.security import sanitize_input
 from backend.utils.usage_limits import check_usage_limit, get_usage_status
 from backend.utils.validators import validate_crypto_symbol
+from backend.validation.schemas import (AdminAnalyticsRequestSchema,
+                                        CryptoAnalysisRequestSchema)
+from backend.validation.validators import validate_json
 
 # API Blueprint'i tanımla
 api_bp = Blueprint("api", __name__)
+
+
+@api_bp.before_request
+def security_headers() -> None:
+    """Placeholder for request-level security logic."""
+    return None
+
+
+@api_bp.after_request
+def add_security_headers(response):
+    """Add basic security headers to each response."""
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = (
+        "max-age=31536000; includeSubDomains"
+    )
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    return response
 
 
 # Flask-Limiter aşımlarında tek tip JSON cevap ver
@@ -259,7 +282,7 @@ def analyze_coin_api(coin_id):
         return (
             jsonify(
                 {
-                    "error": f"Harici API bağlantı hatası. Lütfen daha sonra tekrar deneyin."
+                    "error": "Harici API bağlantı hatası. Lütfen daha sonra tekrar deneyin."
                 }
             ),
             503,
@@ -389,7 +412,7 @@ def predict():
 @jwt_required()
 @enforce_plan_limit("predict_daily")
 def daily_prediction():
-    data = request.json
+    _ = request.json
 
     user = g.get("user")
     if user:
@@ -1022,3 +1045,71 @@ def ratelimit_handler(e):
         ),
         429,
     )
+
+
+@api_bp.route("/analyze", methods=["POST"])
+@jwt_required()
+@require_subscription_plan(SubscriptionPlan.BASIC)
+@validate_json(CryptoAnalysisRequestSchema)
+def analyze_crypto(validated_data):
+    """Analyze cryptocurrency with validated input and sanitized output."""
+    try:
+        symbol = validated_data.symbol
+        timeframe = validated_data.timeframe
+        indicators = validated_data.indicators
+        start_date = validated_data.start_date
+        end_date = validated_data.end_date
+
+        current_user_id = get_jwt_identity()
+        user = SecureQueryManager.get_user_by_id(current_user_id)
+        if not user:
+            return jsonify({"error": "Invalid user"}), 401
+
+        result = {
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "indicators": indicators,
+            "start_date": start_date.isoformat() if start_date else None,
+            "end_date": end_date.isoformat() if end_date else None,
+        }
+        sanitized_result = sanitize_analysis_result(result)
+        return jsonify(sanitized_result)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.error("Analysis error for user %s: %s", current_user_id, exc)
+        return (
+            jsonify({"error": "Analysis failed", "message": "Internal server error"}),
+            500,
+        )
+
+
+def sanitize_analysis_result(result):
+    """Recursively sanitize analysis results to prevent XSS."""
+    if isinstance(result, dict):
+        return {k: sanitize_analysis_result(v) for k, v in result.items()}
+    if isinstance(result, list):
+        return [sanitize_analysis_result(item) for item in result]
+    if isinstance(result, str):
+        return html.escape(result)
+    return result
+
+
+@api_bp.route("/admin/analytics", methods=["POST"])
+@jwt_required()
+@admin_required()
+@validate_json(AdminAnalyticsRequestSchema)
+def admin_analytics(validated_data):
+    """Return user analytics data for admins."""
+    try:
+        start_date = validated_data.start_date
+        end_date = validated_data.end_date
+        metric_type = validated_data.metric_type
+
+        analytics_data = SecureQueryManager.get_user_analytics_secure(
+            start_date=start_date.isoformat(), end_date=end_date.isoformat()
+        )
+        if "error" in analytics_data:
+            return jsonify({"error": "Failed to fetch analytics"}), 500
+        return jsonify({"data": analytics_data, "metric_type": metric_type})
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.error("Admin analytics error: %s", exc)
+        return jsonify({"error": "Analytics request failed"}), 500
