@@ -19,7 +19,6 @@ from flask_limiter.errors import RateLimitExceeded
 from loguru import logger
 from sqlalchemy.exc import IntegrityError
 
-from backend.auth.middlewares import admin_required
 from backend.constants import SUBSCRIPTION_EXTENSION_DAYS
 # Modelleri import et
 from backend.db.models import (DailyUsage, PromoCode, PromoCodeUsage,
@@ -28,7 +27,7 @@ from backend.db.secure_queries import SecureQueryManager
 from backend.limiting import get_plan_rate_limit, rate_limit_key_func
 from backend.middleware.plan_limits import enforce_plan_limit
 # Güvenlik dekoratörlerini import et
-from backend.utils.decorators import require_subscription_plan
+from backend.utils.decorators import admin_required, require_subscription_plan
 # Yardımcı fonksiyonları import et
 from backend.utils.helpers import add_audit_log, serialize_user_for_api
 from backend.utils.logger import create_log
@@ -84,7 +83,8 @@ MAX_SUBSCRIPTION_EXTENSION_DAYS = (
     5 * 365
 )  # Promosyonlarla uzatılabilecek maksimum gün (örn. 5 yıl)
 
-# Backend tarafından doğrulanacak plan fiyatları (Üretimde AdminSettings'ten veya başka güvenli bir kaynaktan gelmeli)
+# Backend tarafından doğrulanacak plan fiyatları
+# (Üretimde AdminSettings'ten veya başka güvenli bir kaynaktan gelmeli)
 # Frontend'den gelen fiyat bilgisi ASLA doğrudan kullanılmamalıdır.
 BACKEND_PLAN_PRICES = {
     SubscriptionPlan.BASIC.name: 9.99,
@@ -1095,7 +1095,7 @@ def sanitize_analysis_result(result):
 
 @api_bp.route("/admin/analytics", methods=["POST"])
 @jwt_required()
-@admin_required()
+@admin_required
 @validate_json(AdminAnalyticsRequestSchema)
 def admin_analytics(validated_data):
     """Return user analytics data for admins."""

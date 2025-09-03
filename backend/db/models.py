@@ -294,6 +294,7 @@ class SecurityEvent(db.Model):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     event_type = Column(String(50), nullable=False, index=True)
+    severity = Column(String(20), nullable=False, index=True)
     ip_address = Column(String(45), nullable=True, index=True)
     user_agent = Column(Text, nullable=True)
     success = Column(Boolean, default=True, nullable=False)
