@@ -1,8 +1,12 @@
 FROM python:3.12-slim AS builder
 WORKDIR /app
 ENV PIP_NO_CACHE_DIR=1
-COPY requirements.txt .
-RUN python -m pip install --upgrade pip && pip wheel -w /wheels -r requirements.txt
+# Hem kök hem backend gereksinimleri için wheel oluştur
+COPY requirements.txt /tmp/req.root.txt
+COPY backend/requirements.txt /tmp/req.backend.txt
+RUN python -m pip install --upgrade pip \
+ && pip wheel -w /wheels -r /tmp/req.root.txt \
+ && pip wheel -w /wheels -r /tmp/req.backend.txt
 COPY . .
 
 FROM python:3.12-slim
