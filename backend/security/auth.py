@@ -11,7 +11,7 @@ from backend.extensions import limiter
 
 logger = logging.getLogger(__name__)
 
-auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
+auth_bp = Blueprint("web_auth", __name__, url_prefix="/auth")
 
 
 @auth_bp.route("/login", methods=["POST"])
