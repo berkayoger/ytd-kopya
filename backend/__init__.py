@@ -1,10 +1,4 @@
-"""
-backend paket giriş noktası:
-- create_app fonksiyonunu, limiter'ı ve testlerin beklediği bazı objeleri dışa aktarır.
-
-Amaç: Test ortamında import hatalarını önlemek için Celery ve Socket.IO gibi
-bağımlılıklar için güvenli placeholder'lar sağlar.
-"""
+"""Flask application factory with security enhancements."""
 
 from __future__ import annotations
 
@@ -14,39 +8,36 @@ from typing import Type
 
 from dotenv import load_dotenv  # re-export for tests to patch
 
+from .extensions import init_extensions, limiter
+
 try:
     from celery import Celery
 except Exception:  # pragma: no cover
     Celery = None  # type: ignore
 
 
-class _NoOpLimiter:
-    """Fallback limiter to satisfy imports when real limiter is unavailable."""
-
-    def limit(self, *args, **kwargs):  # noqa: D401
-        def decorator(func):
-            return func
-
-        return decorator
-
-
-limiter = _NoOpLimiter()
-
-
 # Flask app factory wrapper
 def create_app(config_object: str | None = None):
     """Create Flask app ensuring .env is loaded when not in production."""
-    # Load environment variables from .env for non-production envs
     if os.getenv("FLASK_ENV", "development") != "production":
         load_dotenv()
-    # Import here to avoid circular import issues during module init
     from .app import create_app as _create_app
 
-    return _create_app(config_object)
+    app = _create_app(config_object)
+    try:
+        init_extensions(app)
+        from .security import api_bp, auth_bp, csrf_bp
+
+        app.register_blueprint(csrf_bp)
+        app.register_blueprint(auth_bp)
+        app.register_blueprint(api_bp)
+    except Exception as exc:  # pragma: no cover
+        logger.error("Extension initialization failed: %s", exc)
+    return app
 
 
 # SQLAlchemy db nesnesini üst seviyeden de sun
-from .db import db as db  # type: ignore
+from .db import db as db  # type: ignore  # noqa: E402
 
 # Celery uygulamasını üst seviyeden de sun (bazı modüller backend.celery_app bekliyor)
 if Celery is not None:
@@ -75,8 +66,12 @@ if os.getenv("FLASK_ENV", "development") != "production":
 logger = logging.getLogger("backend")
 
 # Config seçim ve re-export
-from .config import (BaseConfig, DevelopmentConfig, ProductionConfig,
-                     TestingConfig)
+from .config import (  # noqa: E402  # isort: skip
+    BaseConfig,
+    DevelopmentConfig,
+    ProductionConfig,
+    TestingConfig,
+)
 
 
 def _select_config() -> Type[BaseConfig]:  # type: ignore[misc]
