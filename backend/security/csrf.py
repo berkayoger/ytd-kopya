@@ -53,16 +53,5 @@ def get_csrf_token():
         return {"error": "csrf_generation_failed"}, 500
 
 
-@csrf_bp.route("/csrf-validate", methods=["POST"])
-def validate_csrf_token():
-    """Validate CSRF token (for testing purposes)."""
-    return {
-        "valid": True,
-        "message": "CSRF token is valid",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-    }
-
-
 if limiter:
     limiter.limit("100/minute")(get_csrf_token)
-    limiter.limit("50/minute")(validate_csrf_token)

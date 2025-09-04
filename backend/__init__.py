@@ -22,7 +22,19 @@ def create_app(config_object: str | None = None):
     if os.getenv("FLASK_ENV", "development") != "production":
         load_dotenv()
     from .app import create_app as _create_app
+    from .extensions import init_extensions, limiter
+    
+    app = _create_app(config_object)
+try:
+    init_extensions(app)
+    from .security import api_bp, auth_bp, csrf_bp
+    app.register_blueprint(csrf_bp)
+    app.register_blueprint(auth_bp) 
+    app.register_blueprint(api_bp)
+except Exception as exc:
 
+    logger.error("Extension initialization failed: %s", exc)
+return app
     app = _create_app(config_object)
     try:
         init_extensions(app)
