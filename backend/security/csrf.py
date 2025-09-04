@@ -48,8 +48,8 @@ def get_csrf_token():
             redis_client.expire(f"csrf_tokens_issued:{client_ip}", 3600)
         logger.info("CSRF token issued for client %s", get_remote_address())
         return resp
-    except Exception as exc:  # pragma: no cover
-        logger.error("Failed to generate CSRF token: %s", exc)
+    except Exception as exc:
+        print("CSRF ERROR:", exc); import traceback; traceback.print_exc()
         return {"error": "csrf_generation_failed"}, 500
 
 
