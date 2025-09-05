@@ -24,13 +24,6 @@ const AdminFeatureFlags: React.FC = () => {
     enabled: false,
   });
 
-  const [newFlag, setNewFlag] = useState({
-    name: '',
-    description: '',
-    category: '',
-    enabled: false,
-  });
-
   useEffect(() => {
     const endpoint = categoryFilter
       ? `/api/admin/feature-flags/category/${categoryFilter}`
@@ -66,7 +59,6 @@ const AdminFeatureFlags: React.FC = () => {
   if (loading) return <p>Yükleniyor...</p>;
 
   return (
-<<<<<<< HEAD
     <div className="p-6 max-w-3xl space-y-8">
       <h1 className="text-2xl font-bold mb-4">Feature Flag Yönetimi</h1>
       <div className="flex items-center space-x-2">
@@ -77,10 +69,6 @@ const AdminFeatureFlags: React.FC = () => {
         />
         <Button onClick={() => setCategoryFilter('')}>Temizle</Button>
       </div>
-=======
-    <div className="p-6 max-w-2xl space-y-8">
-      <h1 className="text-2xl font-bold mb-4">Feature Flag Yönetimi</h1>
->>>>>>> 7ff5221 (Add tests for feature flag creation metadata)
       <div className="space-y-4">
         {Object.entries(flags).map(([key, info]) => (
           <div
@@ -144,7 +132,6 @@ const AdminFeatureFlags: React.FC = () => {
           </Button>
         </div>
       </div>
-<<<<<<< HEAD
 
       <div className="border-t pt-6 space-y-2">
         <h2 className="text-lg font-semibold">Export / Import</h2>
@@ -189,8 +176,6 @@ const AdminFeatureFlags: React.FC = () => {
           />
         </div>
       </div>
-=======
->>>>>>> 7ff5221 (Add tests for feature flag creation metadata)
     </div>
   );
 };
