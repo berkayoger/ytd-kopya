@@ -762,3 +762,39 @@ class SystemEvent(db.Model):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     user = db.relationship("User", lazy=True)
+
+
+# --- Additional Security Models ---
+
+# Rate Limit Model
+class RateLimit(db.Model):
+    __tablename__ = 'rate_limits'
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    identifier = Column(String(255), nullable=False, index=True)
+    identifier_type = Column(String(20), nullable=False)
+    endpoint = Column(String(200))
+    requests_made = Column(Integer, default=1, nullable=False)
+    limit_per_window = Column(Integer, nullable=False)
+    window_start = Column(DateTime, default=datetime.utcnow, nullable=False)
+    window_duration_seconds = Column(Integer, default=3600, nullable=False)
+    is_blocked = Column(Boolean, default=False, nullable=False)
+    blocked_until = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+# System Settings Model
+class SystemSetting(db.Model):
+    __tablename__ = 'system_settings'
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    key = Column(String(100), unique=True, nullable=False)
+    value = Column(Text)
+    value_type = Column(String(20), default='string', nullable=False)
+    description = Column(Text)
+    is_sensitive = Column(Boolean, default=False, nullable=False)
+    is_readonly = Column(Boolean, default=False, nullable=False)
+    category = Column(String(50))
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
