@@ -56,6 +56,24 @@ def create_app(config_object: str | None = None) -> Flask:
     configure_json_logging(log_level)
     logging.getLogger(__name__).info("app_boot", extra={"stage": "init"})
 
+    # --- Sentry (optional) ---
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        from sentry_sdk.integrations.celery import CeleryIntegration
+
+        dsn = os.getenv("SENTRY_DSN", "")
+        if dsn:
+            sentry_sdk.init(
+                dsn=dsn,
+                integrations=[FlaskIntegration(), CeleryIntegration()],
+                traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+                profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.0")),
+                send_default_pii=False,
+            )
+    except Exception:
+        pass
+
     # --- Request-ID middleware ---
     request_id_middleware(app)
 
@@ -200,6 +218,19 @@ def create_app(config_object: str | None = None) -> Flask:
 
         app.register_blueprint(plan_admin_limits_bp)
     except Exception:
+        pass
+
+    # --- RESTX API v1 (versioned) ---
+    try:
+        from backend.api.restx_v1 import create_v1_blueprint
+
+        base = os.getenv("API_BASE_PREFIX", "/api/v1")
+        title = os.getenv("API_TITLE", "YTD-Kopya Crypto Analysis API")
+        version = os.getenv("API_VERSION", "1.0.0")
+        v1_bp, _ = create_v1_blueprint(base_url=base, title=title, version=version)
+        app.register_blueprint(v1_bp)
+    except Exception:
+        # RESTX is optional; skip if not installed
         pass
 
     return app

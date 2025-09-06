@@ -5,18 +5,58 @@ from datetime import timedelta
 from sqlalchemy.pool import StaticPool
 
 
+def env_bool(key: str, default: bool = False) -> bool:
+    """Convert environment variable to boolean"""
+    v = os.getenv(key)
+    if v is None:
+        return default
+    return v.lower() in ("1", "true", "yes", "on")
+
+
 class BaseConfig:
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///ytd_crypto.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
-        "pool_size": 10,
-        "max_overflow": 20,
-        "pool_timeout": 30,
-        "pool_recycle": 1800,
+        "pool_size": int(os.getenv("DB_POOL_SIZE", "10")),
+        "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "20")),
+        "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "1800")),
+        "pool_pre_ping": True,
+        "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT", "30")),
     }
+    READ_REPLICA_DATABASE_URI = os.getenv("READ_REPLICA_DATABASE_URI", "")
+    # === API Versioning ===
+    API_TITLE = os.getenv("API_TITLE", "YTD-Kopya Crypto Analysis API")
+    API_VERSION = os.getenv("API_VERSION", "1.0.0")
+    API_BASE_PREFIX = os.getenv("API_BASE_PREFIX", "/api/v1")
+    API_DOCS_URL = os.getenv("API_DOCS_URL", "/docs")
+    OPENAPI_JSON_URL = os.getenv("OPENAPI_JSON_URL", "/openapi.json")
+    SWAGGER_UI_URL = os.getenv("SWAGGER_UI_URL", "/swagger")
+
+    # === Logging & Monitoring ===
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+    SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+    SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))
+    SENTRY_PROFILES_SAMPLE_RATE = float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1"))
+
+    # === Cache Configuration ===
+    CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL", os.getenv("REDIS_URL", "redis://localhost:6379/1"))
+    CACHE_DEFAULT_TIMEOUT = int(os.getenv("CACHE_DEFAULT_TIMEOUT", "300"))
+    CACHE_KEY_PREFIX = os.getenv("CACHE_KEY_PREFIX", "ytd:")
+    L1_CACHE_TTL = int(os.getenv("L1_CACHE_TTL", "60"))
+
     CELERY_TIMEZONE = "Europe/Istanbul"
     CELERY_BROKER_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    
+    # === Enhanced Celery Configuration ===
+    CELERY_TASK_TIME_LIMIT = int(os.getenv("CELERY_TASK_TIME_LIMIT", "300"))
+    CELERY_TASK_SOFT_TIME_LIMIT = int(os.getenv("CELERY_TASK_SOFT_TIME_LIMIT", "240"))
+    CELERY_WORKER_PREFETCH_MULTIPLIER = int(os.getenv("CELERY_WORKER_PREFETCH_MULTIPLIER", "4"))
+    CELERY_TASK_DEFAULT_RETRY_DELAY = int(os.getenv("CELERY_TASK_DEFAULT_RETRY_DELAY", "15"))
+    CELERY_TASK_MAX_RETRIES = int(os.getenv("CELERY_TASK_MAX_RETRIES", "5"))
+    CELERY_ACKS_LATE = env_bool("CELERY_ACKS_LATE", True)
+    CELERY_REJECT_ON_WORKER_LOST = env_bool("CELERY_REJECT_ON_WORKER_LOST", True)
+    CELERY_FLOWER_PORT = int(os.getenv("CELERY_FLOWER_PORT", "5555"))
     CELERY_BEAT_SCHEDULE = {
         "auto-analyze-bitcoin-every-15-minutes": {
             "task": "backend.tasks.celery_tasks.analyze_coin_task",
@@ -80,3 +120,5 @@ class TestingConfig(BaseConfig):
         "connect_args": {"check_same_thread": False},
     }
     CELERY_TASK_ALWAYS_EAGER = True
+    # Testlerde fiyat önbelleği kapalı
+    PRICE_CACHE_TTL = 0

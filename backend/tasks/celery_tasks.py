@@ -18,7 +18,8 @@ except Exception:  # pragma: no cover
 
 from flask import current_app
 
-from backend import celery_app, create_app, logger, socketio
+from backend.tasks import celery_app
+from backend import create_app, logger, socketio
 
 # Test ortamında 'backend.core.services' bağımlılığını yüklemek gereksizdir.
 try:
@@ -57,7 +58,7 @@ def run_full_analysis(
     logger.info(
         f"Celery: {coin_id.upper()} analizi arka planda baslatildi. Profil: {investor_profile}"
     )
-    with app.app_context():
+    with _get_app().app_context():
         system = YTDCryptoSystem()
         user = User.query.get(user_id) if user_id is not None else None
 
@@ -219,6 +220,199 @@ def send_security_alert_task(
 ):
     """Send a security alert to external channels."""
     logger.warning(f"Security alert: {alert_type} - {details}")
-    with app.app_context():
+    with _get_app().app_context():
         sev = AlarmSeverityEnum[severity] if isinstance(severity, str) else severity
         send_alarm(alert_type, sev, details)
+
+# ---- Dead Letter Queue (DLQ) & Reliability Enhancements ----
+import json as _json
+import logging as _logging
+from datetime import datetime as _dt
+
+from celery import signals as _signals
+
+_dlq_logger = _logging.getLogger(__name__)
+DLQ_KEY = "celery:dlq"
+
+
+def _dlq_redis():
+    """Obtain a Redis client for DLQ operations."""
+    try:
+        import redis as _redis
+
+        url = os.getenv("REDIS_URL", os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0"))
+        return _redis.Redis.from_url(url, decode_responses=True)
+    except Exception:  # pragma: no cover
+        return None
+
+
+@_signals.task_failure.connect
+def _on_task_failure(sender=None, task_id=None, exception=None, args=None, kwargs=None, einfo=None, **_):
+    """Push failed task metadata to DLQ for later inspection/requeue."""
+    payload = {
+        "task": getattr(sender, "name", None) if sender else None,
+        "task_id": task_id,
+        "exception": repr(exception),
+        "args": args,
+        "kwargs": kwargs,
+        "traceback": str(einfo) if einfo else None,
+        "timestamp": _dt.utcnow().isoformat(),
+    }
+    client = _dlq_redis()
+    if client is None:
+        return
+    try:
+        client.lpush(DLQ_KEY, _json.dumps(payload))
+        _dlq_logger.error("Task %s failed; added to DLQ", task_id)
+    except Exception as exc:  # pragma: no cover
+        _dlq_logger.error("Failed to add task to DLQ: %s", exc)
+
+
+def get_dlq_size() -> int:
+    client = _dlq_redis()
+    if client is None:
+        return 0
+    try:
+        return int(client.llen(DLQ_KEY) or 0)
+    except Exception:
+        return 0
+
+
+def pop_dlq_item() -> dict | None:
+    client = _dlq_redis()
+    if client is None:
+        return None
+    try:
+        raw = client.rpop(DLQ_KEY)
+        return _json.loads(raw) if raw else None
+    except Exception:
+        return None
+
+
+def requeue_dlq_item() -> bool:
+    item = pop_dlq_item()
+    if not item or not item.get("task"):
+        return False
+    try:
+        from backend.tasks import celery_app as _celery_app
+
+        _celery_app.send_task(item["task"], args=item.get("args") or [], kwargs=item.get("kwargs") or {})
+        _dlq_logger.info("Requeued task %s from DLQ", item["task"])
+        return True
+    except Exception as exc:
+        _dlq_logger.error("Failed to requeue DLQ item: %s", exc)
+        return False
+
+
+# Enhanced reliable task decorator
+def reliable_task(**decorator_kwargs):
+    """Decorator for creating reliable tasks with automatic retry and DLQ handling"""
+    default_kwargs = {
+        "bind": True,
+        "autoretry_for": (Exception,),
+        "retry_backoff": 2,
+        "retry_jitter": True,
+        "max_retries": 5,
+        "acks_late": True,
+        "reject_on_worker_lost": True
+    }
+    default_kwargs.update(decorator_kwargs)
+    
+    def decorator(func):
+        return celery_app.task(**default_kwargs)(func)
+    
+    return decorator
+
+
+# Example enhanced crypto analysis task
+@reliable_task()
+def analyze_crypto_symbol_enhanced(self, symbol: str, timeframe: str = "1d"):
+    """Enhanced crypto analysis task with reliability features"""
+    try:
+        logger.info(f"Starting enhanced crypto analysis for {symbol}", extra={"symbol": symbol, "timeframe": timeframe})
+        
+        # Use existing analysis system
+        with _get_app().app_context():
+            if YTDCryptoSystem:
+                system = YTDCryptoSystem()
+                
+                # Collect data
+                price_data = system.collector.collect_price_data(symbol)
+                onchain = system.collector.collect_onchain_data(symbol)
+                social = system.collector.collect_social_data(symbol)
+                news = system.collector.collect_news_data(symbol)
+                
+                # Analyze
+                all_news_text = " ".join(
+                    f"{n.get('title','')} {n.get('description','')}" for n in news
+                )
+                
+                _, news_score = system.ai.analyze_sentiment(all_news_text)
+                
+                # Create analysis result
+                analysis_result = {
+                    "symbol": symbol,
+                    "timeframe": timeframe,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "price_data": price_data,
+                    "onchain_data": onchain,
+                    "social_data": social,
+                    "news_sentiment": news_score,
+                    "status": "completed"
+                }
+                
+                # Save to database if possible
+                try:
+                    system.save_to_db(analysis_result)
+                except Exception as save_exc:
+                    logger.warning(f"Failed to save analysis to DB: {save_exc}")
+                
+                logger.info(f"Completed enhanced crypto analysis for {symbol}", extra={"symbol": symbol})
+                return analysis_result
+            else:
+                # Fallback analysis
+                result = {"symbol": symbol, "timeframe": timeframe, "analysis": "completed_fallback"}
+                logger.info(f"Completed fallback crypto analysis for {symbol}", extra={"symbol": symbol})
+                return result
+        
+    except Exception as exc:
+        logger.error(f"Enhanced crypto analysis failed for {symbol}: {exc}", extra={"symbol": symbol})
+        raise self.retry(exc=exc, countdown=int(os.getenv("CELERY_TASK_DEFAULT_RETRY_DELAY", "15")) * (2 ** self.request.retries))
+
+
+@reliable_task()
+def cleanup_stale_tasks(self):
+    """Clean up stale task records"""
+    try:
+        logger.info("Starting stale task cleanup")
+        
+        with _get_app().app_context():
+            from datetime import datetime, timedelta
+            cutoff_date = datetime.utcnow() - timedelta(days=7)
+            
+            # Clean up old task logs
+            from backend.db.models import CeleryTaskLog, CeleryTaskStatus
+            stale_logs = db.session.query(CeleryTaskLog).filter(
+                CeleryTaskLog.created_at < cutoff_date,
+                CeleryTaskLog.status.in_([CeleryTaskStatus.SUCCESS, CeleryTaskStatus.FAILURE])
+            ).limit(1000)
+            
+            deleted_count = 0
+            for log in stale_logs:
+                db.session.delete(log)
+                deleted_count += 1
+            
+            db.session.commit()
+            
+            logger.info(f"Cleaned up {deleted_count} stale task logs")
+            return {"cleaned_up": deleted_count}
+            
+    except Exception as exc:
+        logger.error(f"Stale task cleanup failed: {exc}")
+        raise
+def _get_app():
+    """Return a concrete Flask app object, creating one if outside context."""
+    try:
+        return current_app._get_current_object() if current_app else create_app()
+    except Exception:
+        return create_app()
